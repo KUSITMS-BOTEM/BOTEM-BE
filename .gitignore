@@ -1,0 +1,31 @@
+# Gradle and Kotlin build artifacts
+.gradle/
+.kotlin/
+build/
+out/
+*.class
+
+# IDE settings
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
