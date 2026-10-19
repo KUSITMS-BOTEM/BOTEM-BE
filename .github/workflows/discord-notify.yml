@@ -1,0 +1,157 @@
+name: 🔔 디스코드 알림
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+  issues:
+    types: [opened]
+
+env:
+  DISCORD_WEBHOOK_URL: ${{ secrets.BE_GITHUB_WEBHOOK }}
+  BOT_NAME: BOTEM 알림봇 💰
+  AVATAR_URL: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
+
+jobs:
+  # PR 열림 → 리뷰 요청 알림
+  notify-review:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.action != 'closed'
+      && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📨 리뷰 요청 알림 전송
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          ADDITIONS: ${{ github.event.pull_request.additions }}
+          DELETIONS: ${{ github.event.pull_request.deletions }}
+          CREATED_AT: ${{ github.event.pull_request.created_at }}
+        run: |
+          MESSAGES=(
+            "따끈따끈한 PR이 나왔어요! 식기 전에 리뷰해주세요 🍞"
+            "리뷰 한 스푼만 보태주세요 🥄"
+            "새 PR이 당신을 기다리고 있어요. 읽씹하지 마세요 💌"
+            "PR 승인 버튼은 세상에서 제일 아름다운 버튼이에요 💚"
+            "빌드는 성공했어요. 이제 리뷰만 남았습니다 🛠️"
+            "오늘 야근 여부는 당신의 리뷰 속도에 달려있습니다 🌙"
+            "보탬이 당신의 approve를 기다리고 있어요 🎁"
+          )
+          CUTE_MSG="${MESSAGES[$(( RANDOM % ${#MESSAGES[@]} ))]}"
+
+          TOTAL=$(( ADDITIONS + DELETIONS ))
+          if   [ "$TOTAL" -lt 50 ];   then SIZE="🍰 한입 크기"
+          elif [ "$TOTAL" -lt 200 ];  then SIZE="🍔 적당한 크기"
+          elif [ "$TOTAL" -lt 500 ];  then SIZE="🍕 꽤 큰 편"
+          elif [ "$TOTAL" -lt 1000 ]; then SIZE="🏋️ 헬스장 급 (힘내세요...)"
+          else                             SIZE="💀 리뷰어 사망각 (커피 챙기세요)"
+          fi
+
+          jq -n \
+            --arg content "📢 **[BE] 리뷰 요청이 도착했어요!** $CUTE_MSG" \
+            --arg size "$SIZE" \
+            '{
+              username: env.BOT_NAME,
+              avatar_url: env.AVATAR_URL,
+              content: $content,
+              embeds: [{
+                title: ("📝 " + env.PR_TITLE),
+                url: env.PR_URL,
+                color: 16750848,
+                description: (env.PR_BODY // "" | if length > 200 then .[:200] + "..." else . end),
+                fields: [
+                  {name: "👤 작성자", value: env.PR_AUTHOR, inline: true},
+                  {name: "📦 PR 크기", value: $size, inline: true},
+                  {name: "📊 변경 사항", value: "`\(env.CHANGED_FILES)`개 파일  |  +\(env.ADDITIONS)  -\(env.DELETIONS)", inline: true}
+                ],
+                footer: {text: "BOTEM Backend 💰 리뷰 한 번이 큰 보탬이 됩니다"},
+                timestamp: env.CREATED_AT
+              }]
+            }' | curl -sf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
+
+  # PR 머지 → 머지 알림
+  notify-merged:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.action == 'closed'
+      && github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🎊 머지 알림 전송
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          ADDITIONS: ${{ github.event.pull_request.additions }}
+          DELETIONS: ${{ github.event.pull_request.deletions }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          MERGED_AT: ${{ github.event.pull_request.merged_at }}
+        run: |
+          MESSAGES=(
+            "코드가 무사히 새 집을 찾았어요! 이사 축하~ 🏠"
+            "머지 완료! 오늘의 영웅은 바로 당신! 🦸"
+            "브랜치여 안녕... 넌 develop 속에서 영원히 살 거야 💐"
+            "드디어 해냈다! 리뷰어분들 감사합니다 🫡✨"
+            "git log --oneline 한 줄이 늘었습니다 📜"
+            "이제 다음 이슈로 고고씽~ 💨"
+          )
+          CUTE_MSG="${MESSAGES[$(( RANDOM % ${#MESSAGES[@]} ))]}"
+
+          jq -n \
+            --arg content "🎊 **[BE] PR이 머지되었어요!** $CUTE_MSG" \
+            '{
+              username: env.BOT_NAME,
+              avatar_url: env.AVATAR_URL,
+              content: $content,
+              embeds: [{
+                title: ("✅ " + env.PR_TITLE),
+                url: env.PR_URL,
+                color: 2067276,
+                fields: [
+                  {name: "👤 작성자", value: env.PR_AUTHOR, inline: true},
+                  {name: "🔀 머지한 사람", value: env.MERGED_BY, inline: true},
+                  {name: "🌿 브랜치", value: "`\(env.HEAD_BRANCH)` → `\(env.BASE_BRANCH)`", inline: true},
+                  {name: "📊 최종 변경 사항", value: "`\(env.CHANGED_FILES)`개 파일  |  +\(env.ADDITIONS)  -\(env.DELETIONS)", inline: false}
+                ],
+                footer: {text: "BOTEM Backend 💰 수고하셨습니다!"},
+                timestamp: env.MERGED_AT
+              }]
+            }' | curl -sf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
+
+  # 이슈 등록 → 이슈 알림
+  notify-issue:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📌 이슈 등록 알림 전송
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+          CREATED_AT: ${{ github.event.issue.created_at }}
+        run: |
+          jq -n '{
+              username: env.BOT_NAME,
+              avatar_url: env.AVATAR_URL,
+              content: "📌 **[BE] 새 이슈가 등록되었어요!**",
+              embeds: [{
+                title: ("📌 " + env.ISSUE_TITLE),
+                url: env.ISSUE_URL,
+                color: 5793266,
+                description: (env.ISSUE_BODY // "" | if length > 200 then .[:200] + "..." else . end),
+                fields: [
+                  {name: "👤 작성자", value: env.ISSUE_AUTHOR, inline: true},
+                  {name: "🏷️ 라벨", value: (if env.ISSUE_LABELS == "" then "-" else env.ISSUE_LABELS end), inline: true}
+                ],
+                footer: {text: "BOTEM Backend 💰"},
+                timestamp: env.CREATED_AT
+              }]
+            }' | curl -sf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
