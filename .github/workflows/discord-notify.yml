@@ -7,7 +7,7 @@ on:
     types: [opened]
 
 env:
-  DISCORD_WEBHOOK_URL: ${{ secrets.BE_GITHUB_WEBHOOK }}
+  DISCORD_WEBHOOK_URL: ${{ secrets.BOTEM_DISCORD_PR_ISSUE_WEBHOOK_URL }}
   BOT_NAME: BOTEM 알림봇 💰
   AVATAR_URL: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
 
