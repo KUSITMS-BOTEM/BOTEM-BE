@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: ko-KR
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - develop
+      - main
+  path_instructions:
+    - path: "src/**/*.kt"
+      instructions: |
+        버그, 보안 취약점, 데이터 정합성 문제를 가장 먼저 검토해주세요.
+        .claude/rules/code-convention.md 규칙을 기준으로 리뷰해주세요.
+        - Controller는 요청 검증과 응답 변환, 비즈니스 로직은 Service 또는 도메인 객체에 둡니다.
+        - Entity를 API 요청/응답으로 직접 사용하지 않습니다.
+        - 성공 응답은 ApiResponse, 비즈니스 오류는 BusinessException과 ErrorCode를 사용합니다.
+        - JPA Entity에 data class와 public setter를 사용하지 않습니다.
+        - 트랜잭션 경계, N+1, 반복문 내부 쿼리를 확인합니다.
+        - `!!` 사용과 과도한 추상화를 지적합니다.
+
+chat:
+  auto_reply: true
