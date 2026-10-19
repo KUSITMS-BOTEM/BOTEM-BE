@@ -19,18 +19,18 @@
 9. 수정 요청이 있으면 반영한 뒤 다시 확인한다.
 10. 생성 완료 후 PR URL을 출력한다.
 
-## Base Branch 규칙
+## Base Branch 및 Label 규칙
 
-| 브랜치 타입 | Base Branch |
-|---|---|
-| `feat` | `develop` |
-| `fix` | `develop` |
-| `refactor` | `develop` |
-| `docs` | `develop` |
-| `test` | `develop` |
-| `chore` | `develop` |
-| `hotfix` | `main` |
-| 정식 배포 | `main` |
+| 브랜치 타입 | Base Branch | Label |
+|---|---|---|
+| `feat` | `develop` | `✨ Feature` |
+| `fix` | `develop` | `🐞BugFix` |
+| `refactor` | `develop` | `🔨 Refactor` |
+| `docs` | `develop` | `📃 Docs` |
+| `test` | `develop` | `✅ Test` |
+| `chore` | `develop` | `🦴 Chore` |
+| `hotfix` | `main` | `🐞BugFix` |
+| 정식 배포 | `main` | `🌎 Deploy` |
 
 - `hotfix` 병합 후 동일한 변경 사항을 `develop`에도 반영해야 함을 안내한다.
 - 정식 배포 PR은 `develop`에서 `main`으로 생성한다.
@@ -117,6 +117,7 @@ gh pr create \
   --title "[<타입>] <한글 제목>" \
   --body-file "$BODY_FILE" \
   --base "<base-branch>" \
+  --label "<label>" \
   --assignee "@me"
 
 rm -f "$BODY_FILE"
