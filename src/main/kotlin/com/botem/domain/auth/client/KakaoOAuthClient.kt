@@ -70,6 +70,6 @@ class KakaoOAuthClient(
     companion object {
         private const val AUTHORIZE_URI = "https://kauth.kakao.com/oauth/authorize"
         private const val TOKEN_URI = "https://kauth.kakao.com/oauth/token"
-        private const val USER_INFO_URI = "https://kapi.kakao.com/v2/user/me"
+        private const val USER_INFO_URI = "https://kapi.kakao.com/v2/user/me?secure_resource=true"
     }
 }
