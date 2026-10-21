@@ -1,6 +1,8 @@
 spring:
   application:
     name: botem
+  profiles:
+    default: local
 
 springdoc:
   swagger-ui:
