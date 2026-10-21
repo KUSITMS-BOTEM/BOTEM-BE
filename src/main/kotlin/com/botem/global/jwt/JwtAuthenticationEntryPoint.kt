@@ -1,4 +1,4 @@
-package com.botem.global.security
+package com.botem.global.jwt
 
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.ErrorCode

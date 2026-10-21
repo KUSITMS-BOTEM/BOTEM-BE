@@ -1,4 +1,4 @@
-package com.botem.global.security
+package com.botem.global.jwt
 
 import com.botem.global.exception.BusinessException
 import jakarta.servlet.FilterChain

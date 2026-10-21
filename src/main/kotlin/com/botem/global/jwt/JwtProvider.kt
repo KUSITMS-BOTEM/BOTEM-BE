@@ -1,4 +1,4 @@
-package com.botem.global.security
+package com.botem.global.jwt
 
 import com.botem.global.config.JwtProperties
 import com.botem.global.exception.AuthErrorCode
@@ -11,6 +11,7 @@ import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.util.Date
+import java.util.UUID
 import javax.crypto.SecretKey
 
 @Component
@@ -34,6 +35,7 @@ class JwtProvider(
         val now = Date()
 
         return Jwts.builder()
+            .id(UUID.randomUUID().toString())
             .subject(userId.toString())
             .claim(TOKEN_TYPE_CLAIM, tokenType)
             .issuedAt(now)
