@@ -3,10 +3,12 @@ package com.botem.global.security
 import com.botem.global.config.JwtProperties
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
+import com.botem.global.jwt.JwtProvider
 import org.junit.jupiter.api.Test
 import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
 
 class JwtProviderTest {
 
@@ -28,6 +30,14 @@ class JwtProviderTest {
     }
 
     @Test
+    fun `같은 사용자에게 연속으로 발급한 Refresh 토큰은 서로 다르다`() {
+        val firstToken = jwtProvider.createRefreshToken(1L)
+        val secondToken = jwtProvider.createRefreshToken(1L)
+
+        assertNotEquals(firstToken, secondToken)
+    }
+
+    @Test
     fun `다른 키로 서명된 토큰은 거부한다`() {
         val otherProvider = createJwtProvider(Duration.ofMinutes(60), OTHER_SECRET)
         val token = otherProvider.createAccessToken(1L)
@@ -46,7 +56,13 @@ class JwtProviderTest {
     }
 
     private fun createJwtProvider(expiration: Duration, secret: String = SECRET) =
-        JwtProvider(JwtProperties(secret = secret, accessTokenExpiration = expiration, refreshTokenExpiration = expiration))
+        JwtProvider(
+            JwtProperties(
+                secret = secret,
+                accessTokenExpiration = expiration,
+                refreshTokenExpiration = expiration
+            )
+        )
 
     companion object {
         private const val SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtcHJvdmlkZXItdGVzdC0xMjM0NTY3ODkw"
