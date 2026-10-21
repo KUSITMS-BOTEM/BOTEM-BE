@@ -3,6 +3,10 @@ spring:
     name: botem
   profiles:
     default: local
+  http:
+    clients:
+      connect-timeout: 3s
+      read-timeout: 5s
 
 jwt:
   access-token-expiration: 60m

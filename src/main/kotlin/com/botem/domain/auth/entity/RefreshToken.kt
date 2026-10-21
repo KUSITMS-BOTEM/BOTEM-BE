@@ -15,18 +15,18 @@ class RefreshToken(
     @Column(nullable = false, unique = true)
     val userId: Long,
 
-    token: String,
+    tokenHash: String,
 ) : BaseEntity() {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
 
-    @Column(nullable = false, length = 512)
-    var token: String = token
+    @Column(nullable = false, length = 64)
+    var tokenHash: String = tokenHash
         protected set
 
-    fun rotate(token: String) {
-        this.token = token
+    fun rotate(tokenHash: String) {
+        this.tokenHash = tokenHash
     }
 }
