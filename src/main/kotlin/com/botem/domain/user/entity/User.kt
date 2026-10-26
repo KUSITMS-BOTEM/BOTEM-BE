@@ -35,4 +35,14 @@ class User(
 
     var birthday: LocalDate? = birthday
         protected set
+
+    fun updateProfile(
+        nickname: String,
+        profileImageUrl: String?,
+        birthday: LocalDate?,
+    ) {
+        this.nickname = nickname
+        this.profileImageUrl = profileImageUrl
+        this.birthday = birthday
+    }
 }
