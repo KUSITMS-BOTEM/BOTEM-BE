@@ -9,7 +9,6 @@ on:
 env:
   DISCORD_WEBHOOK_URL: ${{ secrets.BOTEM_DISCORD_PR_ISSUE_WEBHOOK_URL }}
   BOT_NAME: BOTEM 알림봇 💰
-  AVATAR_URL: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
 
 jobs:
   # PR 열림 → 리뷰 요청 알림
@@ -55,7 +54,6 @@ jobs:
             --arg size "$SIZE" \
             '{
               username: env.BOT_NAME,
-              avatar_url: env.AVATAR_URL,
               content: $content,
               embeds: [{
                 title: ("📝 " + env.PR_TITLE),
@@ -107,7 +105,6 @@ jobs:
             --arg content "🎊 **[BE] PR이 머지되었어요!** $CUTE_MSG" \
             '{
               username: env.BOT_NAME,
-              avatar_url: env.AVATAR_URL,
               content: $content,
               embeds: [{
                 title: ("✅ " + env.PR_TITLE),
@@ -140,7 +137,6 @@ jobs:
         run: |
           jq -n '{
               username: env.BOT_NAME,
-              avatar_url: env.AVATAR_URL,
               content: "📌 **[BE] 새 이슈가 등록되었어요!**",
               embeds: [{
                 title: ("📌 " + env.ISSUE_TITLE),
