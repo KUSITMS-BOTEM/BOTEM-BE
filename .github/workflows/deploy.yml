@@ -1,0 +1,93 @@
+name: Deploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SSH_TARGET: ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: 이미지 빌드 및 ECR push
+        id: image
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "name=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: SSH 키 설정
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/id_deploy
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+
+      - name: 러너 IP에 SSH 허용
+        id: runner
+        env:
+          SECURITY_GROUP_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+        run: |
+          IP="$(curl -fsS https://checkip.amazonaws.com)"
+          echo "ip=$IP" >> "$GITHUB_OUTPUT"
+          aws ec2 authorize-security-group-ingress --group-id "$SECURITY_GROUP_ID" \
+            --protocol tcp --port 22 --cidr "$IP/32"
+
+      - name: 운영 환경변수 생성
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          umask 077
+          {
+            echo "SPRING_PROFILES_ACTIVE=prod"
+            for name in DB_URL DB_USERNAME DB_PASSWORD KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_REDIRECT_URI JWT_SECRET; do
+              printf '%s=%s\n' "$name" "${!name}"
+            done
+          } > .env
+
+      - name: EC2 배포
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$SSH_TARGET" 'mkdir -p ~/botem && chmod 700 ~/botem'
+          scp -i ~/.ssh/id_deploy .env deploy/deploy.sh "$SSH_TARGET:botem/"
+          ssh -i ~/.ssh/id_deploy "$SSH_TARGET" "bash botem/deploy.sh '$IMAGE'"
+
+      - name: 러너 IP의 SSH 허용 해제
+        if: always() && steps.runner.outputs.ip != ''
+        env:
+          SECURITY_GROUP_ID: ${{ secrets.EC2_SECURITY_GROUP_ID }}
+          IP: ${{ steps.runner.outputs.ip }}
+        run: |
+          aws ec2 revoke-security-group-ingress --group-id "$SECURITY_GROUP_ID" \
+            --protocol tcp --port 22 --cidr "$IP/32"
