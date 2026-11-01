@@ -6,9 +6,17 @@
 
 Docker, Nginx, AWS CLI를 설치하고 배포 사용자가 `docker`와 비밀번호 없는 `sudo`를 쓸 수 있게 합니다. EC2에는 ECR 읽기 권한이 있는 IAM Role을 연결합니다.
 
+워크플로는 `nginx.conf`를 전송하지 않으므로 로컬에서 먼저 올립니다.
+
+```bash
+scp -i <키.pem> deploy/nginx.conf <EC2 사용자>@<EC2 주소>:~/
+```
+
+EC2에서 실행합니다.
+
 ```bash
 echo 'server 127.0.0.1:8081;' | sudo tee /etc/nginx/botem-upstream.inc
-sudo cp deploy/nginx.conf /etc/nginx/conf.d/botem.conf
+sudo mv ~/nginx.conf /etc/nginx/conf.d/botem.conf
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
