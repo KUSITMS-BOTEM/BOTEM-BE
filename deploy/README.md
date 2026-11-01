@@ -18,9 +18,9 @@ sudo nginx -t && sudo systemctl reload nginx
 - EC2: 80/443만 공개하고 22는 열지 않습니다. 배포 중에만 워크플로가 러너 IP를 허용합니다.
 - RDS: EC2 보안 그룹에서 오는 3306만 허용합니다.
 
-## GitHub Actions 역할 권한
+## GitHub Actions IAM 사용자 권한
 
-GitHub OIDC를 신뢰하는 IAM Role에 다음 권한을 줍니다.
+무료 플랜 계정에서는 OIDC 공급자 생성이 SCP로 막혀 있어 IAM 사용자 액세스 키를 사용합니다. 사용자에게 다음 권한만 줍니다. 유료 플랜으로 전환하면 OIDC로 교체를 검토합니다.
 
 - ECR push (대상 저장소)
 - 대상 보안 그룹의 `ec2:AuthorizeSecurityGroupIngress`, `ec2:RevokeSecurityGroupIngress`
@@ -29,7 +29,7 @@ GitHub OIDC를 신뢰하는 IAM Role에 다음 권한을 줍니다.
 
 | 구분 | 이름 |
 |---|---|
-| AWS | `AWS_ROLE_ARN`, `AWS_REGION`, `ECR_REPOSITORY`, `EC2_SECURITY_GROUP_ID` |
+| AWS | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `ECR_REPOSITORY`, `EC2_SECURITY_GROUP_ID` |
 | SSH | `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `EC2_KNOWN_HOSTS` (`ssh-keyscan <host>` 결과를 확인 후 등록) |
 | 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `JWT_SECRET` |
 
