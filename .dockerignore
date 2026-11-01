@@ -1,0 +1,12 @@
+.git
+.github
+.claude
+.idea
+.gradle
+.kotlin
+build
+deploy
+docker-compose.yml
+.env
+.env.*
+src/main/resources/application-local.yaml

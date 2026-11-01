@@ -26,6 +26,7 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers(*SWAGGER_URIS).permitAll()
                 it.requestMatchers(*AUTH_URIS).permitAll()
+                it.requestMatchers("/actuator/health").permitAll()
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(jwtAuthenticationEntryPoint) }
