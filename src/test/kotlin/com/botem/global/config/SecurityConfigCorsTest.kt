@@ -4,8 +4,10 @@ import com.botem.domain.auth.controller.AuthController
 import com.botem.domain.auth.service.AuthService
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.JwtProperties
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -14,8 +16,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.optio
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(AuthController::class)
+@WebMvcTest(controllers = [AuthController::class], properties = ["jwt.secret=test-secret"])
 @Import(SecurityConfig::class)
+@EnableConfigurationProperties(JwtProperties::class)
 class SecurityConfigCorsTest {
 
     @Autowired
@@ -35,6 +38,7 @@ class SecurityConfigCorsTest {
         mockMvc.perform(preflight("https://botem-fe.vercel.app"))
             .andExpect(status().isOk)
             .andExpect(header().string("Access-Control-Allow-Origin", "https://botem-fe.vercel.app"))
+            .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
     }
 
     @Test
