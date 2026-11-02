@@ -1,20 +1,21 @@
 package com.botem.domain.auth.controller.docs
 
 import com.botem.domain.auth.dto.request.KakaoLoginRequest
-import com.botem.domain.auth.dto.request.ReissueRequest
+import com.botem.domain.auth.dto.response.AccessTokenResponse
 import com.botem.domain.auth.dto.response.KakaoLoginUriResponse
-import com.botem.domain.auth.dto.response.TokenResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.http.ResponseEntity
 import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 
-@Tag(name = "Auth", description = "카카오 로그인 및 토큰 재발급 API")
+@Tag(name = "Auth", description = "카카오 로그인, 토큰 재발급 및 로그아웃 API")
 interface AuthControllerDocs {
 
     @Operation(
@@ -53,7 +54,9 @@ interface AuthControllerDocs {
     @Operation(
         summary = "카카오 로그인",
         description = """
-            카카오 인가 코드(`code`)로 로그인하고 Access/Refresh 토큰을 발급합니다.
+            카카오 인가 코드(`code`)로 로그인합니다.
+            Access 토큰은 응답 본문으로, Refresh 토큰은 HttpOnly 쿠키로 발급합니다.
+            브라우저가 쿠키를 저장하도록 요청에 `credentials: 'include'`를 설정해야 합니다.
             처음 로그인한 사용자는 자동으로 회원가입됩니다.
             인가 코드는 한 번만 사용할 수 있고 발급 후 몇 분 안에 만료됩니다.
             Access 토큰 유효기간은 60분, Refresh 토큰 유효기간은 7일입니다.
@@ -98,36 +101,23 @@ interface AuthControllerDocs {
             ],
         ),
     )
-    fun kakaoLogin(request: KakaoLoginRequest): ApiResponse<TokenResponse>
+    fun kakaoLogin(request: KakaoLoginRequest): ResponseEntity<ApiResponse<AccessTokenResponse>>
 
     @Operation(
         summary = "토큰 재발급",
         description = """
-            Refresh 토큰으로 Access 토큰과 Refresh 토큰을 함께 재발급합니다.
-            재발급하면 기존 Refresh 토큰은 더 이상 사용할 수 없으므로, 응답의 새 Refresh 토큰으로 교체해야 합니다.
+            `refreshToken` 쿠키로 Access 토큰과 Refresh 토큰을 함께 재발급합니다.
+            새 Access 토큰은 응답 본문으로, 새 Refresh 토큰은 쿠키로 전달하며 기존 Refresh 토큰은 더 이상 사용할 수 없습니다.
+            요청에 `credentials: 'include'`를 설정해야 합니다.
             API 요청이 `AUTH_003`(만료된 토큰)으로 실패하면 이 API를 호출합니다.
         """,
     )
     @SecurityRequirements
-    @RequestBody(
-        content = [
-            Content(
-                examples = [
-                    ExampleObject(value = """{ "refreshToken": "eyJhbGciOiJIUzM4NCJ9..." }"""),
-                ],
-            ),
-        ],
-    )
     @ApiResponses(
         SwaggerApiResponse(
             responseCode = "200",
             description = "재발급 성공",
             content = [Content(examples = [ExampleObject(value = TOKEN_RESPONSE_EXAMPLE)])],
-        ),
-        SwaggerApiResponse(
-            responseCode = "400",
-            description = "요청 값 오류",
-            content = [Content(examples = [ExampleObject(name = "COMMON_001", value = INVALID_INPUT_EXAMPLE)])],
         ),
         SwaggerApiResponse(
             responseCode = "401",
@@ -137,7 +127,7 @@ interface AuthControllerDocs {
                     examples = [
                         ExampleObject(
                             name = "AUTH_002",
-                            summary = "위조됐거나 이미 재발급에 사용된 토큰",
+                            summary = "쿠키가 없거나, 위조됐거나 이미 재발급에 사용된 토큰",
                             value = """
                                 {
                                   "success": false,
@@ -162,15 +152,38 @@ interface AuthControllerDocs {
             ],
         ),
     )
-    fun reissue(request: ReissueRequest): ApiResponse<TokenResponse>
+    fun reissue(@Parameter(hidden = true) refreshToken: String?): ResponseEntity<ApiResponse<AccessTokenResponse>>
+
+    @Operation(
+        summary = "로그아웃",
+        description = """
+            `refreshToken` 쿠키와 서버에 저장된 Refresh 토큰을 삭제합니다.
+            Access 토큰이 만료된 상태에서도 호출할 수 있고, 쿠키가 없거나 유효하지 않아도 성공으로 응답합니다.
+            요청에 `credentials: 'include'`를 설정해야 하며, 클라이언트는 보관 중인 Access 토큰을 폐기해야 합니다.
+        """,
+    )
+    @SecurityRequirements
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "로그아웃 성공",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(value = """{ "success": true, "data": null, "error": null }"""),
+                    ],
+                ),
+            ],
+        ),
+    )
+    fun logout(@Parameter(hidden = true) refreshToken: String?): ResponseEntity<ApiResponse<Nothing>>
 
     companion object {
         private const val TOKEN_RESPONSE_EXAMPLE = """
             {
               "success": true,
               "data": {
-                "accessToken": "eyJhbGciOiJIUzM4NCJ9...",
-                "refreshToken": "eyJhbGciOiJIUzM4NCJ9..."
+                "accessToken": "eyJhbGciOiJIUzM4NCJ9..."
               },
               "error": null
             }
