@@ -21,6 +21,15 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+이어서 HTTPS 인증서를 발급합니다. `api.botem.site`의 DNS가 EC2를 가리키고 80/443이 열려 있어야 합니다.
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.botem.site -m <이메일> --agree-tos --redirect -n
+```
+
+위 절차는 새 서버에서만 실행합니다. 운영 중인 서버에서 다시 실행하면 Certbot HTTPS 설정과 활성 upstream이 덮어써집니다. `deploy/nginx.conf`는 배포 시 자동 반영되지 않으므로, 운영 설정을 바꿀 때는 `/etc/nginx/conf.d/botem.conf`를 직접 수정하고 `sudo nginx -t && sudo systemctl reload nginx`를 실행합니다.
+
 ## 보안 그룹
 
 - EC2: 80/443만 공개하고 22는 열지 않습니다. 배포 중에만 워크플로가 러너 IP를 허용합니다.
