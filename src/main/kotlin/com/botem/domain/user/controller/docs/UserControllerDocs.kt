@@ -40,7 +40,7 @@ interface UserControllerDocs {
 
     @Operation(
         summary = "내 프로필 수정",
-        description = "로그인한 사용자의 닉네임, 프로필 이미지와 생일을 수정합니다. 전체 프로필 값을 전달해야 합니다.",
+        description = "로그인한 사용자의 닉네임과 생일을 수정합니다. 전체 수정 값을 전달해야 합니다.",
     )
     @ApiResponses(
         SwaggerApiResponse(

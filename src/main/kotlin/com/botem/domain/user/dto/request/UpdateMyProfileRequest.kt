@@ -10,9 +10,6 @@ data class UpdateMyProfileRequest(
     @field:Size(max = 255)
     val nickname: String,
 
-    @field:Size(max = 255)
-    val profileImageUrl: String?,
-
     @field:PastOrPresent
     val birthday: LocalDate?,
 )

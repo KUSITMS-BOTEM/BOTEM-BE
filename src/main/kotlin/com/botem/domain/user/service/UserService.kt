@@ -24,7 +24,6 @@ class UserService(
 
         user.updateProfile(
             nickname = request.nickname.trim(),
-            profileImageUrl = request.profileImageUrl,
             birthday = request.birthday,
         )
 

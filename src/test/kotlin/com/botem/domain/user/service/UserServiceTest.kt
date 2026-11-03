@@ -12,7 +12,6 @@ import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UserServiceTest {
@@ -49,7 +48,6 @@ class UserServiceTest {
         val birthday = LocalDate.of(2001, 5, 20)
         val request = UpdateMyProfileRequest(
             nickname = " 새 닉네임 ",
-            profileImageUrl = null,
             birthday = birthday,
         )
         `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
@@ -57,10 +55,10 @@ class UserServiceTest {
         val response = userService.updateMyProfile(1L, request)
 
         assertEquals("새 닉네임", user.nickname)
-        assertNull(user.profileImageUrl)
+        assertEquals("https://example.com/old.jpg", user.profileImageUrl)
         assertEquals(birthday, user.birthday)
         assertEquals("새 닉네임", response.nickname)
-        assertNull(response.profileImageUrl)
+        assertEquals("https://example.com/old.jpg", response.profileImageUrl)
         assertEquals(birthday, response.birthday)
     }
 
