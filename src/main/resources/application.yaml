@@ -8,6 +8,9 @@ spring:
       connect-timeout: 3s
       read-timeout: 5s
 
+wish-profile:
+  base-url: ${WISH_PROFILE_BASE_URL:https://botem.site}
+
 springdoc:
   swagger-ui:
     tags-sorter: alpha

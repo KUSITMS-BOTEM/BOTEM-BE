@@ -5,6 +5,7 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
+import com.botem.global.property.WishProfileProperties
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
@@ -17,7 +18,10 @@ import kotlin.test.assertTrue
 class UserServiceTest {
 
     private val userRepository = mock(UserRepository::class.java)
-    private val userService = UserService(userRepository)
+    private val userService = UserService(
+        userRepository,
+        WishProfileProperties(baseUrl = "https://botem.site/"),
+    )
 
     @Test
     fun `내 프로필을 조회한다`() {
@@ -27,6 +31,7 @@ class UserServiceTest {
             nickname = "지유",
             profileImageUrl = "https://example.com/profile.jpg",
             birthday = birthday,
+            wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         )
         `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
 
@@ -35,6 +40,10 @@ class UserServiceTest {
         assertEquals("지유", response.nickname)
         assertEquals("https://example.com/profile.jpg", response.profileImageUrl)
         assertEquals(birthday, response.birthday)
+        assertEquals(
+            "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
+            response.wishProfileUrl,
+        )
         assertTrue(response.kakaoConnected)
     }
 
@@ -44,6 +53,7 @@ class UserServiceTest {
             kakaoId = 1234L,
             nickname = "기존 닉네임",
             profileImageUrl = "https://example.com/old.jpg",
+            wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         )
         val birthday = LocalDate.of(2001, 5, 20)
         val request = UpdateMyProfileRequest(
@@ -60,6 +70,10 @@ class UserServiceTest {
         assertEquals("새 닉네임", response.nickname)
         assertEquals("https://example.com/old.jpg", response.profileImageUrl)
         assertEquals(birthday, response.birthday)
+        assertEquals(
+            "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
+            response.wishProfileUrl,
+        )
     }
 
     @Test

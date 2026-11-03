@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.LocalDate
+import java.util.UUID
 
 @Entity
 @Table(name = "users")
@@ -20,6 +21,8 @@ class User(
     profileImageUrl: String?,
 
     birthday: LocalDate? = null,
+
+    wishProfileKey: String = UUID.randomUUID().toString().replace("-", ""),
 ) : BaseEntity() {
 
     @Id
@@ -35,6 +38,9 @@ class User(
 
     var birthday: LocalDate? = birthday
         protected set
+
+    @Column(nullable = false, unique = true, updatable = false, length = 32)
+    val wishProfileKey: String = wishProfileKey
 
     fun updateProfile(
         nickname: String,
