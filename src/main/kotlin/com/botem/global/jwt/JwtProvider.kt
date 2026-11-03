@@ -1,6 +1,6 @@
 package com.botem.global.jwt
 
-import com.botem.global.config.JwtProperties
+import com.botem.global.property.JwtProperties
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import io.jsonwebtoken.ExpiredJwtException

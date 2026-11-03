@@ -1,4 +1,4 @@
-package com.botem.global.config
+package com.botem.global.property
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import java.time.Duration

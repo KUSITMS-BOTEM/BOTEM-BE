@@ -1,6 +1,6 @@
 package com.botem.domain.auth.client
 
-import com.botem.global.config.KakaoProperties
+import com.botem.global.property.KakaoProperties
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import org.slf4j.LoggerFactory

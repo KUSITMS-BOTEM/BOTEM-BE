@@ -45,6 +45,7 @@ class SecurityConfig(
             allowedOrigins = listOf("https://botem.site", "https://botem-fe.vercel.app")
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type")
+            allowCredentials = true
         }
 
         return UrlBasedCorsConfigurationSource().apply {
@@ -63,6 +64,7 @@ class SecurityConfig(
             "/api/auth/kakao/login-uri",
             "/api/auth/kakao/login",
             "/api/auth/reissue",
+            "/api/auth/logout",
         )
     }
 }
