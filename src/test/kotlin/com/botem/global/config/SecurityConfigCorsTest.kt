@@ -35,10 +35,12 @@ class SecurityConfigCorsTest {
 
     @Test
     fun `허용된 프론트 Origin의 Preflight 요청을 허용한다`() {
-        mockMvc.perform(preflight("https://botem-fe.vercel.app"))
-            .andExpect(status().isOk)
-            .andExpect(header().string("Access-Control-Allow-Origin", "https://botem-fe.vercel.app"))
-            .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+        listOf("https://botem.site", "https://botem-fe.vercel.app").forEach { origin ->
+            mockMvc.perform(preflight(origin))
+                .andExpect(status().isOk)
+                .andExpect(header().string("Access-Control-Allow-Origin", origin))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+        }
     }
 
     @Test
