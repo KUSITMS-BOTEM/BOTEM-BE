@@ -5,6 +5,7 @@ import com.botem.domain.auth.service.IssuedTokens
 import com.botem.global.config.SecurityConfig
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.notification.DiscordErrorNotifier
 import com.botem.global.property.JwtProperties
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.allOf
@@ -49,6 +50,9 @@ class AuthControllerCookieTest {
 
     @MockitoBean
     private lateinit var jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint
+
+    @MockitoBean
+    private lateinit var discordErrorNotifier: DiscordErrorNotifier
 
     private val tokens = IssuedTokens(accessToken = "new-access", refreshToken = "new-refresh")
 

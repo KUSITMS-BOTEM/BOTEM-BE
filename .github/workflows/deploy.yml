@@ -69,6 +69,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_ACCESS_TOKEN_EXPIRATION: ${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}
           JWT_REFRESH_TOKEN_EXPIRATION: ${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}
+          DISCORD_ERROR_WEBHOOK_URL: ${{ secrets.DISCORD_ERROR_WEBHOOK_URL }}
         run: |
           umask 077
           {
@@ -77,6 +78,8 @@ jobs:
               [ -n "${!name}" ] || { echo "::error::$name 미설정" >&2; exit 1; }
               printf '%s=%s\n' "$name" "${!name}"
             done
+            # 에러 알림은 선택 항목이라 미설정이어도 배포를 막지 않음
+            [ -z "$DISCORD_ERROR_WEBHOOK_URL" ] || printf 'DISCORD_ERROR_WEBHOOK_URL=%s\n' "$DISCORD_ERROR_WEBHOOK_URL"
           } > .env
 
       - name: EC2 배포
