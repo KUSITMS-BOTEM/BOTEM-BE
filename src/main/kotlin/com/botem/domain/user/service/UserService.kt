@@ -6,6 +6,7 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -23,9 +24,14 @@ class UserService(
     @Transactional
     fun updateMyProfile(userId: Long, request: UpdateMyProfileRequest): MyProfileResponse {
         val user = findUser(userId)
+        val nickname = request.nickname.trim { it.isWhitespace() || Character.isSpaceChar(it) }
+
+        if (nickname.isEmpty()) {
+            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "nickname: 공백일 수 없습니다")
+        }
 
         user.updateProfile(
-            nickname = request.nickname.trim(),
+            nickname = nickname,
             birthday = request.birthday,
         )
 

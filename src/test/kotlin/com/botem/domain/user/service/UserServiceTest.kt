@@ -5,6 +5,7 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -13,7 +14,6 @@ import java.time.LocalDate
 import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class UserServiceTest {
 
@@ -44,7 +44,6 @@ class UserServiceTest {
             "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
             response.wishProfileUrl,
         )
-        assertTrue(response.kakaoConnected)
     }
 
     @Test
@@ -85,5 +84,27 @@ class UserServiceTest {
         }
 
         assertEquals(UserErrorCode.USER_NOT_FOUND, exception.errorCode)
+    }
+
+    @Test
+    fun `공백 문자로만 이루어진 닉네임은 수정할 수 없다`() {
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "기존 닉네임",
+            profileImageUrl = null,
+        )
+        val request = UpdateMyProfileRequest(
+            nickname = "\u00A0\u00A0",
+            birthday = null,
+        )
+        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+
+        val exception = assertFailsWith<BusinessException> {
+            userService.updateMyProfile(1L, request)
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        assertEquals("nickname: 공백일 수 없습니다", exception.detail)
+        assertEquals("기존 닉네임", user.nickname)
     }
 }

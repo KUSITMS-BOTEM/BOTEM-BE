@@ -16,7 +16,7 @@ interface UserControllerDocs {
 
     @Operation(
         summary = "내 프로필 조회",
-        description = "로그인한 사용자의 닉네임, 프로필 이미지, 생일, 위시 프로필 링크와 카카오 계정 연결 상태를 조회합니다.",
+        description = "로그인한 사용자의 닉네임, 프로필 이미지, 생일과 위시 프로필 링크를 조회합니다.",
     )
     @ApiResponses(
         SwaggerApiResponse(
@@ -76,8 +76,7 @@ interface UserControllerDocs {
                 "nickname": "지유",
                 "profileImageUrl": "https://example.com/profile.jpg",
                 "birthday": "2000-10-13",
-                "wishProfileUrl": "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
-                "kakaoConnected": true
+                "wishProfileUrl": "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f"
               },
               "error": null
             }

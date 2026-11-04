@@ -8,7 +8,6 @@ data class MyProfileResponse(
     val profileImageUrl: String?,
     val birthday: LocalDate?,
     val wishProfileUrl: String,
-    val kakaoConnected: Boolean,
 ) {
     companion object {
         fun from(user: User, wishProfileBaseUrl: String): MyProfileResponse =
@@ -17,7 +16,6 @@ data class MyProfileResponse(
                 profileImageUrl = user.profileImageUrl,
                 birthday = user.birthday,
                 wishProfileUrl = "${wishProfileBaseUrl.trimEnd('/')}/@${user.wishProfileKey}",
-                kakaoConnected = true,
             )
     }
 }
