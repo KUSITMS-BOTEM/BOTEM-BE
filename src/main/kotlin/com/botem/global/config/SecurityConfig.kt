@@ -28,7 +28,6 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
-                it.requestMatchers(*SWAGGER_URIS).permitAll()
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
                 it.anyRequest().authenticated()
@@ -54,12 +53,6 @@ class SecurityConfig(
     }
 
     companion object {
-        private val SWAGGER_URIS = arrayOf(
-            "/swagger-ui.html",
-            "/swagger-ui/**",
-            "/v3/api-docs/**",
-        )
-
         private val AUTH_URIS = arrayOf(
             "/api/auth/kakao/login-uri",
             "/api/auth/kakao/login",
