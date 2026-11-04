@@ -4,6 +4,7 @@ import com.botem.domain.auth.controller.AuthController
 import com.botem.domain.auth.service.AuthService
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.notification.DiscordErrorNotifier
 import com.botem.global.property.JwtProperties
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -39,6 +40,9 @@ class SecurityConfigCorsTest {
 
     @MockitoBean
     private lateinit var jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint
+
+    @MockitoBean
+    private lateinit var discordErrorNotifier: DiscordErrorNotifier
 
     @Test
     fun `허용된 프론트 Origin의 Preflight 요청을 허용한다`() {
