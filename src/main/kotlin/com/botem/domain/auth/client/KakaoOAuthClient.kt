@@ -23,17 +23,19 @@ class KakaoOAuthClient(
 
     private val restClient = restClientBuilder.build()
 
-    fun getLoginUri(): String =
+    fun getLoginUri(redirectUri: String?): String =
         UriComponentsBuilder.fromUriString(AUTHORIZE_URI)
             .queryParam("client_id", kakaoProperties.clientId)
-            .queryParam("redirect_uri", kakaoProperties.redirectUri)
+            .queryParam("redirect_uri", resolveRedirectUri(redirectUri))
             .queryParam("response_type", "code")
             .encode()
             .toUriString()
 
-    fun getUserInfo(code: String): KakaoUserInfoResponse {
+    fun getUserInfo(code: String, redirectUri: String?): KakaoUserInfoResponse {
+        val resolvedRedirectUri = resolveRedirectUri(redirectUri)
+
         try {
-            val accessToken = requestAccessToken(code)
+            val accessToken = requestAccessToken(code, resolvedRedirectUri)
 
             return restClient.get()
                 .uri(USER_INFO_URI)
@@ -48,12 +50,12 @@ class KakaoOAuthClient(
         }
     }
 
-    private fun requestAccessToken(code: String): String {
+    private fun requestAccessToken(code: String, redirectUri: String): String {
         val form = LinkedMultiValueMap<String, String>().apply {
             add("grant_type", "authorization_code")
             add("client_id", kakaoProperties.clientId)
             add("client_secret", kakaoProperties.clientSecret)
-            add("redirect_uri", kakaoProperties.redirectUri)
+            add("redirect_uri", redirectUri)
             add("code", code)
         }
 
@@ -65,6 +67,16 @@ class KakaoOAuthClient(
             .body<KakaoTokenResponse>()
             ?.accessToken
             ?: throw BusinessException(AuthErrorCode.KAKAO_LOGIN_FAILED)
+    }
+
+    // 카카오가 인가 코드를 임의 주소로 보내지 않도록 허용 목록과 정확히 일치하는 값만 사용
+    private fun resolveRedirectUri(redirectUri: String?): String {
+        if (redirectUri == null) return kakaoProperties.redirectUri
+        if (redirectUri !in kakaoProperties.allowedRedirectUris) {
+            throw BusinessException(AuthErrorCode.INVALID_REDIRECT_URI)
+        }
+
+        return redirectUri
     }
 
     companion object {

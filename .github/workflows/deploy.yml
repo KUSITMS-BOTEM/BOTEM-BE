@@ -65,12 +65,15 @@ jobs:
           KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI }}
+          KAKAO_ALLOWED_REDIRECT_URIS: ${{ secrets.KAKAO_ALLOWED_REDIRECT_URIS }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_ACCESS_TOKEN_EXPIRATION: ${{ secrets.JWT_ACCESS_TOKEN_EXPIRATION }}
+          JWT_REFRESH_TOKEN_EXPIRATION: ${{ secrets.JWT_REFRESH_TOKEN_EXPIRATION }}
         run: |
           umask 077
           {
             echo "SPRING_PROFILES_ACTIVE=prod"
-            for name in DB_URL DB_USERNAME DB_PASSWORD KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_REDIRECT_URI JWT_SECRET; do
+            for name in DB_URL DB_USERNAME DB_PASSWORD KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_REDIRECT_URI KAKAO_ALLOWED_REDIRECT_URIS JWT_SECRET JWT_ACCESS_TOKEN_EXPIRATION JWT_REFRESH_TOKEN_EXPIRATION; do
               printf '%s=%s\n' "$name" "${!name}"
             done
           } > .env
