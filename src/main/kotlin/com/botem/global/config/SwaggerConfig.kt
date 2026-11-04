@@ -1,5 +1,6 @@
 package com.botem.global.config
 
+import com.botem.global.property.SwaggerProperties
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
@@ -7,9 +8,18 @@ import io.swagger.v3.oas.models.security.SecurityRequirement
 import io.swagger.v3.oas.models.security.SecurityScheme
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
+import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.core.userdetails.User
+import org.springframework.security.crypto.factory.PasswordEncoderFactories
+import org.springframework.security.provisioning.InMemoryUserDetailsManager
+import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
-class SwaggerConfig {
+class SwaggerConfig(
+    private val swaggerProperties: SwaggerProperties,
+) {
 
     @Bean
     fun openAPI(): OpenAPI = OpenAPI()
@@ -30,7 +40,42 @@ class SwaggerConfig {
         )
         .addSecurityItem(SecurityRequirement().addList(BEARER_AUTH))
 
+    // JWT 필터 체인보다 먼저 Swagger 경로만 처리
+    @Bean
+    @Order(1)
+    fun swaggerSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        http
+            .securityMatcher(*SWAGGER_URIS)
+            .csrf { it.disable() }
+            .formLogin { it.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+
+        if (swaggerProperties.username.isBlank()) {
+            http.authorizeHttpRequests { it.anyRequest().permitAll() }
+
+            return http.build()
+        }
+
+        val passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
+        val swaggerUser = User.withUsername(swaggerProperties.username)
+            .password(passwordEncoder.encode(swaggerProperties.password))
+            .build()
+
+        http
+            .authorizeHttpRequests { it.anyRequest().authenticated() }
+            .httpBasic { }
+            .userDetailsService(InMemoryUserDetailsManager(swaggerUser))
+
+        return http.build()
+    }
+
     companion object {
         private const val BEARER_AUTH = "bearerAuth"
+
+        private val SWAGGER_URIS = arrayOf(
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+        )
     }
 }
