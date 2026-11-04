@@ -8,10 +8,6 @@ spring:
       connect-timeout: 3s
       read-timeout: 5s
 
-jwt:
-  access-token-expiration: 60m
-  refresh-token-expiration: 7d
-
 springdoc:
   swagger-ui:
     tags-sorter: alpha

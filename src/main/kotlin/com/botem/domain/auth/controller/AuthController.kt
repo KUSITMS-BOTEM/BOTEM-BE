@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.Duration
 
@@ -30,14 +31,16 @@ class AuthController(
 ) : AuthControllerDocs {
 
     @GetMapping("/kakao/login-uri")
-    override fun getKakaoLoginUri(): ApiResponse<KakaoLoginUriResponse> =
-        ApiResponse.success(authService.getKakaoLoginUri())
+    override fun getKakaoLoginUri(
+        @RequestParam(required = false) redirectUri: String?,
+    ): ApiResponse<KakaoLoginUriResponse> =
+        ApiResponse.success(authService.getKakaoLoginUri(redirectUri))
 
     @PostMapping("/kakao/login")
     override fun kakaoLogin(
         @Valid @RequestBody request: KakaoLoginRequest,
     ): ResponseEntity<ApiResponse<AccessTokenResponse>> =
-        createTokenResponse(authService.kakaoLogin(request.code))
+        createTokenResponse(authService.kakaoLogin(request.code, request.redirectUri))
 
     @PostMapping("/reissue")
     override fun reissue(

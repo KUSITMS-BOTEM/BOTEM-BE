@@ -16,7 +16,14 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.optio
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(controllers = [AuthController::class], properties = ["jwt.secret=test-secret"])
+@WebMvcTest(
+    controllers = [AuthController::class],
+    properties = [
+        "jwt.secret=test-secret",
+        "jwt.access-token-expiration=60m",
+        "jwt.refresh-token-expiration=7d",
+    ],
+)
 @Import(SecurityConfig::class)
 @EnableConfigurationProperties(JwtProperties::class)
 class SecurityConfigCorsTest {

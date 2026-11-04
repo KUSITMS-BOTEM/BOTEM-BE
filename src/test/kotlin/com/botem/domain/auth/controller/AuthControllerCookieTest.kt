@@ -26,7 +26,14 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(controllers = [AuthController::class], properties = ["jwt.secret=test-secret"])
+@WebMvcTest(
+    controllers = [AuthController::class],
+    properties = [
+        "jwt.secret=test-secret",
+        "jwt.access-token-expiration=60m",
+        "jwt.refresh-token-expiration=7d",
+    ],
+)
 @Import(SecurityConfig::class)
 @EnableConfigurationProperties(JwtProperties::class)
 class AuthControllerCookieTest {
@@ -47,7 +54,7 @@ class AuthControllerCookieTest {
 
     @Test
     fun `로그인하면 Access 토큰은 본문으로 Refresh 토큰은 쿠키로만 전달한다`() {
-        given(authService.kakaoLogin("code")).willReturn(tokens)
+        given(authService.kakaoLogin("code", null)).willReturn(tokens)
 
         mockMvc.perform(
             post("/api/auth/kakao/login")

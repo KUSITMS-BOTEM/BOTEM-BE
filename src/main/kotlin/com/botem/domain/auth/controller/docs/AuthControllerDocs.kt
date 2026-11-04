@@ -23,6 +23,8 @@ interface AuthControllerDocs {
         description = """
             카카오 로그인 페이지 주소를 반환합니다.
             클라이언트는 이 주소로 이동시키고, 로그인이 끝나면 카카오가 redirect URI로 `code`를 전달합니다.
+            `redirectUri`는 서버에 등록된 허용 목록에 있는 값만 사용할 수 있고, 생략하면 서버 기본값을 사용합니다.
+            로그인 API에도 같은 `redirectUri`를 보내야 합니다.
         """,
     )
     @SecurityRequirements
@@ -48,8 +50,16 @@ interface AuthControllerDocs {
                 ),
             ],
         ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "허용되지 않은 redirect URI",
+            content = [Content(examples = [ExampleObject(name = "AUTH_005", value = INVALID_REDIRECT_URI_EXAMPLE)])],
+        ),
     )
-    fun getKakaoLoginUri(): ApiResponse<KakaoLoginUriResponse>
+    fun getKakaoLoginUri(
+        @Parameter(description = "카카오 로그인 후 이동할 redirect URI", example = "https://botem.site/auth/callback")
+        redirectUri: String?,
+    ): ApiResponse<KakaoLoginUriResponse>
 
     @Operation(
         summary = "카카오 로그인",
@@ -57,6 +67,7 @@ interface AuthControllerDocs {
             카카오 인가 코드(`code`)로 로그인합니다.
             Access 토큰은 응답 본문으로, Refresh 토큰은 HttpOnly 쿠키로 발급합니다.
             브라우저가 쿠키를 저장하도록 요청에 `credentials: 'include'`를 설정해야 합니다.
+            `redirectUri`는 로그인 URI 조회 때 보낸 값과 같아야 하며, 생략하면 서버 기본값을 사용합니다.
             처음 로그인한 사용자는 자동으로 회원가입됩니다.
             인가 코드는 한 번만 사용할 수 있고 발급 후 몇 분 안에 만료됩니다.
             Access 토큰 유효기간은 60분, Refresh 토큰 유효기간은 7일입니다.
@@ -67,7 +78,9 @@ interface AuthControllerDocs {
         content = [
             Content(
                 examples = [
-                    ExampleObject(value = """{ "code": "카카오에서 전달받은 인가 코드" }"""),
+                    ExampleObject(
+                        value = """{ "code": "카카오에서 전달받은 인가 코드", "redirectUri": "https://botem.site/auth/callback" }""",
+                    ),
                 ],
             ),
         ],
@@ -95,6 +108,11 @@ interface AuthControllerDocs {
                                   "error": { "code": "AUTH_004", "message": "카카오 로그인에 실패했습니다.", "detail": null }
                                 }
                             """,
+                        ),
+                        ExampleObject(
+                            name = "AUTH_005",
+                            summary = "허용되지 않은 redirect URI",
+                            value = INVALID_REDIRECT_URI_EXAMPLE,
                         ),
                     ],
                 ),
@@ -186,6 +204,14 @@ interface AuthControllerDocs {
                 "accessToken": "eyJhbGciOiJIUzM4NCJ9..."
               },
               "error": null
+            }
+        """
+
+        private const val INVALID_REDIRECT_URI_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": { "code": "AUTH_005", "message": "허용되지 않은 redirect URI입니다.", "detail": null }
             }
         """
 
