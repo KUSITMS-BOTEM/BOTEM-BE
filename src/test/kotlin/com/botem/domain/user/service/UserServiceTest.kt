@@ -8,6 +8,8 @@ import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
@@ -44,6 +46,22 @@ class UserServiceTest {
             "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
             response.wishProfileUrl,
         )
+        assertEquals(true, response.kakaoConnected)
+    }
+
+    @Test
+    fun `카카오 연결이 해제된 사용자의 프로필에는 연결 상태를 false로 반환한다`() {
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "지유",
+            profileImageUrl = null,
+            kakaoConnected = false,
+        )
+        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+
+        val response = userService.getMyProfile(1L)
+
+        assertEquals(false, response.kakaoConnected)
     }
 
     @Test
@@ -106,5 +124,83 @@ class UserServiceTest {
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
         assertEquals("nickname: 공백일 수 없습니다", exception.detail)
         assertEquals("기존 닉네임", user.nickname)
+    }
+
+    @Test
+    fun `닉네임 길이는 앞뒤 공백을 제거한 값으로 검증한다`() {
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "기존 닉네임",
+            profileImageUrl = null,
+        )
+        val nickname = "가".repeat(255)
+        val request = UpdateMyProfileRequest(
+            nickname = " $nickname ",
+            birthday = null,
+        )
+        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+
+        val response = userService.updateMyProfile(1L, request)
+
+        assertEquals(nickname, response.nickname)
+        assertEquals(nickname, user.nickname)
+    }
+
+    @Test
+    fun `공백을 제거한 닉네임이 255자를 초과하면 수정할 수 없다`() {
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "기존 닉네임",
+            profileImageUrl = null,
+        )
+        val request = UpdateMyProfileRequest(
+            nickname = "가".repeat(256),
+            birthday = null,
+        )
+        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+
+        val exception = assertFailsWith<BusinessException> {
+            userService.updateMyProfile(1L, request)
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        assertEquals("nickname: 255자 이하여야 합니다", exception.detail)
+        assertEquals("기존 닉네임", user.nickname)
+    }
+
+    @Test
+    fun `위시 프로필 키가 없으면 조건부 갱신으로 생성한다`() {
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "지유",
+            profileImageUrl = null,
+            wishProfileKey = null,
+        )
+        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.updateWishProfileKeyIfNull(eq(0L), anyString())).thenReturn(1)
+
+        val response = userService.getMyProfile(1L)
+        val key = response.wishProfileUrl.substringAfter("/@")
+
+        assertEquals(32, key.length)
+        assertEquals(true, key.all { it.isDigit() || it in 'a'..'f' })
+    }
+
+    @Test
+    fun `동시에 생성된 위시 프로필 키가 있으면 먼저 저장된 키를 반환한다`() {
+        val winnerKey = "8f0c6d779fae47f3a979302f2782d20f"
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "지유",
+            profileImageUrl = null,
+            wishProfileKey = null,
+        )
+        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.updateWishProfileKeyIfNull(eq(0L), anyString())).thenReturn(0)
+        `when`(userRepository.findWishProfileKeyForUpdate(0L)).thenReturn(winnerKey)
+
+        val response = userService.getMyProfile(1L)
+
+        assertEquals("https://botem.site/@$winnerKey", response.wishProfileUrl)
     }
 }

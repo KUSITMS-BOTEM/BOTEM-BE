@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN kakao_connected BOOLEAN NOT NULL DEFAULT TRUE;
