@@ -41,7 +41,7 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration().apply {
-            allowedOrigins = listOf("https://botem.site", "https://botem-fe.vercel.app")
+            allowedOrigins = listOf("https://botem.site", "https://botem-fe.vercel.app", "http://localhost:3000")
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("Authorization", "Content-Type")
             allowCredentials = true
