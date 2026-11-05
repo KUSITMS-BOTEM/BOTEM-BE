@@ -3,9 +3,9 @@ package com.botem.domain.auth.controller
 import com.botem.domain.auth.controller.docs.AuthControllerDocs
 import com.botem.domain.auth.dto.request.KakaoLoginRequest
 import com.botem.domain.auth.dto.response.AccessTokenResponse
+import com.botem.domain.auth.dto.response.KakaoLoginResponse
 import com.botem.domain.auth.dto.response.KakaoLoginUriResponse
 import com.botem.domain.auth.service.AuthService
-import com.botem.domain.auth.service.IssuedTokens
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.JwtProperties
@@ -39,8 +39,14 @@ class AuthController(
     @PostMapping("/kakao/login")
     override fun kakaoLogin(
         @Valid @RequestBody request: KakaoLoginRequest,
-    ): ResponseEntity<ApiResponse<AccessTokenResponse>> =
-        createTokenResponse(authService.kakaoLogin(request.code, request.redirectUri))
+    ): ResponseEntity<ApiResponse<KakaoLoginResponse>> {
+        val result = authService.kakaoLogin(request.code, request.redirectUri)
+
+        return createTokenResponse(
+            result.tokens.refreshToken,
+            KakaoLoginResponse(accessToken = result.tokens.accessToken, isNewUser = result.isNewUser),
+        )
+    }
 
     @PostMapping("/reissue")
     override fun reissue(
@@ -48,7 +54,9 @@ class AuthController(
     ): ResponseEntity<ApiResponse<AccessTokenResponse>> {
         val token = refreshToken ?: throw BusinessException(AuthErrorCode.INVALID_TOKEN)
 
-        return createTokenResponse(authService.reissue(token))
+        val tokens = authService.reissue(token)
+
+        return createTokenResponse(tokens.refreshToken, AccessTokenResponse(tokens.accessToken))
     }
 
     @PostMapping("/logout")
@@ -62,13 +70,13 @@ class AuthController(
             .body(ApiResponse.success())
     }
 
-    private fun createTokenResponse(tokens: IssuedTokens): ResponseEntity<ApiResponse<AccessTokenResponse>> =
+    private fun <T> createTokenResponse(refreshToken: String, body: T): ResponseEntity<ApiResponse<T>> =
         ResponseEntity.ok()
             .header(
                 HttpHeaders.SET_COOKIE,
-                createRefreshTokenCookie(tokens.refreshToken, jwtProperties.refreshTokenExpiration),
+                createRefreshTokenCookie(refreshToken, jwtProperties.refreshTokenExpiration),
             )
-            .body(ApiResponse.success(AccessTokenResponse(tokens.accessToken)))
+            .body(ApiResponse.success(body))
 
     private fun createRefreshTokenCookie(value: String, maxAge: Duration): String =
         ResponseCookie.from(REFRESH_TOKEN_COOKIE, value)
