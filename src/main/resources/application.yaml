@@ -11,6 +11,10 @@ spring:
 wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.site}
 
+payout-account:
+  encryption:
+    key: ${PAYOUT_ACCOUNT_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+
 springdoc:
   swagger-ui:
     tags-sorter: alpha
