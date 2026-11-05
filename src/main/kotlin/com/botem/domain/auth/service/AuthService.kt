@@ -28,14 +28,15 @@ class AuthService(
         KakaoLoginUriResponse(kakaoOAuthClient.getLoginUri(redirectUri))
 
     // 카카오 API 호출 동안 DB 커넥션을 잡지 않도록 회원 조회·가입과 토큰 저장만 트랜잭션으로 묶음
-    fun kakaoLogin(code: String, redirectUri: String?): IssuedTokens {
+    fun kakaoLogin(code: String, redirectUri: String?): KakaoLoginResult {
         val userInfo = kakaoOAuthClient.getUserInfo(code, redirectUri)
         val profile = userInfo.kakaoAccount?.profile
         val nickname = profile?.nickname
             ?: throw BusinessException(AuthErrorCode.KAKAO_LOGIN_FAILED, "닉네임 동의가 필요합니다.")
 
         return transactionTemplate.execute {
-            val user = userRepository.findByKakaoId(userInfo.id)
+            val existingUser = userRepository.findByKakaoId(userInfo.id)
+            val user = existingUser
                 ?: userRepository.save(
                     User(
                         kakaoId = userInfo.id,
@@ -44,7 +45,7 @@ class AuthService(
                     ),
                 )
 
-            issueTokens(user.id)
+            KakaoLoginResult(tokens = issueTokens(user.id), isNewUser = existingUser == null)
         }
     }
 

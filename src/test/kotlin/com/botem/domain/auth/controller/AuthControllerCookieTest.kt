@@ -2,6 +2,7 @@ package com.botem.domain.auth.controller
 
 import com.botem.domain.auth.service.AuthService
 import com.botem.domain.auth.service.IssuedTokens
+import com.botem.domain.auth.service.KakaoLoginResult
 import com.botem.global.config.SecurityConfig
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
@@ -54,7 +55,7 @@ class AuthControllerCookieTest {
 
     @Test
     fun `로그인하면 Access 토큰은 본문으로 Refresh 토큰은 쿠키로만 전달한다`() {
-        given(authService.kakaoLogin("code", null)).willReturn(tokens)
+        given(authService.kakaoLogin("code", null)).willReturn(KakaoLoginResult(tokens, isNewUser = true))
 
         mockMvc.perform(
             post("/api/auth/kakao/login")
@@ -63,6 +64,7 @@ class AuthControllerCookieTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.accessToken").value("new-access"))
+            .andExpect(jsonPath("$.data.isNewUser").value(true))
             .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
             .andExpect(
                 header().string(
