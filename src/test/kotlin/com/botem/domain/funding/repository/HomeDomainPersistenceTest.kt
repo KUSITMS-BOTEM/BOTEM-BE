@@ -11,11 +11,13 @@ import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.GiftVerificationStatus
+import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.wish.entity.Wish
 import com.botem.domain.wish.repository.WishRepository
 import com.botem.global.config.JpaAuditingConfig
+import com.botem.global.exception.BusinessException
 import jakarta.persistence.EntityManager
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -158,7 +160,7 @@ class HomeDomainPersistenceTest {
     fun `보탬 링크 구매를 확인하지 않으면 선물 인증을 완료할 수 없다`() {
         val verification = GiftVerification(fundingId = 1L)
 
-        assertFailsWith<IllegalArgumentException> {
+        val exception = assertFailsWith<BusinessException> {
             verification.complete(
                 imageUrl = "https://image.example.com/gift.jpg",
                 thankYouMessage = null,
@@ -166,6 +168,8 @@ class HomeDomainPersistenceTest {
                 completedAt = LocalDateTime.of(2026, 11, 7, 13, 0),
             )
         }
+
+        assertEquals(FundingErrorCode.GIFT_PURCHASE_CONFIRMATION_REQUIRED, exception.errorCode)
     }
 
     private fun saveUser(): User =

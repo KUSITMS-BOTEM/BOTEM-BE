@@ -1,6 +1,8 @@
 package com.botem.domain.funding.entity
 
+import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.entity.BaseEntity
+import com.botem.global.exception.BusinessException
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -65,8 +67,8 @@ class GiftVerification(
         purchasedThroughBotemLink: Boolean,
         completedAt: LocalDateTime,
     ) {
-        require(purchasedThroughBotemLink) {
-            "선물 인증을 완료하려면 보탬 링크 구매 여부를 확인해야 합니다"
+        if (!purchasedThroughBotemLink) {
+            throw BusinessException(FundingErrorCode.GIFT_PURCHASE_CONFIRMATION_REQUIRED)
         }
 
         this.imageUrl = imageUrl
