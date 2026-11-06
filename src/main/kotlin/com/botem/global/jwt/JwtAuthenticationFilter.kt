@@ -27,7 +27,7 @@ class JwtAuthenticationFilter(
         if (token != null) {
             try {
                 val userId = jwtProvider.getUserIdFromAccessToken(token)
-                validateActiveUser(userId)
+                validateActiveUser(userId, request)
                 SecurityContextHolder.getContext().authentication =
                     UsernamePasswordAuthenticationToken(userId, null, emptyList())
             } catch (exception: BusinessException) {
@@ -38,13 +38,21 @@ class JwtAuthenticationFilter(
         filterChain.doFilter(request, response)
     }
 
-    private fun validateActiveUser(userId: Long) {
+    private fun validateActiveUser(userId: Long, request: HttpServletRequest) {
         when (userRepository.findStatusById(userId)) {
             UserStatus.ACTIVE -> Unit
-            UserStatus.WITHDRAWN -> throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+            UserStatus.WITHDRAWN -> {
+                if (!isWithdrawalRequest(request)) {
+                    throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+                }
+            }
             null -> throw BusinessException(AuthErrorCode.INVALID_TOKEN)
         }
     }
+
+    private fun isWithdrawalRequest(request: HttpServletRequest): Boolean =
+        request.method == WITHDRAWAL_METHOD &&
+            request.requestURI.removePrefix(request.contextPath) == WITHDRAWAL_URI
 
     private fun resolveToken(request: HttpServletRequest): String? {
         val authorization = request.getHeader(HttpHeaders.AUTHORIZATION) ?: return null
@@ -55,5 +63,7 @@ class JwtAuthenticationFilter(
     companion object {
         const val ERROR_CODE_ATTRIBUTE = "jwtErrorCode"
         private const val BEARER_PREFIX = "Bearer "
+        private const val WITHDRAWAL_METHOD = "DELETE"
+        private const val WITHDRAWAL_URI = "/api/users/me"
     }
 }
