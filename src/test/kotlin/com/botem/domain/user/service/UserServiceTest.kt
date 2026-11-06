@@ -2,8 +2,10 @@ package com.botem.domain.user.service
 
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.entity.User
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
@@ -11,9 +13,10 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
 import java.time.LocalDate
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -35,7 +38,7 @@ class UserServiceTest {
             birthday = birthday,
             wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
         val response = userService.getMyProfile(1L)
 
@@ -57,7 +60,7 @@ class UserServiceTest {
             profileImageUrl = null,
             kakaoConnected = false,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
         val response = userService.getMyProfile(1L)
 
@@ -77,7 +80,7 @@ class UserServiceTest {
             nickname = " 새 닉네임 ",
             birthday = birthday,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
         val response = userService.updateMyProfile(1L, request)
 
@@ -95,8 +98,6 @@ class UserServiceTest {
 
     @Test
     fun `존재하지 않는 사용자의 프로필을 조회하면 예외가 발생한다`() {
-        `when`(userRepository.findById(1L)).thenReturn(Optional.empty())
-
         val exception = assertFailsWith<BusinessException> {
             userService.getMyProfile(1L)
         }
@@ -115,7 +116,7 @@ class UserServiceTest {
             nickname = "\u00A0\u00A0",
             birthday = null,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
         val exception = assertFailsWith<BusinessException> {
             userService.updateMyProfile(1L, request)
@@ -138,7 +139,7 @@ class UserServiceTest {
             nickname = " $nickname ",
             birthday = null,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
         val response = userService.updateMyProfile(1L, request)
 
@@ -157,7 +158,7 @@ class UserServiceTest {
             nickname = "가".repeat(256),
             birthday = null,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
         val exception = assertFailsWith<BusinessException> {
             userService.updateMyProfile(1L, request)
@@ -176,7 +177,7 @@ class UserServiceTest {
             profileImageUrl = null,
             wishProfileKey = null,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
         `when`(userRepository.updateWishProfileKeyIfNull(eq(0L), anyString())).thenReturn(1)
 
         val response = userService.getMyProfile(1L)
@@ -195,12 +196,33 @@ class UserServiceTest {
             profileImageUrl = null,
             wishProfileKey = null,
         )
-        `when`(userRepository.findById(1L)).thenReturn(Optional.of(user))
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
         `when`(userRepository.updateWishProfileKeyIfNull(eq(0L), anyString())).thenReturn(0)
         `when`(userRepository.findWishProfileKeyForUpdate(0L)).thenReturn(winnerKey)
 
         val response = userService.getMyProfile(1L)
 
         assertEquals("https://botem.site/@$winnerKey", response.wishProfileUrl)
+    }
+
+    @Test
+    fun `탈퇴한 사용자의 프로필을 조회하면 위시 프로필 키를 생성하지 않는다`() {
+        val user = User(
+            kakaoId = 1234L,
+            nickname = "탈퇴한 사용자",
+            profileImageUrl = null,
+            wishProfileKey = null,
+            kakaoConnected = false,
+            status = UserStatus.WITHDRAWN,
+        )
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+
+        val exception = assertFailsWith<BusinessException> {
+            userService.getMyProfile(1L)
+        }
+
+        assertEquals(AuthErrorCode.WITHDRAWN_USER, exception.errorCode)
+        verify(userRepository).findByIdForUpdate(1L)
+        verifyNoMoreInteractions(userRepository)
     }
 }
