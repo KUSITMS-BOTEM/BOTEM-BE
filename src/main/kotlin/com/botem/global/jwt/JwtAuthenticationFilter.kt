@@ -1,5 +1,8 @@
 package com.botem.global.jwt
 
+import com.botem.domain.user.entity.UserStatus
+import com.botem.domain.user.repository.UserRepository
+import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -11,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 class JwtAuthenticationFilter(
     private val jwtProvider: JwtProvider,
+    private val userRepository: UserRepository,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -23,6 +27,7 @@ class JwtAuthenticationFilter(
         if (token != null) {
             try {
                 val userId = jwtProvider.getUserIdFromAccessToken(token)
+                validateActiveUser(userId)
                 SecurityContextHolder.getContext().authentication =
                     UsernamePasswordAuthenticationToken(userId, null, emptyList())
             } catch (exception: BusinessException) {
@@ -31,6 +36,14 @@ class JwtAuthenticationFilter(
         }
 
         filterChain.doFilter(request, response)
+    }
+
+    private fun validateActiveUser(userId: Long) {
+        when (userRepository.findStatusById(userId)) {
+            UserStatus.ACTIVE -> Unit
+            UserStatus.WITHDRAWN -> throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+            null -> throw BusinessException(AuthErrorCode.INVALID_TOKEN)
+        }
     }
 
     private fun resolveToken(request: HttpServletRequest): String? {
