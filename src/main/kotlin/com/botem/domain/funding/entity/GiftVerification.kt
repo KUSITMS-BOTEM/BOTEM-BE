@@ -65,6 +65,10 @@ class GiftVerification(
         purchasedThroughBotemLink: Boolean,
         completedAt: LocalDateTime,
     ) {
+        require(purchasedThroughBotemLink) {
+            "선물 인증을 완료하려면 보탬 링크 구매 여부를 확인해야 합니다"
+        }
+
         this.imageUrl = imageUrl
         this.thankYouMessage = thankYouMessage
         this.purchasedThroughBotemLink = purchasedThroughBotemLink

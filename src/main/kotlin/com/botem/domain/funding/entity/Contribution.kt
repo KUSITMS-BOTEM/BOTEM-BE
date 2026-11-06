@@ -38,6 +38,12 @@ class Contribution(
     val guestPasswordHash: String?,
 ) : BaseEntity() {
 
+    init {
+        require(status != ContributionStatus.CONFIRMED) {
+            "확인 완료 상태는 confirm을 통해서만 설정할 수 있습니다"
+        }
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0

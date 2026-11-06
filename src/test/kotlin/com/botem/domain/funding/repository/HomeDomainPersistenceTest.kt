@@ -23,6 +23,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Import
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 @DataJpaTest
@@ -53,14 +54,15 @@ class HomeDomainPersistenceTest {
     @Test
     fun `위시를 저장하고 사용자별 최신순으로 조회한다`() {
         val user = saveUser()
-        val first = wishRepository.save(wish(user.id, "첫 번째 선물"))
-        val second = wishRepository.save(wish(user.id, "두 번째 선물"))
-        wishRepository.flush()
+        val first = wishRepository.saveAndFlush(wish(user.id, "첫 번째 선물"))
+        val second = wishRepository.saveAndFlush(wish(user.id, "두 번째 선물"))
+        updateWishCreatedAt(first.id, LocalDateTime.of(2026, 11, 6, 10, 0))
+        updateWishCreatedAt(second.id, LocalDateTime.of(2026, 11, 7, 10, 0))
+        entityManager.clear()
 
         val wishes = wishRepository.findAllByUserIdOrderByCreatedAtDesc(user.id)
 
-        assertEquals(setOf(first.id, second.id), wishes.map(Wish::id).toSet())
-        assertEquals(2, wishes.size)
+        assertEquals(listOf(second.id, first.id), wishes.map(Wish::id))
     }
 
     @Test
@@ -111,6 +113,20 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
+    fun `참여 내역은 확인 완료 상태로 직접 생성할 수 없다`() {
+        assertFailsWith<IllegalArgumentException> {
+            Contribution(
+                fundingId = 1L,
+                participantUserId = null,
+                participantName = "친구",
+                amount = 30_000L,
+                status = ContributionStatus.CONFIRMED,
+                guestPasswordHash = "hashed-password",
+            )
+        }
+    }
+
+    @Test
     fun `선물 인증을 완료하면 인증 정보와 완료 시각을 저장한다`() {
         val user = saveUser()
         val account = savePayoutAccount(user.id)
@@ -136,6 +152,20 @@ class HomeDomainPersistenceTest {
         assertEquals("https://image.example.com/gift.jpg", saved.imageUrl)
         assertEquals("함께 보태줘서 고마워!", saved.thankYouMessage)
         assertEquals(completedAt, saved.completedAt)
+    }
+
+    @Test
+    fun `보탬 링크 구매를 확인하지 않으면 선물 인증을 완료할 수 없다`() {
+        val verification = GiftVerification(fundingId = 1L)
+
+        assertFailsWith<IllegalArgumentException> {
+            verification.complete(
+                imageUrl = "https://image.example.com/gift.jpg",
+                thankYouMessage = null,
+                purchasedThroughBotemLink = false,
+                completedAt = LocalDateTime.of(2026, 11, 7, 13, 0),
+            )
+        }
     }
 
     private fun saveUser(): User =
@@ -166,6 +196,13 @@ class HomeDomainPersistenceTest {
             price = 50_000L,
             productUrl = "https://shop.example.com/product",
         )
+
+    private fun updateWishCreatedAt(wishId: Long, createdAt: LocalDateTime) {
+        entityManager.createNativeQuery("UPDATE wishes SET created_at = :createdAt WHERE id = :wishId")
+            .setParameter("createdAt", createdAt)
+            .setParameter("wishId", wishId)
+            .executeUpdate()
+    }
 
     private fun funding(
         userId: Long,
