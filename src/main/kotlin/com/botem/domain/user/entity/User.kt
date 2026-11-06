@@ -3,11 +3,14 @@ package com.botem.domain.user.entity
 import com.botem.global.entity.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 @Entity
@@ -25,6 +28,10 @@ class User(
     wishProfileKey: String? = generateWishProfileKey(),
 
     kakaoConnected: Boolean = true,
+
+    status: UserStatus = UserStatus.ACTIVE,
+
+    withdrawnAt: LocalDateTime? = null,
 ) : BaseEntity() {
 
     @Id
@@ -50,6 +57,14 @@ class User(
     var kakaoConnected: Boolean = kakaoConnected
         protected set
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var status: UserStatus = status
+        protected set
+
+    var withdrawnAt: LocalDateTime? = withdrawnAt
+        protected set
+
     fun updateProfile(
         nickname: String,
         birthday: LocalDate?,
@@ -60,6 +75,11 @@ class User(
 
     fun disconnectKakao() {
         kakaoConnected = false
+    }
+
+    fun markAsWithdrawn(withdrawnAt: LocalDateTime) {
+        status = UserStatus.WITHDRAWN
+        this.withdrawnAt = withdrawnAt
     }
 
     companion object {
