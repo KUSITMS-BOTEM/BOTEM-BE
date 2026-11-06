@@ -39,6 +39,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+	testRuntimeOnly("com.h2database:h2")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -57,4 +58,5 @@ allOpen {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	systemProperty("spring.profiles.active", "test")
 }
