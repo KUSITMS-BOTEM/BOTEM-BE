@@ -28,3 +28,7 @@ jwt:
 swagger:
   username: ${SWAGGER_USERNAME}
   password: ${SWAGGER_PASSWORD}
+
+payout-account:
+  encryption:
+    key: ${PAYOUT_ACCOUNT_ENCRYPTION_KEY}
