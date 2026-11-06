@@ -3,6 +3,7 @@ package com.botem.domain.auth.controller
 import com.botem.domain.auth.service.AuthService
 import com.botem.domain.auth.service.IssuedTokens
 import com.botem.domain.auth.service.KakaoLoginResult
+import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.SecurityConfig
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
@@ -50,6 +51,9 @@ class AuthControllerCookieTest {
 
     @MockitoBean
     private lateinit var jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint
+
+    @MockitoBean
+    private lateinit var userRepository: UserRepository
 
     private val tokens = IssuedTokens(accessToken = "new-access", refreshToken = "new-refresh")
 

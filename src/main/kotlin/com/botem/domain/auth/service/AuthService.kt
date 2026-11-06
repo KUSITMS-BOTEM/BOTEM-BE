@@ -5,6 +5,7 @@ import com.botem.domain.auth.dto.response.KakaoLoginUriResponse
 import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.User
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
@@ -36,6 +37,9 @@ class AuthService(
 
         return transactionTemplate.execute {
             val existingUser = userRepository.findByKakaoId(userInfo.id)
+            if (existingUser?.status == UserStatus.WITHDRAWN) {
+                throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+            }
             val user = existingUser
                 ?: userRepository.save(
                     User(
@@ -52,6 +56,7 @@ class AuthService(
     @Transactional
     fun reissue(refreshToken: String): IssuedTokens {
         val userId = jwtProvider.getUserIdFromRefreshToken(refreshToken)
+        validateActiveUser(userId)
         val savedRefreshToken = refreshTokenRepository.findByUserId(userId)
 
         if (savedRefreshToken?.tokenHash != hash(refreshToken)) {
@@ -59,6 +64,14 @@ class AuthService(
         }
 
         return issueTokens(userId)
+    }
+
+    private fun validateActiveUser(userId: Long) {
+        when (userRepository.findStatusById(userId)) {
+            UserStatus.ACTIVE -> Unit
+            UserStatus.WITHDRAWN -> throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+            null -> throw BusinessException(AuthErrorCode.INVALID_TOKEN)
+        }
     }
 
     // 만료되거나 이미 교체된 토큰으로도 쿠키는 지울 수 있어야 하므로 예외를 던지지 않고, 현재 토큰일 때만 삭제

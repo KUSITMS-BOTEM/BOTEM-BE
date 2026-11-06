@@ -2,6 +2,7 @@ package com.botem.global.config
 
 import com.botem.domain.auth.controller.AuthController
 import com.botem.domain.auth.service.AuthService
+import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
 import com.botem.global.property.JwtProperties
@@ -39,6 +40,9 @@ class SecurityConfigCorsTest {
 
     @MockitoBean
     private lateinit var jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint
+
+    @MockitoBean
+    private lateinit var userRepository: UserRepository
 
     @Test
     fun `허용된 프론트 Origin의 Preflight 요청을 허용한다`() {

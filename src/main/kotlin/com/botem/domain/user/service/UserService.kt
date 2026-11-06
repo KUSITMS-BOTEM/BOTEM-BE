@@ -3,8 +3,10 @@ package com.botem.domain.user.service
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
 import com.botem.domain.user.entity.User
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
@@ -19,14 +21,14 @@ class UserService(
 
     @Transactional
     fun getMyProfile(userId: Long): MyProfileResponse {
-        val user = findUser(userId)
+        val user = findActiveUserForUpdate(userId)
 
         return toProfileResponse(user)
     }
 
     @Transactional
     fun updateMyProfile(userId: Long, request: UpdateMyProfileRequest): MyProfileResponse {
-        val user = findUser(userId)
+        val user = findActiveUserForUpdate(userId)
         val nickname = request.nickname.trim { it.isWhitespace() || Character.isSpaceChar(it) }
 
         if (nickname.isEmpty()) {
@@ -68,9 +70,16 @@ class UserService(
             ?: throw BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR)
     }
 
-    private fun findUser(userId: Long): User =
-        userRepository.findById(userId)
-            .orElseThrow { BusinessException(UserErrorCode.USER_NOT_FOUND) }
+    private fun findActiveUserForUpdate(userId: Long): User {
+        val user = userRepository.findByIdForUpdate(userId)
+            ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
+
+        if (user.status != UserStatus.ACTIVE) {
+            throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+        }
+
+        return user
+    }
 
     companion object {
         private const val MAX_NICKNAME_LENGTH = 255

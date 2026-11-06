@@ -1,6 +1,7 @@
 package com.botem.domain.user.repository
 
 import com.botem.domain.user.entity.User
+import com.botem.domain.user.entity.UserStatus
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
@@ -11,6 +12,9 @@ import org.springframework.data.repository.query.Param
 interface UserRepository : JpaRepository<User, Long> {
 
     fun findByKakaoId(kakaoId: Long): User?
+
+    @Query("SELECT u.status FROM User u WHERE u.id = :userId")
+    fun findStatusById(@Param("userId") userId: Long): UserStatus?
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :userId")
