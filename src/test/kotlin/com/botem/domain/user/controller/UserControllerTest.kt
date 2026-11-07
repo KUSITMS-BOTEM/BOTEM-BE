@@ -2,6 +2,7 @@ package com.botem.domain.user.controller
 
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
+import com.botem.domain.user.service.OnboardingService
 import com.botem.domain.user.service.UserService
 import com.botem.domain.user.service.UserWithdrawalService
 import org.hamcrest.Matchers.allOf
@@ -36,6 +37,9 @@ class UserControllerTest {
 
     @MockitoBean
     private lateinit var userWithdrawalService: UserWithdrawalService
+
+    @MockitoBean
+    private lateinit var onboardingService: OnboardingService
 
     @Test
     fun `회원 탈퇴에 성공하면 Refresh Token 쿠키를 만료시킨다`() {
