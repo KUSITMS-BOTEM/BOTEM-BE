@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface WishRepository : JpaRepository<Wish, Long> {
 
     fun findAllByUserIdOrderByCreatedAtDesc(userId: Long): List<Wish>
+
+    fun existsByUserIdAndRecommendedProductId(userId: Long, recommendedProductId: Long): Boolean
 }
