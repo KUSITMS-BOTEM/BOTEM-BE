@@ -1,5 +1,6 @@
 package com.botem.domain.auth.service
 
+import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.auth.client.KakaoOAuthClient
 import com.botem.domain.auth.client.KakaoUserInfoResponse
 import com.botem.domain.auth.entity.RefreshToken
@@ -28,11 +29,13 @@ class AuthServiceKakaoLoginTest {
     private val kakaoOAuthClient = mock(KakaoOAuthClient::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val refreshTokenRepository = mock(RefreshTokenRepository::class.java)
+    private val payoutAccountService = mock(PayoutAccountService::class.java)
     private val jwtProvider = mock(JwtProvider::class.java)
     private val authService = AuthService(
         kakaoOAuthClient,
         userRepository,
         refreshTokenRepository,
+        payoutAccountService,
         jwtProvider,
         TransactionTemplate(NoOpTransactionManager),
     )
@@ -64,12 +67,24 @@ class AuthServiceKakaoLoginTest {
     }
 
     @Test
-    fun `이미 가입한 회원은 기존 회원으로 응답한다`() {
+    fun `받을 계좌를 등록한 기존 회원은 기존 회원으로 응답한다`() {
         given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(user)
+        given(payoutAccountService.hasPayoutAccount(anyLong())).willReturn(true)
 
         val result = authService.kakaoLogin("code", null)
 
         assertFalse(result.isNewUser)
+        verify(userRepository, never()).save(any(User::class.java))
+    }
+
+    @Test
+    fun `받을 계좌를 등록하지 않은 기존 회원은 신규 회원으로 응답한다`() {
+        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(user)
+        given(payoutAccountService.hasPayoutAccount(anyLong())).willReturn(false)
+
+        val result = authService.kakaoLogin("code", null)
+
+        assertTrue(result.isNewUser)
         verify(userRepository, never()).save(any(User::class.java))
     }
 

@@ -1,5 +1,6 @@
 package com.botem.domain.auth.service
 
+import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.auth.client.KakaoOAuthClient
 import com.botem.domain.auth.dto.response.KakaoLoginUriResponse
 import com.botem.domain.auth.entity.RefreshToken
@@ -21,6 +22,7 @@ class AuthService(
     private val kakaoOAuthClient: KakaoOAuthClient,
     private val userRepository: UserRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val payoutAccountService: PayoutAccountService,
     private val jwtProvider: JwtProvider,
     private val transactionTemplate: TransactionTemplate,
 ) {
@@ -49,7 +51,10 @@ class AuthService(
                     ),
                 )
 
-            KakaoLoginResult(tokens = issueTokens(user.id), isNewUser = existingUser == null)
+            // 온보딩 마지막 단계인 받을 계좌 등록을 마치지 않았으면 신규 회원으로 보고 온보딩을 다시 진행
+            val isNewUser = existingUser == null || !payoutAccountService.hasPayoutAccount(user.id)
+
+            KakaoLoginResult(tokens = issueTokens(user.id), isNewUser = isNewUser)
         }
     }
 
