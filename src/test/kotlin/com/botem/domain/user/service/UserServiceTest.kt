@@ -16,7 +16,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.Mockito.`when`
-import java.time.LocalDate
+import java.time.MonthDay
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -30,7 +30,7 @@ class UserServiceTest {
 
     @Test
     fun `내 프로필을 조회한다`() {
-        val birthday = LocalDate.of(2000, 10, 13)
+        val birthday = MonthDay.of(10, 13)
         val user = User(
             kakaoId = 1234L,
             nickname = "지유",
@@ -75,7 +75,7 @@ class UserServiceTest {
             profileImageUrl = "https://example.com/old.jpg",
             wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         )
-        val birthday = LocalDate.of(2001, 5, 20)
+        val birthday = MonthDay.of(5, 20)
         val request = UpdateMyProfileRequest(
             nickname = " 새 닉네임 ",
             birthday = birthday,

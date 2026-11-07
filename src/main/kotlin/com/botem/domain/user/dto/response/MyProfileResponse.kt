@@ -1,12 +1,14 @@
 package com.botem.domain.user.dto.response
 
 import com.botem.domain.user.entity.User
-import java.time.LocalDate
+import com.fasterxml.jackson.annotation.JsonFormat
+import java.time.MonthDay
 
 data class MyProfileResponse(
     val nickname: String,
     val profileImageUrl: String?,
-    val birthday: LocalDate?,
+    @get:JsonFormat(pattern = "MM-dd")
+    val birthday: MonthDay?,
     val wishProfileUrl: String,
     val kakaoConnected: Boolean,
 ) {
