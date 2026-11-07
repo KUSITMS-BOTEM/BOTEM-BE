@@ -54,7 +54,7 @@ class GiftVerification(
     var purchasedThroughBotemLink: Boolean = false
         protected set
 
-    @Column(length = 20)
+    @Column(length = 100)
     var replacementProductName: String? = replacementProductName
         protected set
 

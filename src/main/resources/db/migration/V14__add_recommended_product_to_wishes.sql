@@ -7,3 +7,6 @@ ALTER TABLE wishes
 
 ALTER TABLE fundings
     MODIFY COLUMN product_name VARCHAR(100) NOT NULL;
+
+ALTER TABLE gift_verifications
+    MODIFY COLUMN replacement_product_name VARCHAR(100) NULL;
