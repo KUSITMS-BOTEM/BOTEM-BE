@@ -70,7 +70,7 @@ class WishServiceTest {
     }
 
     @Test
-    fun `동시 요청으로 중복 확인을 통과해도 같은 추천 상품은 한 번만 저장된다`() {
+    fun `같은 회원은 같은 추천 상품을 DB에 두 번 저장할 수 없다`() {
         val product = saveProduct()
         wishRepository.saveAndFlush(wishOf(product))
 
