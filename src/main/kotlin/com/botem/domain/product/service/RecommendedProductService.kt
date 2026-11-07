@@ -4,7 +4,7 @@ import com.botem.domain.product.dto.response.RecommendedProductResponse
 import com.botem.domain.product.entity.ProductCategory
 import com.botem.domain.product.entity.RecommendedProduct
 import com.botem.domain.product.entity.RecommendedProductStatus
-import com.botem.domain.product.exception.RecommendedProductErrorCode
+import com.botem.domain.product.exception.ProductErrorCode
 import com.botem.domain.product.repository.RecommendedProductRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.data.repository.findByIdOrNull
@@ -39,7 +39,7 @@ class RecommendedProductService(
     fun getOnSaleProduct(productId: Long): RecommendedProduct {
         val product = findProduct(productId)
         if (product.status == RecommendedProductStatus.DISCONTINUED) {
-            throw BusinessException(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_DISCONTINUED)
+            throw BusinessException(ProductErrorCode.RECOMMENDED_PRODUCT_DISCONTINUED)
         }
 
         return product
@@ -47,5 +47,5 @@ class RecommendedProductService(
 
     private fun findProduct(productId: Long): RecommendedProduct =
         recommendedProductRepository.findByIdOrNull(productId)
-            ?: throw BusinessException(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND)
+            ?: throw BusinessException(ProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND)
 }

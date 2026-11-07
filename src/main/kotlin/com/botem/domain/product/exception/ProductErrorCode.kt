@@ -3,7 +3,7 @@ package com.botem.domain.product.exception
 import com.botem.global.exception.ErrorCode
 import org.springframework.http.HttpStatus
 
-enum class RecommendedProductErrorCode(
+enum class ProductErrorCode(
     override val status: HttpStatus,
     override val code: String,
     override val message: String,

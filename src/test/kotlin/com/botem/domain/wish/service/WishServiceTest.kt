@@ -3,7 +3,7 @@ package com.botem.domain.wish.service
 import com.botem.domain.product.entity.ProductCategory
 import com.botem.domain.product.entity.RecommendedProduct
 import com.botem.domain.product.entity.RecommendedProductStatus
-import com.botem.domain.product.exception.RecommendedProductErrorCode
+import com.botem.domain.product.exception.ProductErrorCode
 import com.botem.domain.product.repository.RecommendedProductRepository
 import com.botem.domain.product.service.RecommendedProductService
 import com.botem.domain.wish.entity.Wish
@@ -53,7 +53,7 @@ class WishServiceTest {
             wishService.addRecommendedProduct(USER_ID, product.id)
         }
 
-        assertEquals(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_DISCONTINUED, exception.errorCode)
+        assertEquals(ProductErrorCode.RECOMMENDED_PRODUCT_DISCONTINUED, exception.errorCode)
     }
 
     @Test
