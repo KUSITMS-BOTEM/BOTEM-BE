@@ -8,12 +8,19 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 
 @Entity
 @Table(
     name = "wishes",
     indexes = [
         Index(name = "idx_wishes_user_id_created_at", columnList = "user_id, created_at"),
+    ],
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_wishes_user_recommended_product",
+            columnNames = ["user_id", "recommended_product_id"],
+        ),
     ],
 )
 class Wish(
@@ -27,13 +34,17 @@ class Wish(
     price: Long,
 
     productUrl: String,
+
+    // 추천 상품에서 담은 위시면 원본 상품을 가리켜, 운영자가 판매 종료하면 위시에도 반영
+    @Column(updatable = false)
+    val recommendedProductId: Long? = null,
 ) : BaseEntity() {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 100)
     var productName: String = productName
         protected set
 

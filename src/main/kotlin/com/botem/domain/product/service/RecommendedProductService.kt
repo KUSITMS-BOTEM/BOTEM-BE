@@ -2,6 +2,7 @@ package com.botem.domain.product.service
 
 import com.botem.domain.product.dto.response.RecommendedProductResponse
 import com.botem.domain.product.entity.ProductCategory
+import com.botem.domain.product.entity.RecommendedProduct
 import com.botem.domain.product.entity.RecommendedProductStatus
 import com.botem.domain.product.exception.RecommendedProductErrorCode
 import com.botem.domain.product.repository.RecommendedProductRepository
@@ -31,10 +32,20 @@ class RecommendedProductService(
     }
 
     @Transactional(readOnly = true)
-    fun getRecommendedProduct(productId: Long): RecommendedProductResponse {
-        val product = recommendedProductRepository.findByIdOrNull(productId)
-            ?: throw BusinessException(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND)
+    fun getRecommendedProduct(productId: Long): RecommendedProductResponse =
+        RecommendedProductResponse.from(findProduct(productId))
 
-        return RecommendedProductResponse.from(product)
+    @Transactional(readOnly = true)
+    fun getOnSaleProduct(productId: Long): RecommendedProduct {
+        val product = findProduct(productId)
+        if (product.status == RecommendedProductStatus.DISCONTINUED) {
+            throw BusinessException(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_DISCONTINUED)
+        }
+
+        return product
     }
+
+    private fun findProduct(productId: Long): RecommendedProduct =
+        recommendedProductRepository.findByIdOrNull(productId)
+            ?: throw BusinessException(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND)
 }
