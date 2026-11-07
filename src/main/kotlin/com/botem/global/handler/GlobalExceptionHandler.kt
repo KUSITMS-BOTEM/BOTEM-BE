@@ -9,6 +9,7 @@ import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -36,6 +37,14 @@ class GlobalExceptionHandler {
             .badRequest()
             .body(ApiResponse.fail(CommonErrorCode.INVALID_INPUT_VALUE, detail))
     }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatchException(
+        exception: MethodArgumentTypeMismatchException,
+    ): ResponseEntity<ApiResponse<Nothing>> =
+        ResponseEntity
+            .badRequest()
+            .body(ApiResponse.fail(CommonErrorCode.INVALID_INPUT_VALUE, "${exception.name}: 올바르지 않은 값입니다"))
 
     @ExceptionHandler(Exception::class)
     fun handleException(exception: Exception): ResponseEntity<ApiResponse<Nothing>> {
