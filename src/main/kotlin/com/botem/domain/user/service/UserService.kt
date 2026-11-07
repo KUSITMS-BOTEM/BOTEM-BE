@@ -12,6 +12,7 @@ import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.MonthDay
 
 @Service
 class UserService(
@@ -49,6 +50,21 @@ class UserService(
         return toProfileResponse(user)
     }
 
+    @Transactional
+    fun updateOnboardingProfile(userId: Long, name: String, birthday: MonthDay?) {
+        val user = findActiveUserForUpdate(userId)
+        val normalizedName = name.trim { it.isWhitespace() || Character.isSpaceChar(it) }
+
+        if (normalizedName.isEmpty()) {
+            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "name: 공백일 수 없습니다")
+        }
+        if (normalizedName.length > MAX_NAME_LENGTH) {
+            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "name: ${MAX_NAME_LENGTH}자 이하여야 합니다")
+        }
+
+        user.updateOnboardingProfile(name = normalizedName, birthday = birthday)
+    }
+
     private fun toProfileResponse(user: User): MyProfileResponse =
         MyProfileResponse.from(
             user = user,
@@ -83,5 +99,6 @@ class UserService(
 
     companion object {
         private const val MAX_NICKNAME_LENGTH = 255
+        private const val MAX_NAME_LENGTH = 50
     }
 }

@@ -97,6 +97,29 @@ class UserServiceTest {
     }
 
     @Test
+    fun `온보딩 이름은 앞뒤 공백을 제거하고 생일과 함께 저장한다`() {
+        val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+
+        userService.updateOnboardingProfile(1L, " 이정민 ", MonthDay.of(10, 13))
+
+        assertEquals("이정민", user.name)
+        assertEquals(MonthDay.of(10, 13), user.birthday)
+    }
+
+    @Test
+    fun `온보딩 이름이 공백뿐이면 예외가 발생한다`() {
+        val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+
+        val exception = assertFailsWith<BusinessException> {
+            userService.updateOnboardingProfile(1L, "\u3000 ", null)
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+    }
+
+    @Test
     fun `존재하지 않는 사용자의 프로필을 조회하면 예외가 발생한다`() {
         val exception = assertFailsWith<BusinessException> {
             userService.getMyProfile(1L)

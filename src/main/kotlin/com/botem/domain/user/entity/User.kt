@@ -89,6 +89,14 @@ class User(
         this.birthday = birthday
     }
 
+    fun updateOnboardingProfile(
+        name: String,
+        birthday: MonthDay?,
+    ) {
+        this.name = name
+        this.birthday = birthday
+    }
+
     fun disconnectKakao() {
         kakaoConnected = false
     }

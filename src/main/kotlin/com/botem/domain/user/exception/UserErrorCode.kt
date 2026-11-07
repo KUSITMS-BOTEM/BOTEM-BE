@@ -15,4 +15,5 @@ enum class UserErrorCode(
         "USER_003",
         "현재 회원 탈퇴 가능 여부를 확인할 수 없습니다.",
     ),
+    ONBOARDING_ALREADY_COMPLETED(HttpStatus.CONFLICT, "USER_004", "이미 온보딩을 완료한 사용자입니다."),
 }
