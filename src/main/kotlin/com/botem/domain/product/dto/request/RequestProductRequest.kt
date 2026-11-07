@@ -8,6 +8,5 @@ data class RequestProductRequest(
     @field:Size(max = 2048)
     val productUrl: String,
 
-    @field:Size(max = 100)
     val productName: String? = null,
 )
