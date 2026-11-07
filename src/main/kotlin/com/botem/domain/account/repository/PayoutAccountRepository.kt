@@ -10,6 +10,8 @@ interface PayoutAccountRepository : JpaRepository<PayoutAccount, Long> {
 
     fun findAllByUserIdOrderByCreatedAtAsc(userId: Long): List<PayoutAccount>
 
+    fun existsByUserId(userId: Long): Boolean
+
     @Modifying
     @Query("DELETE FROM PayoutAccount account WHERE account.userId = :userId")
     fun deleteAllByUserId(@Param("userId") userId: Long): Int

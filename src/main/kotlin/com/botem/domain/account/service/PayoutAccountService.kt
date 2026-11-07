@@ -27,6 +27,10 @@ class PayoutAccountService(
             .sortedByDescending(PayoutAccount::isDefault)
             .map(::toResponse)
 
+    @Transactional(readOnly = true)
+    fun hasPayoutAccount(userId: Long): Boolean =
+        payoutAccountRepository.existsByUserId(userId)
+
     fun getSupportedBanks(): List<BankResponse> =
         Bank.entries.map(BankResponse::from)
 

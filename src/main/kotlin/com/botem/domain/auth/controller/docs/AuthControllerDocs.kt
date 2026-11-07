@@ -69,7 +69,8 @@ interface AuthControllerDocs {
             Access 토큰은 응답 본문으로, Refresh 토큰은 HttpOnly 쿠키로 발급합니다.
             브라우저가 쿠키를 저장하도록 요청에 `credentials: 'include'`를 설정해야 합니다.
             `redirectUri`는 로그인 URI 조회 때 보낸 값과 같아야 하며, 생략하면 서버 기본값을 사용합니다.
-            처음 로그인한 사용자는 자동으로 회원가입되며, 이때 `isNewUser`가 `true`입니다.
+            처음 로그인한 사용자는 자동으로 회원가입됩니다.
+            온보딩(받을 계좌 등록)을 마치지 않은 회원이면 `isNewUser`가 `true`입니다.
             클라이언트는 `isNewUser`가 `true`이면 온보딩 화면으로, `false`이면 메인 화면으로 이동합니다.
             인가 코드는 한 번만 사용할 수 있고 발급 후 몇 분 안에 만료됩니다.
             Access 토큰 유효기간은 60분, Refresh 토큰 유효기간은 7일입니다.
