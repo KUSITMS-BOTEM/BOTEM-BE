@@ -3,7 +3,7 @@ package com.botem.domain.product.service
 import com.botem.domain.product.entity.ProductCategory
 import com.botem.domain.product.entity.RecommendedProduct
 import com.botem.domain.product.entity.RecommendedProductStatus
-import com.botem.domain.product.exception.RecommendedProductErrorCode
+import com.botem.domain.product.exception.ProductErrorCode
 import com.botem.domain.product.repository.RecommendedProductRepository
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
@@ -57,7 +57,7 @@ class RecommendedProductServiceTest {
             recommendedProductService.getRecommendedProduct(999L)
         }
 
-        assertEquals(RecommendedProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND, exception.errorCode)
+        assertEquals(ProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND, exception.errorCode)
     }
 
     private fun save(
