@@ -1,12 +1,3 @@
-.git
-.github
-.claude
-.idea
-.gradle
-.kotlin
-build
-deploy
-docker-compose.yml
-.env
-.env.*
-src/main/resources/application-local.yaml
+# 이미지에는 미리 빌드한 jar만 포함한다 (./gradlew bootJar 선행 필요)
+*
+!build/libs/*.jar
