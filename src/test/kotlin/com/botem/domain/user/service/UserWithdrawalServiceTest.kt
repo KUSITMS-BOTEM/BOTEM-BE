@@ -13,8 +13,8 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.ObjectProvider
-import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -115,7 +115,7 @@ class UserWithdrawalServiceTest {
             kakaoId = 1234L,
             nickname = "지유",
             profileImageUrl = "https://example.com/profile.jpg",
-            birthday = LocalDate.of(2000, 10, 13),
+            birthday = MonthDay.of(10, 13),
             wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         ).also { user ->
             User::class.java.getDeclaredField("id").apply {

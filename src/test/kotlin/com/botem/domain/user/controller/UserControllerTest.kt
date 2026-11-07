@@ -1,23 +1,29 @@
 package com.botem.domain.user.controller
 
+import com.botem.domain.user.dto.request.UpdateMyProfileRequest
+import com.botem.domain.user.dto.response.MyProfileResponse
 import com.botem.domain.user.service.UserService
 import com.botem.domain.user.service.UserWithdrawalService
 import org.hamcrest.Matchers.allOf
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
+import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.MonthDay
 
 @WebMvcTest(controllers = [UserController::class])
 class UserControllerTest {
@@ -58,6 +64,31 @@ class UserControllerTest {
             )
 
         verify(userWithdrawalService).withdraw(USER_ID)
+    }
+
+    @Test
+    fun `생일은 연도 없이 MM-dd 형식으로 주고받는다`() {
+        val authentication = UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())
+        val request = UpdateMyProfileRequest(nickname = "지유", birthday = MonthDay.of(10, 13))
+        given(userService.updateMyProfile(USER_ID, request)).willReturn(
+            MyProfileResponse(
+                nickname = "지유",
+                profileImageUrl = null,
+                birthday = MonthDay.of(10, 13),
+                wishProfileUrl = "https://botem.site/@key",
+                kakaoConnected = true,
+            ),
+        )
+
+        mockMvc.perform(
+            put("/api/users/me/profile")
+                .with(authentication(authentication))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{ "nickname": "지유", "birthday": "10-13" }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.birthday").value("10-13"))
     }
 
     companion object {

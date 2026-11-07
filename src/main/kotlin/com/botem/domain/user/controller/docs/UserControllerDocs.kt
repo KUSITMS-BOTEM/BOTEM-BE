@@ -41,7 +41,7 @@ interface UserControllerDocs {
 
     @Operation(
         summary = "내 프로필 수정",
-        description = "로그인한 사용자의 닉네임과 생일을 수정합니다. 전체 수정 값을 전달해야 합니다.",
+        description = "로그인한 사용자의 닉네임과 생일을 수정합니다. 전체 수정 값을 전달해야 합니다. 생일은 연도 없이 `MM-dd` 형식으로 전달합니다.",
     )
     @ApiResponses(
         SwaggerApiResponse(
@@ -114,7 +114,7 @@ interface UserControllerDocs {
               "data": {
                 "nickname": "지유",
                 "profileImageUrl": "https://example.com/profile.jpg",
-                "birthday": "2000-10-13",
+                "birthday": "10-13",
                 "wishProfileUrl": "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
                 "kakaoConnected": true
               },

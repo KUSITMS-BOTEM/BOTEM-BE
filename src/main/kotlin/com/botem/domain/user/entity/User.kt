@@ -2,6 +2,7 @@ package com.botem.domain.user.entity
 
 import com.botem.global.entity.BaseEntity
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
@@ -11,6 +12,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.MonthDay
 import java.util.UUID
 
 @Entity
@@ -22,7 +24,9 @@ class User(
 
     profileImageUrl: String?,
 
-    birthday: LocalDate? = null,
+    birthday: MonthDay? = null,
+
+    name: String? = null,
 
     wishProfileKey: String? = generateWishProfileKey(),
 
@@ -48,8 +52,18 @@ class User(
     var profileImageUrl: String? = profileImageUrl
         protected set
 
-    var birthday: LocalDate? = birthday
+    @Convert(converter = MonthDayConverter::class)
+    @Column(name = "birth_month_day", length = 5)
+    var birthday: MonthDay? = birthday
         protected set
+
+    @Column(length = 50)
+    var name: String? = name
+        protected set
+
+    // 이전 버전이 사용하던 연도 포함 생일 컬럼. 탈퇴 시 개인정보를 지우기 위해서만 매핑하며, 컬럼 삭제 시 함께 제거한다.
+    @Column(name = "birthday")
+    private var legacyBirthday: LocalDate? = null
 
     @Column(unique = true, length = 32)
     var wishProfileKey: String? = wishProfileKey
@@ -69,7 +83,7 @@ class User(
 
     fun updateProfile(
         nickname: String,
-        birthday: LocalDate?,
+        birthday: MonthDay?,
     ) {
         this.nickname = nickname
         this.birthday = birthday
@@ -84,6 +98,8 @@ class User(
         nickname = WITHDRAWN_USER_NICKNAME
         profileImageUrl = null
         birthday = null
+        name = null
+        legacyBirthday = null
         wishProfileKey = null
         kakaoConnected = false
         status = UserStatus.WITHDRAWN
