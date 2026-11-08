@@ -35,7 +35,7 @@ class HomeFundingService(
         val activeFundingCount = cards.count { it.cardType == HomeFundingCardType.IN_PROGRESS }
 
         return HomeFundingListResponse(
-            fundingCards = sortCards(cards),
+            fundingCards = sortCards(cards, fundings),
             activeFundingCount = activeFundingCount,
             canOpenFunding = activeFundingCount < MAX_ACTIVE_FUNDING_COUNT,
         )
@@ -56,7 +56,7 @@ class HomeFundingService(
         now: LocalDateTime,
     ): HomeFundingCardResponse? {
         val cardType = when {
-            isClosedUnopened(funding, summary, now) -> HomeFundingCardType.CLOSED_UNOPENED
+            isClosedUnopened(funding, now) -> HomeFundingCardType.CLOSED_UNOPENED
             isInProgress(funding, summary, now) -> HomeFundingCardType.IN_PROGRESS
             else -> return null
         }
@@ -81,14 +81,12 @@ class HomeFundingService(
 
     private fun isClosedUnopened(
         funding: Funding,
-        summary: FundingContributionSummary,
         now: LocalDateTime,
     ): Boolean =
         funding.type == FundingType.BIRTHDAY &&
-            funding.status == FundingStatus.CLOSED &&
+            funding.status in BIRTHDAY_CLOSED_CANDIDATE_STATUSES &&
             !funding.deadline.isAfter(now) &&
-            funding.resultOpenedAt == null &&
-            summary.confirmedAmount >= funding.targetAmount
+            funding.resultOpenedAt == null
 
     private fun isInProgress(
         funding: Funding,
@@ -109,12 +107,24 @@ class HomeFundingService(
                     funding.status in SURPRISE_ACTIVE_STATUSES
         }
 
-    private fun sortCards(cards: List<HomeFundingCardResponse>): List<HomeFundingCardResponse> =
-        cards.sortedWith(
+    private fun sortCards(
+        cards: List<HomeFundingCardResponse>,
+        fundings: List<Funding>,
+    ): List<HomeFundingCardResponse> {
+        val fundingById = fundings.associateBy(Funding::id)
+
+        return cards.sortedWith(
             compareBy<HomeFundingCardResponse> { it.cardType != HomeFundingCardType.CLOSED_UNOPENED }
-                .thenBy { it.remainingDays ?: Long.MIN_VALUE }
+                .thenBy { card ->
+                    if (card.cardType == HomeFundingCardType.IN_PROGRESS) {
+                        cardTargetAt(fundingById.getValue(card.fundingId))
+                    } else {
+                        LocalDateTime.MIN
+                    }
+                }
                 .thenBy(HomeFundingCardResponse::fundingId),
         )
+    }
 
     private fun cardTargetAt(funding: Funding): LocalDateTime =
         when (funding.type) {
@@ -143,6 +153,10 @@ class HomeFundingService(
             FundingStatus.CLOSED,
             FundingStatus.GIFT_PREPARING,
             FundingStatus.WAITING_REVEAL,
+        )
+        private val BIRTHDAY_CLOSED_CANDIDATE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
         )
         private val SURPRISE_ACTIVE_STATUSES = HOME_CANDIDATE_STATUSES
     }

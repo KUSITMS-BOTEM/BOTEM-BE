@@ -43,7 +43,7 @@ class HomeFundingServiceTest {
         val birthday = funding(
             id = 2L,
             type = FundingType.BIRTHDAY,
-            deadline = LocalDateTime.of(2026, 11, 15, 23, 59),
+            deadline = LocalDateTime.of(2026, 11, 11, 23, 59),
         )
         val surprise = funding(
             id = 3L,
@@ -69,9 +69,41 @@ class HomeFundingServiceTest {
         assertEquals(HomeFundingCardType.CLOSED_UNOPENED, response.fundingCards[0].cardType)
         assertEquals(HomeFundingCardType.IN_PROGRESS, response.fundingCards[1].cardType)
         assertEquals(3L, response.fundingCards[1].remainingDays)
-        assertEquals(7L, response.fundingCards[2].remainingDays)
+        assertEquals(3L, response.fundingCards[2].remainingDays)
         assertEquals(2, response.activeFundingCount)
         assertTrue(response.canOpenFunding)
+    }
+
+    @Test
+    fun `마감된 생일 펀딩은 상태 전환과 목표 달성 여부에 관계없이 미열람 카드로 반환한다`() {
+        val fundingStatusNotChanged = funding(
+            id = 1L,
+            type = FundingType.BIRTHDAY,
+            status = FundingStatus.FUNDING,
+            deadline = LocalDateTime.of(2026, 11, 7, 23, 59),
+        )
+        val targetNotReached = funding(
+            id = 2L,
+            type = FundingType.BIRTHDAY,
+            status = FundingStatus.CLOSED,
+            deadline = LocalDateTime.of(2026, 11, 7, 23, 59),
+        )
+        given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
+            .willReturn(listOf(fundingStatusNotChanged, targetNotReached))
+        given(contributionRepository.summarizeByFundingIds(listOf(1L, 2L)))
+            .willReturn(
+                listOf(
+                    summary(fundingId = 1L, confirmedAmount = 100_000L),
+                    summary(fundingId = 2L, confirmedAmount = 50_000L),
+                ),
+            )
+
+        val response = service.getHomeFundings(USER_ID)
+
+        assertEquals(listOf(1L, 2L), response.fundingCards.map { it.fundingId })
+        assertTrue(response.fundingCards.all { it.cardType == HomeFundingCardType.CLOSED_UNOPENED })
+        assertEquals(50, response.fundingCards[1].confirmedPercentage)
+        assertEquals(0, response.activeFundingCount)
     }
 
     @Test
