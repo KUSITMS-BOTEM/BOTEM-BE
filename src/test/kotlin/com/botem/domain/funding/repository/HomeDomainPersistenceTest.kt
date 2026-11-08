@@ -115,6 +115,39 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
+    fun `여러 참여 상태를 펀딩별 확정 금액과 확인 대기 정보로 집계한다`() {
+        val user = saveUser()
+        val account = savePayoutAccount(user.id)
+        val wish = wishRepository.saveAndFlush(wish(user.id, "생일 선물"))
+        val funding = fundingRepository.saveAndFlush(funding(user.id, account, wish))
+        val confirmed = contribution(
+            fundingId = funding.id,
+            amount = 30_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+        ).apply {
+            markTransferSent()
+            confirm(LocalDateTime.of(2026, 11, 8, 10, 0))
+        }
+        val pending = contribution(
+            fundingId = funding.id,
+            amount = 20_000L,
+            status = ContributionStatus.PENDING_CONFIRMATION,
+        )
+        val cancelled = contribution(
+            fundingId = funding.id,
+            amount = 10_000L,
+            status = ContributionStatus.CANCELLED,
+        )
+        contributionRepository.saveAllAndFlush(listOf(confirmed, pending, cancelled))
+
+        val summary = contributionRepository.summarizeByFundingIds(listOf(funding.id)).single()
+
+        assertEquals(30_000L, summary.confirmedAmount)
+        assertEquals(20_000L, summary.pendingAmount)
+        assertEquals(1L, summary.pendingCount)
+    }
+
+    @Test
     fun `참여 내역은 확인 완료 상태로 직접 생성할 수 없다`() {
         assertFailsWith<IllegalArgumentException> {
             Contribution(
@@ -190,6 +223,20 @@ class HomeDomainPersistenceTest {
                 accountHolder = "지유",
                 isDefault = true,
             ),
+        )
+
+    private fun contribution(
+        fundingId: Long,
+        amount: Long,
+        status: ContributionStatus,
+    ): Contribution =
+        Contribution(
+            fundingId = fundingId,
+            participantUserId = null,
+            participantName = "친구",
+            amount = amount,
+            status = status,
+            guestPasswordHash = "hashed-password-$amount",
         )
 
     private fun wish(userId: Long, productName: String): Wish =
