@@ -2,7 +2,9 @@ package com.botem.domain.home.controller
 
 import com.botem.domain.home.controller.docs.HomeControllerDocs
 import com.botem.domain.home.dto.response.HomeFundingListResponse
+import com.botem.domain.home.dto.response.HomeNoFundingResponse
 import com.botem.domain.home.service.HomeFundingService
+import com.botem.domain.home.service.HomeNoFundingService
 import com.botem.global.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/home")
 class HomeController(
     private val homeFundingService: HomeFundingService,
+    private val homeNoFundingService: HomeNoFundingService,
 ) : HomeControllerDocs {
 
     @GetMapping("/fundings")
@@ -20,4 +23,10 @@ class HomeController(
         @AuthenticationPrincipal userId: Long,
     ): ApiResponse<HomeFundingListResponse> =
         ApiResponse.success(homeFundingService.getHomeFundings(userId))
+
+    @GetMapping("/no-funding")
+    override fun getNoFundingHome(
+        @AuthenticationPrincipal userId: Long,
+    ): ApiResponse<HomeNoFundingResponse> =
+        ApiResponse.success(homeNoFundingService.getNoFundingHome(userId))
 }
