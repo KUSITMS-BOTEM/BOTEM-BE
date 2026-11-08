@@ -7,6 +7,7 @@ import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeNoFundingResponse
 import com.botem.domain.home.dto.response.HomeNoFundingState
 import com.botem.domain.home.dto.response.HomeWishCardResponse
+import com.botem.domain.home.dto.response.HomeWishPageResponse
 import com.botem.domain.home.exception.HomeErrorCode
 import com.botem.domain.home.service.HomeFundingService
 import com.botem.domain.home.service.HomeNoFundingService
@@ -86,19 +87,25 @@ class HomeControllerTest {
 
     @Test
     fun `로그인 사용자의 펀딩 없는 홈 상태를 조회한다`() {
-        given(homeNoFundingService.getNoFundingHome(USER_ID)).willReturn(
+        given(homeNoFundingService.getNoFundingHome(USER_ID, 0, 10)).willReturn(
             HomeNoFundingResponse(
                 state = HomeNoFundingState.WISH_RECOMMENDATION,
                 nickname = "지유",
                 birthdayDday = 23L,
-                wishes = listOf(
-                    HomeWishCardResponse(
-                        wishId = 21L,
-                        productName = "무선 헤드폰",
-                        productImageUrl = "https://image.example.com/product.jpg",
-                        price = 100_000L,
-                        productUrl = "https://shop.example.com/product",
+                wishes = HomeWishPageResponse(
+                    content = listOf(
+                        HomeWishCardResponse(
+                            wishId = 21L,
+                            productName = "무선 헤드폰",
+                            productImageUrl = "https://image.example.com/product.jpg",
+                            price = 100_000L,
+                            productUrl = "https://shop.example.com/product",
+                        ),
                     ),
+                    page = 0,
+                    size = 10,
+                    totalElements = 12L,
+                    hasNext = true,
                 ),
             ),
         )
@@ -112,15 +119,17 @@ class HomeControllerTest {
             .andExpect(jsonPath("$.data.state").value("WISH_RECOMMENDATION"))
             .andExpect(jsonPath("$.data.nickname").value("지유"))
             .andExpect(jsonPath("$.data.birthdayDday").value(23L))
-            .andExpect(jsonPath("$.data.wishes[0].wishId").value(21L))
-            .andExpect(jsonPath("$.data.wishes[0].price").value(100_000L))
+            .andExpect(jsonPath("$.data.wishes.content[0].wishId").value(21L))
+            .andExpect(jsonPath("$.data.wishes.content[0].price").value(100_000L))
+            .andExpect(jsonPath("$.data.wishes.totalElements").value(12L))
+            .andExpect(jsonPath("$.data.wishes.hasNext").value(true))
 
-        verify(homeNoFundingService).getNoFundingHome(USER_ID)
+        verify(homeNoFundingService).getNoFundingHome(USER_ID, 0, 10)
     }
 
     @Test
     fun `홈에 표시할 펀딩이 있으면 409를 반환한다`() {
-        given(homeNoFundingService.getNoFundingHome(USER_ID))
+        given(homeNoFundingService.getNoFundingHome(USER_ID, 0, 10))
             .willThrow(BusinessException(HomeErrorCode.FUNDING_CARD_EXISTS))
 
         mockMvc.perform(

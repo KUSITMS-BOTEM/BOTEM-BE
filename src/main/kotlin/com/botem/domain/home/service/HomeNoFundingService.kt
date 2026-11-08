@@ -2,7 +2,7 @@ package com.botem.domain.home.service
 
 import com.botem.domain.home.dto.response.HomeNoFundingResponse
 import com.botem.domain.home.dto.response.HomeNoFundingState
-import com.botem.domain.home.dto.response.HomeWishCardResponse
+import com.botem.domain.home.dto.response.HomeWishPageResponse
 import com.botem.domain.home.exception.HomeErrorCode
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
@@ -10,6 +10,9 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.wish.repository.WishRepository
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -26,7 +29,13 @@ class HomeNoFundingService(
 ) {
 
     @Transactional(readOnly = true)
-    fun getNoFundingHome(userId: Long): HomeNoFundingResponse {
+    fun getNoFundingHome(
+        userId: Long,
+        page: Int = 0,
+        size: Int = DEFAULT_WISH_PAGE_SIZE,
+    ): HomeNoFundingResponse {
+        validatePageRequest(page, size)
+
         val homeFundings = homeFundingService.getHomeFundings(userId)
         if (homeFundings.fundingCards.isNotEmpty()) {
             throw BusinessException(HomeErrorCode.FUNDING_CARD_EXISTS)
@@ -38,15 +47,26 @@ class HomeNoFundingService(
             throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
         }
 
-        val wishes = wishRepository.findAllByUserIdOrderByCreatedAtDesc(userId)
-            .map(HomeWishCardResponse::from)
+        val wishes = wishRepository.findAllByUserId(
+            userId = userId,
+            pageable = PageRequest.of(page, size, WISH_SORT),
+        )
 
         return HomeNoFundingResponse(
-            state = if (wishes.isEmpty()) HomeNoFundingState.EMPTY else HomeNoFundingState.WISH_RECOMMENDATION,
+            state = if (wishes.totalElements == 0L) HomeNoFundingState.EMPTY else HomeNoFundingState.WISH_RECOMMENDATION,
             nickname = user.nickname,
             birthdayDday = calculateBirthdayDday(user.birthday, LocalDate.now(clock)),
-            wishes = wishes,
+            wishes = HomeWishPageResponse.from(wishes),
         )
+    }
+
+    private fun validatePageRequest(page: Int, size: Int) {
+        if (page < 0 || size !in 1..MAX_WISH_PAGE_SIZE) {
+            throw BusinessException(
+                CommonErrorCode.INVALID_INPUT_VALUE,
+                "page는 0 이상, size는 1 이상 ${MAX_WISH_PAGE_SIZE} 이하여야 합니다.",
+            )
+        }
     }
 
     private fun calculateBirthdayDday(
@@ -66,5 +86,11 @@ class HomeNoFundingService(
 
     companion object {
         private const val BIRTHDAY_DDAY_EXPOSURE_DAYS = 30L
+        private const val DEFAULT_WISH_PAGE_SIZE = 10
+        private const val MAX_WISH_PAGE_SIZE = 20
+        private val WISH_SORT = Sort.by(
+            Sort.Order.desc("createdAt"),
+            Sort.Order.desc("id"),
+        )
     }
 }

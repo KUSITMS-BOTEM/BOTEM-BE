@@ -16,6 +16,9 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verifyNoInteractions
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import java.time.Clock
 import java.time.Instant
 import java.time.MonthDay
@@ -42,40 +45,57 @@ class HomeNoFundingServiceTest {
         val olderWish = wish(id = 1L, productName = "향수")
         given(homeFundingService.getHomeFundings(USER_ID)).willReturn(emptyHomeFundings())
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user(MonthDay.of(12, 1))))
-        given(wishRepository.findAllByUserIdOrderByCreatedAtDesc(USER_ID))
-            .willReturn(listOf(latestWish, olderWish))
+        given(wishRepository.findAllByUserId(USER_ID, wishPageRequest()))
+            .willReturn(PageImpl(listOf(latestWish, olderWish), wishPageRequest(), 12L))
 
         val response = service.getNoFundingHome(USER_ID)
 
         assertEquals(HomeNoFundingState.WISH_RECOMMENDATION, response.state)
         assertEquals("지유", response.nickname)
         assertEquals(23L, response.birthdayDday)
-        assertEquals(listOf(2L, 1L), response.wishes.map { it.wishId })
-        assertEquals("무선 헤드폰", response.wishes.first().productName)
+        assertEquals(listOf(2L, 1L), response.wishes.content.map { it.wishId })
+        assertEquals("무선 헤드폰", response.wishes.content.first().productName)
+        assertEquals(0, response.wishes.page)
+        assertEquals(10, response.wishes.size)
+        assertEquals(12L, response.wishes.totalElements)
+        assertEquals(true, response.wishes.hasNext)
     }
 
     @Test
     fun `펀딩과 위시가 없고 생일까지 30일을 초과하면 빈 상태와 null D-day를 반환한다`() {
         given(homeFundingService.getHomeFundings(USER_ID)).willReturn(emptyHomeFundings())
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user(MonthDay.of(12, 9))))
-        given(wishRepository.findAllByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(emptyList())
+        given(wishRepository.findAllByUserId(USER_ID, wishPageRequest()))
+            .willReturn(PageImpl(emptyList(), wishPageRequest(), 0L))
 
         val response = service.getNoFundingHome(USER_ID)
 
         assertEquals(HomeNoFundingState.EMPTY, response.state)
         assertNull(response.birthdayDday)
-        assertEquals(emptyList(), response.wishes)
+        assertEquals(emptyList(), response.wishes.content)
+        assertEquals(false, response.wishes.hasNext)
     }
 
     @Test
     fun `생일까지 정확히 30일이면 D-day를 반환한다`() {
         given(homeFundingService.getHomeFundings(USER_ID)).willReturn(emptyHomeFundings())
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user(MonthDay.of(12, 8))))
-        given(wishRepository.findAllByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(emptyList())
+        given(wishRepository.findAllByUserId(USER_ID, wishPageRequest()))
+            .willReturn(PageImpl(emptyList(), wishPageRequest(), 0L))
 
         val response = service.getNoFundingHome(USER_ID)
 
         assertEquals(30L, response.birthdayDday)
+    }
+
+    @Test
+    fun `페이지 크기가 최대값을 초과하면 조회하지 않고 예외를 반환한다`() {
+        val exception = assertThrows<BusinessException> {
+            service.getNoFundingHome(USER_ID, page = 0, size = 21)
+        }
+
+        assertEquals("COMMON_001", exception.errorCode.code)
+        verifyNoInteractions(homeFundingService, userRepository, wishRepository)
     }
 
     @Test
@@ -114,6 +134,16 @@ class HomeNoFundingServiceTest {
             confirmedPercentage = 50,
             pendingPercentage = 10,
             pendingContributionCount = 1L,
+        )
+
+    private fun wishPageRequest(): PageRequest =
+        PageRequest.of(
+            0,
+            10,
+            Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id"),
+            ),
         )
 
     private fun user(birthday: MonthDay): User =

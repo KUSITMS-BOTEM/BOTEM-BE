@@ -70,6 +70,8 @@ interface HomeControllerDocs {
     )
     fun getNoFundingHome(
         @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "위시 페이지 번호(0부터 시작)", example = "0") page: Int,
+        @Parameter(description = "페이지 크기(1~20)", example = "10") size: Int,
     ): ApiResponse<HomeNoFundingResponse>
 
     companion object {
@@ -114,15 +116,21 @@ interface HomeControllerDocs {
                 "state": "WISH_RECOMMENDATION",
                 "nickname": "지유",
                 "birthdayDday": 23,
-                "wishes": [
-                  {
-                    "wishId": 21,
-                    "productName": "다이슨 에어랩",
-                    "productImageUrl": "https://image.example.com/product.jpg",
-                    "price": 699000,
-                    "productUrl": "https://shop.example.com/product"
-                  }
-                ]
+                "wishes": {
+                  "content": [
+                    {
+                      "wishId": 21,
+                      "productName": "다이슨 에어랩",
+                      "productImageUrl": "https://image.example.com/product.jpg",
+                      "price": 699000,
+                      "productUrl": "https://shop.example.com/product"
+                    }
+                  ],
+                  "page": 0,
+                  "size": 10,
+                  "totalElements": 12,
+                  "hasNext": true
+                }
               },
               "error": null
             }
@@ -134,7 +142,13 @@ interface HomeControllerDocs {
                 "state": "EMPTY",
                 "nickname": "지유",
                 "birthdayDday": null,
-                "wishes": []
+                "wishes": {
+                  "content": [],
+                  "page": 0,
+                  "size": 10,
+                  "totalElements": 0,
+                  "hasNext": false
+                }
               },
               "error": null
             }

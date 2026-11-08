@@ -9,6 +9,7 @@ import com.botem.global.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -27,6 +28,8 @@ class HomeController(
     @GetMapping("/no-funding")
     override fun getNoFundingHome(
         @AuthenticationPrincipal userId: Long,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
     ): ApiResponse<HomeNoFundingResponse> =
-        ApiResponse.success(homeNoFundingService.getNoFundingHome(userId))
+        ApiResponse.success(homeNoFundingService.getNoFundingHome(userId, page, size))
 }
