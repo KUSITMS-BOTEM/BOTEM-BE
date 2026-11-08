@@ -32,3 +32,6 @@ swagger:
 payout-account:
   encryption:
     key: ${PAYOUT_ACCOUNT_ENCRYPTION_KEY}
+
+auth-cookie:
+  domain: ${AUTH_COOKIE_DOMAIN}
