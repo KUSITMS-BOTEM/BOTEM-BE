@@ -1,17 +1,23 @@
 package com.botem.domain.user.controller
 
+import com.botem.domain.auth.controller.AuthCookieFactory
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
 import com.botem.domain.user.service.OnboardingService
 import com.botem.domain.user.service.UserService
 import com.botem.domain.user.service.UserWithdrawalService
+import com.botem.global.property.AuthCookieProperties
+import com.botem.global.property.JwtProperties
 import org.hamcrest.Matchers.allOf
 import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.hasItem
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -26,7 +32,16 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.MonthDay
 
-@WebMvcTest(controllers = [UserController::class])
+@WebMvcTest(
+    controllers = [UserController::class],
+    properties = [
+        "jwt.secret=test-secret",
+        "jwt.access-token-expiration=60m",
+        "jwt.refresh-token-expiration=7d",
+    ],
+)
+@Import(AuthCookieFactory::class)
+@EnableConfigurationProperties(JwtProperties::class, AuthCookieProperties::class)
 class UserControllerTest {
 
     @Autowired
@@ -42,7 +57,7 @@ class UserControllerTest {
     private lateinit var onboardingService: OnboardingService
 
     @Test
-    fun `회원 탈퇴에 성공하면 Refresh Token 쿠키를 만료시킨다`() {
+    fun `회원 탈퇴에 성공하면 Refresh Token 쿠키와 로그인 상태 쿠키를 만료시킨다`() {
         val authentication = UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())
 
         mockMvc.perform(
@@ -54,16 +69,24 @@ class UserControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isEmpty)
             .andExpect(
-                header().string(
+                header().stringValues(
                     HttpHeaders.SET_COOKIE,
-                    allOf(
-                        containsString("refreshToken="),
-                        containsString("Path=/api/auth"),
-                        containsString("Max-Age=0"),
-                        containsString("Secure"),
-                        containsString("HttpOnly"),
-                        containsString("SameSite=Lax"),
+                    hasItem(
+                        allOf(
+                            containsString("refreshToken="),
+                            containsString("Path=/api/auth"),
+                            containsString("Max-Age=0"),
+                            containsString("Secure"),
+                            containsString("HttpOnly"),
+                            containsString("SameSite=Lax"),
+                        ),
                     ),
+                ),
+            )
+            .andExpect(
+                header().stringValues(
+                    HttpHeaders.SET_COOKIE,
+                    hasItem(allOf(containsString("isLoggedIn="), containsString("Path=/"), containsString("Max-Age=0"))),
                 ),
             )
 

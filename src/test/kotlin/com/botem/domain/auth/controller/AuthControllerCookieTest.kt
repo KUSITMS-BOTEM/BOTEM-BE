@@ -7,10 +7,13 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.SecurityConfig
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.AuthCookieProperties
 import com.botem.global.property.JwtProperties
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.allOf
 import org.hamcrest.Matchers.containsString
+import org.hamcrest.Matchers.hasItem
+import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
@@ -34,10 +37,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
         "jwt.secret=test-secret",
         "jwt.access-token-expiration=60m",
         "jwt.refresh-token-expiration=7d",
+        "auth-cookie.domain=.botem.site",
     ],
 )
-@Import(SecurityConfig::class)
-@EnableConfigurationProperties(JwtProperties::class)
+@Import(SecurityConfig::class, AuthCookieFactory::class)
+@EnableConfigurationProperties(JwtProperties::class, AuthCookieProperties::class)
 class AuthControllerCookieTest {
 
     @Autowired
@@ -71,15 +75,34 @@ class AuthControllerCookieTest {
             .andExpect(jsonPath("$.data.isNewUser").value(true))
             .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
             .andExpect(
-                header().string(
+                header().stringValues(
                     HttpHeaders.SET_COOKIE,
-                    allOf(
-                        containsString("refreshToken=new-refresh"),
-                        containsString("Path=/api/auth"),
-                        containsString("Max-Age=604800"),
-                        containsString("Secure"),
-                        containsString("HttpOnly"),
-                        containsString("SameSite=Lax"),
+                    hasItem(
+                        allOf(
+                            containsString("refreshToken=new-refresh"),
+                            containsString("Path=/api/auth"),
+                            containsString("Max-Age=604800"),
+                            containsString("Secure"),
+                            containsString("HttpOnly"),
+                            containsString("SameSite=Lax"),
+                            not(containsString("Domain=")),
+                        ),
+                    ),
+                ),
+            )
+            .andExpect(
+                header().stringValues(
+                    HttpHeaders.SET_COOKIE,
+                    hasItem(
+                        allOf(
+                            containsString("isLoggedIn=true"),
+                            containsString("Domain=.botem.site"),
+                            containsString("Path=/"),
+                            containsString("Max-Age=604800"),
+                            containsString("Secure"),
+                            containsString("SameSite=Lax"),
+                            not(containsString("HttpOnly")),
+                        ),
                     ),
                 ),
             )
@@ -92,7 +115,8 @@ class AuthControllerCookieTest {
         mockMvc.perform(post("/api/auth/reissue").cookie(Cookie("refreshToken", "old-refresh")))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.accessToken").value("new-access"))
-            .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("refreshToken=new-refresh")))
+            .andExpect(header().stringValues(HttpHeaders.SET_COOKIE, hasItem(containsString("refreshToken=new-refresh"))))
+            .andExpect(header().stringValues(HttpHeaders.SET_COOKIE, hasItem(containsString("isLoggedIn=true"))))
     }
 
     @Test
@@ -106,8 +130,18 @@ class AuthControllerCookieTest {
     fun `로그아웃하면 토큰을 삭제하고 쿠키를 만료시킨다`() {
         mockMvc.perform(post("/api/auth/logout").cookie(Cookie("refreshToken", "old-refresh")))
             .andExpect(status().isOk)
-            .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")))
-            .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Path=/api/auth")))
+            .andExpect(
+                header().stringValues(
+                    HttpHeaders.SET_COOKIE,
+                    hasItem(allOf(containsString("refreshToken="), containsString("Path=/api/auth"), containsString("Max-Age=0"))),
+                ),
+            )
+            .andExpect(
+                header().stringValues(
+                    HttpHeaders.SET_COOKIE,
+                    hasItem(allOf(containsString("isLoggedIn="), containsString("Domain=.botem.site"), containsString("Max-Age=0"))),
+                ),
+            )
 
         verify(authService).logout("old-refresh")
     }

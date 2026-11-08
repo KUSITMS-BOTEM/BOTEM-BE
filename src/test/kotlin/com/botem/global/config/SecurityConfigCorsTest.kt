@@ -1,6 +1,7 @@
 package com.botem.global.config
 
 import com.botem.domain.auth.controller.AuthController
+import com.botem.domain.auth.controller.AuthCookieFactory
 import com.botem.domain.auth.service.AuthService
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
@@ -34,6 +35,9 @@ class SecurityConfigCorsTest {
 
     @MockitoBean
     private lateinit var authService: AuthService
+
+    @MockitoBean
+    private lateinit var authCookieFactory: AuthCookieFactory
 
     @MockitoBean
     private lateinit var jwtProvider: JwtProvider

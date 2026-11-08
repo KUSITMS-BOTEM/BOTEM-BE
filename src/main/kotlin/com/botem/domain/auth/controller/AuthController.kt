@@ -8,11 +8,9 @@ import com.botem.domain.auth.dto.response.KakaoLoginUriResponse
 import com.botem.domain.auth.service.AuthService
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
-import com.botem.global.property.JwtProperties
 import com.botem.global.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpHeaders
-import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.CookieValue
 import org.springframework.web.bind.annotation.GetMapping
@@ -21,13 +19,12 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.Duration
 
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
-    private val jwtProperties: JwtProperties,
+    private val authCookieFactory: AuthCookieFactory,
 ) : AuthControllerDocs {
 
     @GetMapping("/kakao/login-uri")
@@ -50,7 +47,7 @@ class AuthController(
 
     @PostMapping("/reissue")
     override fun reissue(
-        @CookieValue(REFRESH_TOKEN_COOKIE, required = false) refreshToken: String?,
+        @CookieValue(AuthCookieFactory.REFRESH_TOKEN_COOKIE, required = false) refreshToken: String?,
     ): ResponseEntity<ApiResponse<AccessTokenResponse>> {
         val token = refreshToken ?: throw BusinessException(AuthErrorCode.INVALID_TOKEN)
 
@@ -61,34 +58,17 @@ class AuthController(
 
     @PostMapping("/logout")
     override fun logout(
-        @CookieValue(REFRESH_TOKEN_COOKIE, required = false) refreshToken: String?,
+        @CookieValue(AuthCookieFactory.REFRESH_TOKEN_COOKIE, required = false) refreshToken: String?,
     ): ResponseEntity<ApiResponse<Nothing>> {
         refreshToken?.let(authService::logout)
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.SET_COOKIE, createRefreshTokenCookie("", Duration.ZERO))
+            .header(HttpHeaders.SET_COOKIE, *authCookieFactory.expire())
             .body(ApiResponse.success())
     }
 
     private fun <T> createTokenResponse(refreshToken: String, body: T): ResponseEntity<ApiResponse<T>> =
         ResponseEntity.ok()
-            .header(
-                HttpHeaders.SET_COOKIE,
-                createRefreshTokenCookie(refreshToken, jwtProperties.refreshTokenExpiration),
-            )
+            .header(HttpHeaders.SET_COOKIE, *authCookieFactory.issue(refreshToken))
             .body(ApiResponse.success(body))
-
-    private fun createRefreshTokenCookie(value: String, maxAge: Duration): String =
-        ResponseCookie.from(REFRESH_TOKEN_COOKIE, value)
-            .httpOnly(true)
-            .secure(true)
-            .sameSite("Lax")
-            .path("/api/auth")
-            .maxAge(maxAge)
-            .build()
-            .toString()
-
-    companion object {
-        private const val REFRESH_TOKEN_COOKIE = "refreshToken"
-    }
 }
