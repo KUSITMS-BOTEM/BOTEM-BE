@@ -35,20 +35,37 @@ sudo certbot --nginx -d api.botem.site -m <이메일> --agree-tos --redirect -n
 - EC2: 80/443만 공개하고 22는 열지 않습니다. 배포 중에만 워크플로가 러너 IP를 허용합니다.
 - RDS: EC2 보안 그룹에서 오는 3306만 허용합니다.
 
-## GitHub Actions IAM 사용자 권한
+## GitHub Actions AWS 인증 (OIDC)
 
-무료 플랜 계정에서는 OIDC 공급자 생성이 SCP로 막혀 있어 IAM 사용자 액세스 키를 사용합니다. 사용자에게 다음 권한만 줍니다. 유료 플랜으로 전환하면 OIDC로 교체를 검토합니다.
+워크플로는 장기 액세스 키 없이 GitHub OIDC 토큰으로 IAM Role을 맡아 실행마다 임시 자격 증명을 받습니다.
 
-- ECR push (대상 저장소)
-- 대상 보안 그룹의 `ec2:AuthorizeSecurityGroupIngress`, `ec2:RevokeSecurityGroupIngress`
+1. IAM → ID 제공업체 → 공급자 추가: OpenID Connect, URL `https://token.actions.githubusercontent.com`, 대상 `sts.amazonaws.com`
+2. IAM 정책을 만들고 다음 권한만 줍니다.
+   - `ecr:GetAuthorizationToken` (리소스 `*`)
+   - 대상 저장소의 ECR push (`BatchCheckLayerAvailability`, `InitiateLayerUpload`, `UploadLayerPart`, `CompleteLayerUpload`, `PutImage`, `BatchGetImage`)
+   - 대상 보안 그룹의 `ec2:AuthorizeSecurityGroupIngress`, `ec2:RevokeSecurityGroupIngress`
+3. IAM → 역할 → 웹 자격 증명으로 Role을 만들고 위 정책을 연결합니다. 신뢰 정책은 `develop` 브랜치만 허용합니다.
+
+```json
+"Condition": {
+  "StringEquals": {
+    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+    "token.actions.githubusercontent.com:sub": "repo:KUSITMS-BOTEM/BOTEM-BE:ref:refs/heads/develop"
+  }
+}
+```
+
+4. Role ARN을 GitHub Secret `AWS_ROLE_ARN`에 등록합니다.
+
+다른 브랜치에서 `workflow_dispatch`로 실행하면 신뢰 정책에 막혀 AWS 인증 단계에서 실패합니다.
 
 ## GitHub Secrets
 
 | 구분 | 이름 |
 |---|---|
-| AWS | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `ECR_REPOSITORY`, `EC2_SECURITY_GROUP_ID` |
+| AWS | `AWS_ROLE_ARN`, `AWS_REGION`, `ECR_REPOSITORY`, `EC2_SECURITY_GROUP_ID` |
 | SSH | `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `EC2_KNOWN_HOSTS` (`ssh-keyscan <host>` 결과를 확인 후 등록) |
-| 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `JWT_SECRET`, `PAYOUT_ACCOUNT_ENCRYPTION_KEY` |
+| 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `JWT_SECRET`, `PAYOUT_ACCOUNT_ENCRYPTION_KEY`, `AUTH_COOKIE_DOMAIN` (`.botem.site`) |
 
 `PAYOUT_ACCOUNT_ENCRYPTION_KEY`는 16, 24 또는 32바이트 난수를 Base64로 인코딩해 등록합니다. 운영 중 키를 잃거나 임의로 교체하면 저장된 계좌번호를 복호화할 수 없습니다.
 
