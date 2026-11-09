@@ -101,6 +101,13 @@ jobs:
           scp -i ~/.ssh/id_deploy .env deploy/deploy.sh "$SSH_TARGET:botem/"
           ssh -i ~/.ssh/id_deploy "$SSH_TARGET" "bash botem/deploy.sh '$IMAGE'"
 
+      - name: 프론트엔드 Orval 코드 생성 트리거
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.FRONTEND_REPO_TOKEN }}
+          repository: KUSITMS-BOTEM/BOTEM-FE
+          event-type: backend-deployed
+
       # 배포가 길어져 처음 받은 임시 자격 증명이 만료돼도 SSH 허용 규칙을 해제할 수 있도록 다시 발급한다
       - name: 보안 그룹 정리용 AWS 자격 증명 재발급
         if: always() && steps.runner.outputs.ip != ''
