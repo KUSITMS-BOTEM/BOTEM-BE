@@ -14,6 +14,7 @@ import org.hamcrest.Matchers.hasItem
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -26,6 +27,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -116,6 +118,35 @@ class UserControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.birthday").value("10-13"))
+    }
+
+    @Test
+    fun `요청 본문의 필수 값이 빠지거나 null이거나 형식이 틀리면 해당 필드와 함께 400을 반환한다`() {
+        val authentication = UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())
+        val requests = listOf(
+            "birthday" to post("/api/users/me/onboarding")
+                .content("""{ "name": "이정민", "bank": "TOSS_BANK", "accountNumber": "100159014821" }"""),
+            "bank" to post("/api/users/me/onboarding")
+                .content("""{ "name": "이정민", "birthday": "10-13", "accountNumber": "100159014821" }"""),
+            "birthday" to put("/api/users/me/profile")
+                .content("""{ "nickname": "지유", "birthday": null }"""),
+            "birthday" to put("/api/users/me/profile")
+                .content("""{ "nickname": "지유", "birthday": "13-45" }"""),
+        )
+
+        requests.forEach { (field, request) ->
+            mockMvc.perform(
+                request
+                    .with(authentication(authentication))
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                .andExpect(jsonPath("$.error.detail").value("$field: 올바르지 않은 값입니다"))
+        }
+
+        verifyNoInteractions(userService, onboardingService)
     }
 
     companion object {
