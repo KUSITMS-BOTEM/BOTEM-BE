@@ -121,16 +121,20 @@ class UserControllerTest {
     }
 
     @Test
-    fun `온보딩과 프로필 수정에서 생일을 비우면 400을 반환한다`() {
+    fun `요청 본문의 필수 값이 빠지거나 null이거나 형식이 틀리면 해당 필드와 함께 400을 반환한다`() {
         val authentication = UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())
         val requests = listOf(
-            post("/api/users/me/onboarding")
+            "birthday" to post("/api/users/me/onboarding")
                 .content("""{ "name": "이정민", "bank": "TOSS_BANK", "accountNumber": "100159014821" }"""),
-            put("/api/users/me/profile")
+            "bank" to post("/api/users/me/onboarding")
+                .content("""{ "name": "이정민", "birthday": "10-13", "accountNumber": "100159014821" }"""),
+            "birthday" to put("/api/users/me/profile")
                 .content("""{ "nickname": "지유", "birthday": null }"""),
+            "birthday" to put("/api/users/me/profile")
+                .content("""{ "nickname": "지유", "birthday": "13-45" }"""),
         )
 
-        requests.forEach { request ->
+        requests.forEach { (field, request) ->
             mockMvc.perform(
                 request
                     .with(authentication(authentication))
@@ -139,7 +143,7 @@ class UserControllerTest {
             )
                 .andExpect(status().isBadRequest)
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"))
-                .andExpect(jsonPath("$.error.detail").value(containsString("birthday")))
+                .andExpect(jsonPath("$.error.detail").value("$field: 올바르지 않은 값입니다"))
         }
 
         verifyNoInteractions(userService, onboardingService)
