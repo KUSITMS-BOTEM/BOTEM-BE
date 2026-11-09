@@ -11,5 +11,7 @@ interface WishRepository : JpaRepository<Wish, Long> {
 
     fun findAllByUserId(userId: Long, pageable: Pageable): Page<Wish>
 
+    fun findByIdAndUserId(id: Long, userId: Long): Wish?
+
     fun existsByUserIdAndRecommendedProductId(userId: Long, recommendedProductId: Long): Boolean
 }

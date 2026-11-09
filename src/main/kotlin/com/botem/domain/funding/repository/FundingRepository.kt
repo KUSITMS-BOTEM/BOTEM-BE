@@ -10,4 +10,16 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         ownerId: Long,
         statuses: Collection<FundingStatus>,
     ): List<Funding>
+
+    fun findAllByOwnerIdAndProductSourceWishIdInAndStatusNotIn(
+        ownerId: Long,
+        sourceWishIds: Collection<Long>,
+        statuses: Collection<FundingStatus>,
+    ): List<Funding>
+
+    fun existsByOwnerIdAndProductSourceWishIdAndStatusNotIn(
+        ownerId: Long,
+        sourceWishId: Long,
+        statuses: Collection<FundingStatus>,
+    ): Boolean
 }

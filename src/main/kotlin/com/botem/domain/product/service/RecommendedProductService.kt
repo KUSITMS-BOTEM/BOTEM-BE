@@ -45,6 +45,12 @@ class RecommendedProductService(
         return product
     }
 
+    @Transactional(readOnly = true)
+    fun findDiscontinuedProductIds(productIds: Collection<Long>): Set<Long> =
+        recommendedProductRepository.findAllById(productIds)
+            .filter { it.status == RecommendedProductStatus.DISCONTINUED }
+            .mapTo(mutableSetOf()) { it.id }
+
     private fun findProduct(productId: Long): RecommendedProduct =
         recommendedProductRepository.findByIdOrNull(productId)
             ?: throw BusinessException(ProductErrorCode.RECOMMENDED_PRODUCT_NOT_FOUND)
