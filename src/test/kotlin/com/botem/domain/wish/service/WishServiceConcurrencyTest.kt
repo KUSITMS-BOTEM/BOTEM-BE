@@ -1,5 +1,6 @@
 package com.botem.domain.wish.service
 
+import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.product.entity.ProductCategory
 import com.botem.domain.product.entity.RecommendedProduct
 import com.botem.domain.product.service.RecommendedProductService
@@ -19,7 +20,7 @@ class WishServiceConcurrencyTest {
 
     private val wishRepository = mock(WishRepository::class.java)
     private val recommendedProductService = mock(RecommendedProductService::class.java)
-    private val wishService = WishService(wishRepository, recommendedProductService)
+    private val wishService = WishService(wishRepository, mock(FundingRepository::class.java), recommendedProductService)
 
     @Test
     fun `동시 요청이 중복 확인을 함께 통과해 유니크 제약에 걸리면 이미 담은 상품 예외로 응답한다`() {
