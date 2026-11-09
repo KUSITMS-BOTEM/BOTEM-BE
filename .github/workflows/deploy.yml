@@ -94,6 +94,7 @@ jobs:
           } > .env
 
       - name: EC2 배포
+        id: deploy
         env:
           IMAGE: ${{ steps.image.outputs.name }}
         run: |
@@ -117,3 +118,12 @@ jobs:
         run: |
           aws ec2 revoke-security-group-ingress --group-id "$SECURITY_GROUP_ID" \
             --protocol tcp --port 22 --cidr "$IP/32"
+
+      # SSH 허용 해제가 디스패치에 막히지 않도록 정리 후 실행하고, 정리 실패와 무관하게 배포 성공 시 전송한다
+      - name: 프론트엔드 Orval 코드 생성 트리거
+        if: ${{ !cancelled() && steps.deploy.outcome == 'success' }}
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.FRONTEND_REPO_TOKEN }}
+          repository: KUSITMS-BOTEM/BOTEM-FE
+          event-type: backend-deployed
