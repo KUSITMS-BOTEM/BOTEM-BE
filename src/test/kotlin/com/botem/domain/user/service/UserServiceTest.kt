@@ -137,7 +137,7 @@ class UserServiceTest {
         )
         val request = UpdateMyProfileRequest(
             nickname = "\u00A0\u00A0",
-            birthday = null,
+            birthday = MonthDay.of(10, 13),
         )
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
@@ -160,7 +160,7 @@ class UserServiceTest {
         val nickname = "가".repeat(255)
         val request = UpdateMyProfileRequest(
             nickname = " $nickname ",
-            birthday = null,
+            birthday = MonthDay.of(10, 13),
         )
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
@@ -179,7 +179,7 @@ class UserServiceTest {
         )
         val request = UpdateMyProfileRequest(
             nickname = "가".repeat(256),
-            birthday = null,
+            birthday = MonthDay.of(10, 13),
         )
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
 
