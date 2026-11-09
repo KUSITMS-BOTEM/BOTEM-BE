@@ -65,6 +65,7 @@ class WishService(
         toResponses(userId, listOf(findOwnWish(userId, wishId))).single()
 
     // 펀딩이 끝난 뒤에는 삭제해도 펀딩의 상품 스냅샷이 남아 있어 source_wish_id만 비워짐
+    // TODO: 확인 후 삭제라 펀딩 개설과 동시에 일어나면 위시 연결이 끊긴 펀딩이 생길 수 있음. 펀딩 개설 API에서 위시를 비관적 락으로 조회해 막을 것
     @Transactional
     fun deleteWish(userId: Long, wishId: Long) {
         val wish = findOwnWish(userId, wishId)
