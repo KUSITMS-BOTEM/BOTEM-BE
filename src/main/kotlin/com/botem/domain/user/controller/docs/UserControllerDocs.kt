@@ -19,7 +19,7 @@ interface UserControllerDocs {
 
     @Operation(
         summary = "내 프로필 조회",
-        description = "로그인한 사용자의 닉네임, 프로필 이미지, 생일, 위시 프로필 링크, 카카오 계정 연결 상태, 이메일과 가입일을 조회합니다. 이메일은 카카오 이메일 제공에 동의하지 않았거나 인증되지 않은 경우 null이며, 가입일(joinedAt)은 한국 날짜 기준 `yyyy-MM-dd`입니다.",
+        description = "로그인한 사용자의 닉네임, 프로필 이미지, 생일, 위시 프로필 링크, 카카오 계정 연결 상태, 이메일과 가입일을 조회합니다. 이메일은 마지막 로그인 때 카카오가 준 이메일이 만료되었거나 인증되지 않은 경우 null이며, 가입일(joinedAt)은 한국 날짜 기준 `yyyy-MM-dd`입니다.",
     )
     @ApiResponses(
         SwaggerApiResponse(

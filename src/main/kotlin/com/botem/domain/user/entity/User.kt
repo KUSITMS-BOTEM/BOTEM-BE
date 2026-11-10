@@ -102,7 +102,7 @@ class User(
         this.birthday = birthday
     }
 
-    fun updateEmail(email: String) {
+    fun updateEmail(email: String?) {
         this.email = email
     }
 

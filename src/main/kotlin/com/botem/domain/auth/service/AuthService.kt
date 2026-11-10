@@ -53,10 +53,8 @@ class AuthService(
                     ),
                 )
 
-            // 기존 회원도 로그인할 때 카카오 이메일로 갱신하고, 이메일을 받지 못하면 저장된 값을 유지
-            if (existingUser != null && email != null) {
-                existingUser.updateEmail(email)
-            }
+            // 이메일은 필수 동의 항목이라 로그인마다 카카오 값으로 덮어써, 만료·미인증된 이메일이 남지 않게 함
+            existingUser?.updateEmail(email)
 
             // 온보딩 마지막 단계인 받을 계좌 등록을 마치지 않았으면 신규 회원으로 보고 온보딩을 다시 진행
             val isNewUser = existingUser == null || !payoutAccountService.hasPayoutAccount(user.id)

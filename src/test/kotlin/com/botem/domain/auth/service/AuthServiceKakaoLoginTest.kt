@@ -10,6 +10,7 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtProvider
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -108,16 +109,15 @@ class AuthServiceKakaoLoginTest {
     }
 
     @Test
-    fun `만료되었거나 인증되지 않은 이메일은 저장하지 않고 기존 이메일을 유지한다`() {
-        val existingUser = User(kakaoId = KAKAO_ID, nickname = "보탬", profileImageUrl = null, email = "old@kakao.com")
-        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(existingUser)
-
+    fun `카카오가 만료되었거나 인증되지 않은 이메일을 주면 저장된 이메일을 지운다`() {
         listOf(false to true, true to false, null to null).forEach { (isEmailValid, isEmailVerified) ->
-            givenKakaoEmail(email = "new@kakao.com", isEmailValid = isEmailValid, isEmailVerified = isEmailVerified)
+            val existingUser = User(kakaoId = KAKAO_ID, nickname = "보탬", profileImageUrl = null, email = "old@kakao.com")
+            given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(existingUser)
+            givenKakaoEmail(email = "old@kakao.com", isEmailValid = isEmailValid, isEmailVerified = isEmailVerified)
 
             authService.kakaoLogin("code", null)
 
-            assertEquals("old@kakao.com", existingUser.email)
+            assertNull(existingUser.email)
         }
     }
 
