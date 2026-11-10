@@ -5,20 +5,25 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.BaseEntity
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
+import java.time.LocalDate
+import java.time.MonthDay
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.ArgumentMatchers.eq
+import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoMoreInteractions
-import org.mockito.Mockito.`when`
-import java.time.MonthDay
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class UserServiceTest {
 
@@ -36,9 +41,10 @@ class UserServiceTest {
             nickname = "지유",
             profileImageUrl = "https://example.com/profile.jpg",
             birthday = birthday,
+            email = "jiyu@kakao.com",
             wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val response = userService.getMyProfile(1L)
 
@@ -50,6 +56,9 @@ class UserServiceTest {
             response.wishProfileUrl,
         )
         assertEquals(true, response.kakaoConnected)
+        assertEquals("jiyu@kakao.com", response.email)
+        // 한국 시간 00:30(UTC 전날 15:30)에 가입해도 가입일은 한국 날짜
+        assertEquals(LocalDate.of(2026, 11, 10), response.joinedAt)
     }
 
     @Test
@@ -60,7 +69,7 @@ class UserServiceTest {
             profileImageUrl = null,
             kakaoConnected = false,
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val response = userService.getMyProfile(1L)
 
@@ -80,7 +89,7 @@ class UserServiceTest {
             nickname = " 새 닉네임 ",
             birthday = birthday,
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val response = userService.updateMyProfile(1L, request)
 
@@ -99,7 +108,7 @@ class UserServiceTest {
     @Test
     fun `온보딩 이름은 앞뒤 공백을 제거하고 생일과 함께 저장한다`() {
         val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null)
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         userService.updateOnboardingProfile(1L, " 이정민 ", MonthDay.of(10, 13))
 
@@ -110,7 +119,7 @@ class UserServiceTest {
     @Test
     fun `온보딩 이름이 공백뿐이면 예외가 발생한다`() {
         val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null)
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val exception = assertFailsWith<BusinessException> {
             userService.updateOnboardingProfile(1L, "\u3000 ", null)
@@ -139,7 +148,7 @@ class UserServiceTest {
             nickname = "\u00A0\u00A0",
             birthday = MonthDay.of(10, 13),
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val exception = assertFailsWith<BusinessException> {
             userService.updateMyProfile(1L, request)
@@ -162,7 +171,7 @@ class UserServiceTest {
             nickname = " $nickname ",
             birthday = MonthDay.of(10, 13),
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val response = userService.updateMyProfile(1L, request)
 
@@ -181,7 +190,7 @@ class UserServiceTest {
             nickname = "가".repeat(256),
             birthday = MonthDay.of(10, 13),
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val exception = assertFailsWith<BusinessException> {
             userService.updateMyProfile(1L, request)
@@ -200,7 +209,7 @@ class UserServiceTest {
             profileImageUrl = null,
             wishProfileKey = null,
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
         `when`(userRepository.updateWishProfileKeyIfNull(eq(0L), anyString())).thenReturn(1)
 
         val response = userService.getMyProfile(1L)
@@ -219,7 +228,7 @@ class UserServiceTest {
             profileImageUrl = null,
             wishProfileKey = null,
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
         `when`(userRepository.updateWishProfileKeyIfNull(eq(0L), anyString())).thenReturn(0)
         `when`(userRepository.findWishProfileKeyForUpdate(0L)).thenReturn(winnerKey)
 
@@ -238,7 +247,7 @@ class UserServiceTest {
             kakaoConnected = false,
             status = UserStatus.WITHDRAWN,
         )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user)
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val exception = assertFailsWith<BusinessException> {
             userService.getMyProfile(1L)
@@ -247,5 +256,16 @@ class UserServiceTest {
         assertEquals(AuthErrorCode.WITHDRAWN_USER, exception.errorCode)
         verify(userRepository).findByIdForUpdate(1L)
         verifyNoMoreInteractions(userRepository)
+    }
+
+    // 저장 시 채워지는 가입 시각을 UTC 2026-11-09 15:30(한국 2026-11-10 00:30)으로 지정
+    private fun User.joined(): User = apply {
+        val createdAt = ZonedDateTime.of(2026, 11, 9, 15, 30, 0, 0, ZoneOffset.UTC)
+            .withZoneSameInstant(ZoneId.systemDefault())
+            .toLocalDateTime()
+        BaseEntity::class.java.getDeclaredField("createdAt").apply {
+            isAccessible = true
+            set(this@joined, createdAt)
+        }
     }
 }

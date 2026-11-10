@@ -8,12 +8,14 @@ import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtProvider
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyLong
+import org.mockito.ArgumentMatchers.argThat
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
@@ -86,6 +88,51 @@ class AuthServiceKakaoLoginTest {
 
         assertTrue(result.isNewUser)
         verify(userRepository, never()).save(any(User::class.java))
+    }
+
+    @Test
+    fun `카카오가 인증된 이메일을 주면 가입 시 저장하고 기존 회원은 갱신한다`() {
+        givenKakaoEmail(email = "new@kakao.com", isEmailValid = true, isEmailVerified = true)
+        given(userRepository.save(any(User::class.java))).willAnswer { it.arguments[0] }
+
+        authService.kakaoLogin("code", null)
+
+        verify(userRepository).save(argThat<User> { it.email == "new@kakao.com" })
+
+        val existingUser = User(kakaoId = KAKAO_ID, nickname = "보탬", profileImageUrl = null, email = "old@kakao.com")
+        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(existingUser)
+
+        authService.kakaoLogin("code", null)
+
+        assertEquals("new@kakao.com", existingUser.email)
+    }
+
+    @Test
+    fun `만료되었거나 인증되지 않은 이메일은 저장하지 않고 기존 이메일을 유지한다`() {
+        val existingUser = User(kakaoId = KAKAO_ID, nickname = "보탬", profileImageUrl = null, email = "old@kakao.com")
+        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(existingUser)
+
+        listOf(false to true, true to false, null to null).forEach { (isEmailValid, isEmailVerified) ->
+            givenKakaoEmail(email = "new@kakao.com", isEmailValid = isEmailValid, isEmailVerified = isEmailVerified)
+
+            authService.kakaoLogin("code", null)
+
+            assertEquals("old@kakao.com", existingUser.email)
+        }
+    }
+
+    private fun givenKakaoEmail(email: String, isEmailValid: Boolean?, isEmailVerified: Boolean?) {
+        given(kakaoOAuthClient.getUserInfo("code", null)).willReturn(
+            KakaoUserInfoResponse(
+                id = KAKAO_ID,
+                kakaoAccount = KakaoUserInfoResponse.KakaoAccount(
+                    profile = KakaoUserInfoResponse.Profile(nickname = "보탬", profileImageUrl = null),
+                    email = email,
+                    isEmailValid = isEmailValid,
+                    isEmailVerified = isEmailVerified,
+                ),
+            ),
+        )
     }
 
     private object NoOpTransactionManager : PlatformTransactionManager {
