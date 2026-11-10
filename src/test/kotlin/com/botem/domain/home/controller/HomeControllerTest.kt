@@ -1,6 +1,9 @@
 package com.botem.domain.home.controller
 
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.home.dto.response.GiftVerificationBannerResponse
+import com.botem.domain.home.dto.response.GiftVerificationTargetListResponse
+import com.botem.domain.home.dto.response.GiftVerificationTargetResponse
 import com.botem.domain.home.dto.response.HomeFundingCardResponse
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import com.botem.domain.home.dto.response.HomeFundingListResponse
@@ -10,6 +13,7 @@ import com.botem.domain.home.dto.response.HomeWishCardResponse
 import com.botem.domain.home.dto.response.HomeWishPageResponse
 import com.botem.domain.home.exception.HomeErrorCode
 import com.botem.domain.home.service.HomeFundingService
+import com.botem.domain.home.service.HomeGiftVerificationService
 import com.botem.domain.home.service.HomeNoFundingService
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
@@ -25,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
 
 @WebMvcTest(controllers = [HomeController::class])
 class HomeControllerTest {
@@ -37,6 +42,9 @@ class HomeControllerTest {
 
     @MockitoBean
     private lateinit var homeNoFundingService: HomeNoFundingService
+
+    @MockitoBean
+    private lateinit var homeGiftVerificationService: HomeGiftVerificationService
 
     @Test
     fun `로그인 사용자의 홈 펀딩 카드를 조회한다`() {
@@ -147,6 +155,68 @@ class HomeControllerTest {
             .andExpect(status().isUnauthorized)
 
         verifyNoInteractions(homeNoFundingService)
+    }
+
+    @Test
+    fun `로그인 사용자의 선물 인증 배너를 조회한다`() {
+        given(homeGiftVerificationService.getBanner(USER_ID)).willReturn(
+            GiftVerificationBannerResponse(
+                visible = true,
+                pendingCount = 2L,
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/home/gift-verifications/banner")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.visible").value(true))
+            .andExpect(jsonPath("$.data.pendingCount").value(2L))
+
+        verify(homeGiftVerificationService).getBanner(USER_ID)
+    }
+
+    @Test
+    fun `로그인 사용자의 선물 인증 대상 목록을 조회한다`() {
+        given(homeGiftVerificationService.getTargets(USER_ID)).willReturn(
+            GiftVerificationTargetListResponse(
+                pendingCount = 1,
+                targets = listOf(
+                    GiftVerificationTargetResponse(
+                        giftVerificationId = 7L,
+                        fundingId = 12L,
+                        productName = "무선 헤드폰",
+                        productImageUrl = "https://image.example.com/product.jpg",
+                        fundingDeadline = LocalDateTime.of(2026, 11, 1, 23, 59),
+                        participantCount = 6L,
+                        replacementProductName = null,
+                    ),
+                ),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/home/gift-verifications")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.pendingCount").value(1))
+            .andExpect(jsonPath("$.data.targets[0].giftVerificationId").value(7L))
+            .andExpect(jsonPath("$.data.targets[0].fundingId").value(12L))
+            .andExpect(jsonPath("$.data.targets[0].participantCount").value(6L))
+
+        verify(homeGiftVerificationService).getTargets(USER_ID)
+    }
+
+    @Test
+    fun `인증 없이 선물 인증 홈 API를 조회하면 401을 반환한다`() {
+        mockMvc.perform(get("/api/home/gift-verifications/banner"))
+            .andExpect(status().isUnauthorized)
+        mockMvc.perform(get("/api/home/gift-verifications"))
+            .andExpect(status().isUnauthorized)
+
+        verifyNoInteractions(homeGiftVerificationService)
     }
 
     companion object {
