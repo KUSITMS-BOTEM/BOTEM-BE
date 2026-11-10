@@ -4,6 +4,7 @@ plugins {
 	id("org.springframework.boot") version "4.1.1"
 	id("io.spring.dependency-management") version "1.1.7"
 	kotlin("plugin.jpa") version "2.3.21"
+	id("org.jetbrains.kotlinx.kover") version "0.9.11"
 }
 
 group = "com"
@@ -65,4 +66,21 @@ tasks.withType<Test> {
 
 tasks.jar {
 	enabled = false
+}
+
+kover {
+	reports {
+		filters {
+			excludes {
+				classes("com.botem.BotemApplication*")
+				packages("com.botem.global.config", "*.dto", "*.dto.*")
+			}
+		}
+		verify {
+			rule {
+				// 테스트 보강 후 90%로 상향 예정
+				minBound(86)
+			}
+		}
+	}
 }
