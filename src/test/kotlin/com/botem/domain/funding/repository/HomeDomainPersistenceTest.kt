@@ -8,6 +8,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.GiftVerificationStatus
@@ -293,6 +294,99 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
+    fun `공개 시각이 지난 수신자의 미완료 서프라이즈를 공개 시각 순으로 조회한다`() {
+        val now = LocalDateTime.of(2026, 11, 10, 12, 0)
+        val recipient = saveNamedUser(nickname = "지유", name = "이지유")
+        val otherRecipient = saveNamedUser(nickname = "다른 친구", name = "다른 친구")
+        val namedOrganizer = saveNamedUser(nickname = "민지 닉네임", name = "민지")
+        val nicknameOrganizer = saveNamedUser(nickname = "준호", name = null)
+        val namedAccount = savePayoutAccount(namedOrganizer.id)
+        val nicknameAccount = savePayoutAccount(nicknameOrganizer.id)
+        val namedWish = wishRepository.saveAndFlush(wish(namedOrganizer.id, "무선 헤드폰"))
+        val nicknameWish = wishRepository.saveAndFlush(wish(nicknameOrganizer.id, "스마트 워치"))
+
+        val oldRevealed = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = namedOrganizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 7, 0, 0),
+                account = namedAccount,
+                wish = namedWish,
+            ),
+        )
+        val revealedExactlyNow = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = nicknameOrganizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 9, 12, 0),
+                account = nicknameAccount,
+                wish = nicknameWish,
+            ),
+        )
+        fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = namedOrganizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 10, 12, 0),
+                account = namedAccount,
+                wish = namedWish,
+            ),
+        )
+        val completed = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = namedOrganizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 5, 0, 0),
+                account = namedAccount,
+                wish = namedWish,
+            ),
+        )
+        val cancelled = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = namedOrganizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 6, 0, 0),
+                account = namedAccount,
+                wish = namedWish,
+            ),
+        )
+        fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = namedOrganizer.id,
+                recipientId = otherRecipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 7, 0, 0),
+                account = namedAccount,
+                wish = namedWish,
+            ),
+        )
+        contributionRepository.saveAllAndFlush(
+            listOf(
+                contribution(oldRevealed.id, 10_000L, ContributionStatus.AWAITING_TRANSFER),
+                contribution(oldRevealed.id, 0L, ContributionStatus.MESSAGE_ONLY),
+                contribution(oldRevealed.id, 5_000L, ContributionStatus.CANCELLED),
+            ),
+        )
+        updateFundingStatus(completed.id, FundingStatus.COMPLETED)
+        updateFundingStatus(cancelled.id, FundingStatus.CANCELLED)
+        entityManager.clear()
+
+        val cards = fundingRepository.findRevealedSurpriseCards(recipient.id, now)
+
+        assertEquals(listOf(oldRevealed.id, revealedExactlyNow.id), cards.map { it.fundingId })
+        assertEquals("민지", cards[0].organizerName)
+        assertEquals(2L, cards[0].participantCount)
+        assertEquals("준호", cards[1].organizerName)
+        assertEquals(0L, cards[1].participantCount)
+        assertEquals(now, cards[1].revealAt)
+    }
+
+    @Test
     fun `보탬 링크 구매를 확인하지 않으면 선물 인증을 완료할 수 없다`() {
         val verification = GiftVerification(fundingId = 1L)
 
@@ -314,6 +408,19 @@ class HomeDomainPersistenceTest {
                 kakaoId = System.nanoTime(),
                 nickname = "지유",
                 profileImageUrl = null,
+            ),
+        )
+
+    private fun saveNamedUser(
+        nickname: String,
+        name: String?,
+    ): User =
+        userRepository.saveAndFlush(
+            User(
+                kakaoId = System.nanoTime(),
+                nickname = nickname,
+                profileImageUrl = null,
+                name = name,
             ),
         )
 
@@ -355,6 +462,13 @@ class HomeDomainPersistenceTest {
         entityManager.createNativeQuery("UPDATE wishes SET created_at = :createdAt WHERE id = :wishId")
             .setParameter("createdAt", createdAt)
             .setParameter("wishId", wishId)
+            .executeUpdate()
+    }
+
+    private fun updateFundingStatus(fundingId: Long, status: FundingStatus) {
+        entityManager.createNativeQuery("UPDATE fundings SET status = :status WHERE id = :fundingId")
+            .setParameter("status", status.name)
+            .setParameter("fundingId", fundingId)
             .executeUpdate()
     }
 
