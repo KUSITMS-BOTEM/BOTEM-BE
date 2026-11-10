@@ -11,10 +11,13 @@ import com.botem.domain.home.dto.response.HomeNoFundingResponse
 import com.botem.domain.home.dto.response.HomeNoFundingState
 import com.botem.domain.home.dto.response.HomeWishCardResponse
 import com.botem.domain.home.dto.response.HomeWishPageResponse
+import com.botem.domain.home.dto.response.SurpriseRevealCardListResponse
+import com.botem.domain.home.dto.response.SurpriseRevealCardResponse
 import com.botem.domain.home.exception.HomeErrorCode
 import com.botem.domain.home.service.HomeFundingService
 import com.botem.domain.home.service.HomeGiftVerificationService
 import com.botem.domain.home.service.HomeNoFundingService
+import com.botem.domain.home.service.HomeSurpriseRevealService
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -45,6 +48,9 @@ class HomeControllerTest {
 
     @MockitoBean
     private lateinit var homeGiftVerificationService: HomeGiftVerificationService
+
+    @MockitoBean
+    private lateinit var homeSurpriseRevealService: HomeSurpriseRevealService
 
     @Test
     fun `로그인 사용자의 홈 펀딩 카드를 조회한다`() {
@@ -217,6 +223,45 @@ class HomeControllerTest {
             .andExpect(status().isUnauthorized)
 
         verifyNoInteractions(homeGiftVerificationService)
+    }
+
+    @Test
+    fun `로그인 사용자의 서프라이즈 공개 카드를 조회한다`() {
+        given(homeSurpriseRevealService.getCards(USER_ID)).willReturn(
+            SurpriseRevealCardListResponse(
+                cards = listOf(
+                    SurpriseRevealCardResponse(
+                        fundingId = 24L,
+                        productImageUrl = "https://image.example.com/surprise.jpg",
+                        productName = "무선 헤드폰",
+                        organizerName = "민지",
+                        participantCount = 6L,
+                        revealAt = LocalDateTime.of(2026, 11, 10, 0, 0),
+                    ),
+                ),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/home/surprise-reveals")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.cards[0].fundingId").value(24L))
+            .andExpect(jsonPath("$.data.cards[0].productName").value("무선 헤드폰"))
+            .andExpect(jsonPath("$.data.cards[0].organizerName").value("민지"))
+            .andExpect(jsonPath("$.data.cards[0].participantCount").value(6L))
+            .andExpect(jsonPath("$.data.cards[0].revealAt").value("2026-11-10T00:00:00"))
+
+        verify(homeSurpriseRevealService).getCards(USER_ID)
+    }
+
+    @Test
+    fun `인증 없이 서프라이즈 공개 카드를 조회하면 401을 반환한다`() {
+        mockMvc.perform(get("/api/home/surprise-reveals"))
+            .andExpect(status().isUnauthorized)
+
+        verifyNoInteractions(homeSurpriseRevealService)
     }
 
     companion object {

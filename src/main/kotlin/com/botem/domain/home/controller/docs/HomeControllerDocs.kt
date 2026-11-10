@@ -4,6 +4,7 @@ import com.botem.domain.home.dto.response.GiftVerificationBannerResponse
 import com.botem.domain.home.dto.response.GiftVerificationTargetListResponse
 import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeNoFundingResponse
+import com.botem.domain.home.dto.response.SurpriseRevealCardListResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -122,6 +123,33 @@ interface HomeControllerDocs {
     fun getGiftVerificationTargets(
         @Parameter(hidden = true) userId: Long,
     ): ApiResponse<GiftVerificationTargetListResponse>
+
+    @Operation(
+        summary = "서프라이즈 공개 카드 조회",
+        description = """
+            로그인한 사용자가 수령자인 서프라이즈 중 공개 시각이 지난 카드를 조회합니다.
+            공개 전 서프라이즈와 완료되거나 취소된 펀딩은 반환하지 않습니다.
+            공개 카드는 공개 시각이 오래된 순으로 반환하며 홈에서 다른 카드보다 먼저 표시합니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "공개 카드 있음", value = SURPRISE_REVEAL_CARDS_EXAMPLE),
+                        ExampleObject(name = "공개 카드 없음", value = EMPTY_SURPRISE_REVEAL_CARDS_EXAMPLE),
+                    ],
+                ),
+            ],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+    )
+    fun getSurpriseRevealCards(
+        @Parameter(hidden = true) userId: Long,
+    ): ApiResponse<SurpriseRevealCardListResponse>
 
     companion object {
         private const val SUCCESS_EXAMPLE = """
@@ -248,6 +276,33 @@ interface HomeControllerDocs {
                     "replacementProductName": null
                   }
                 ]
+              },
+              "error": null
+            }
+        """
+        private const val SURPRISE_REVEAL_CARDS_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "cards": [
+                  {
+                    "fundingId": 24,
+                    "productImageUrl": "https://image.example.com/surprise.jpg",
+                    "productName": "무선 헤드폰",
+                    "organizerName": "민지",
+                    "participantCount": 6,
+                    "revealAt": "2026-11-10T00:00:00"
+                  }
+                ]
+              },
+              "error": null
+            }
+        """
+        private const val EMPTY_SURPRISE_REVEAL_CARDS_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "cards": []
               },
               "error": null
             }
