@@ -35,3 +35,8 @@ payout-account:
 
 auth-cookie:
   domain: ${AUTH_COOKIE_DOMAIN}
+
+sentry:
+  dsn: ${SENTRY_DSN}
+  environment: ${SENTRY_ENVIRONMENT}
+  traces-sample-rate: 1.0
