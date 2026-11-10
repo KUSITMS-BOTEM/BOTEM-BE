@@ -279,7 +279,7 @@ class HomeDomainPersistenceTest {
         val targets = giftVerificationRepository.findTargetsByRecipientAndStatus(
             recipient.id,
             GiftVerificationStatus.PENDING,
-            setOf(ContributionStatus.CANCELLED),
+            ContributionStatus.CANCELLED,
         )
 
         assertEquals(2L, pendingCount)

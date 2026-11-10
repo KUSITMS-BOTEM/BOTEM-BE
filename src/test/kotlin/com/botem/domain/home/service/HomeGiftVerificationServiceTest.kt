@@ -63,7 +63,7 @@ class HomeGiftVerificationServiceTest {
             giftVerificationRepository.findTargetsByRecipientAndStatus(
                 USER_ID,
                 GiftVerificationStatus.PENDING,
-                setOf(ContributionStatus.CANCELLED),
+                ContributionStatus.CANCELLED,
             ),
         ).willReturn(listOf(target))
 
@@ -77,7 +77,7 @@ class HomeGiftVerificationServiceTest {
         verify(giftVerificationRepository).findTargetsByRecipientAndStatus(
             USER_ID,
             GiftVerificationStatus.PENDING,
-            setOf(ContributionStatus.CANCELLED),
+            ContributionStatus.CANCELLED,
         )
     }
 

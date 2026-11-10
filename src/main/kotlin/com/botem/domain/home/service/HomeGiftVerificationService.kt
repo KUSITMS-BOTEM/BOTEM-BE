@@ -29,16 +29,12 @@ class HomeGiftVerificationService(
         val targets = giftVerificationRepository.findTargetsByRecipientAndStatus(
             userId = userId,
             status = GiftVerificationStatus.PENDING,
-            excludedContributionStatuses = EXCLUDED_CONTRIBUTION_STATUSES,
+            excludedContributionStatus = ContributionStatus.CANCELLED,
         ).map(GiftVerificationTargetResponse::from)
 
         return GiftVerificationTargetListResponse(
             pendingCount = targets.size,
             targets = targets,
         )
-    }
-
-    companion object {
-        private val EXCLUDED_CONTRIBUTION_STATUSES = setOf(ContributionStatus.CANCELLED)
     }
 }

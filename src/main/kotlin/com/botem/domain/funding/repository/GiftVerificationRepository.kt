@@ -45,7 +45,7 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
         JOIN Funding funding ON funding.id = verification.fundingId
         LEFT JOIN Contribution contribution
           ON contribution.fundingId = funding.id
-          AND contribution.status NOT IN :excludedContributionStatuses
+          AND contribution.status <> :excludedContributionStatus
         WHERE verification.status = :status
           AND (
             (funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY AND funding.ownerId = :userId)
@@ -65,6 +65,6 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
     fun findTargetsByRecipientAndStatus(
         @Param("userId") userId: Long,
         @Param("status") status: GiftVerificationStatus,
-        @Param("excludedContributionStatuses") excludedContributionStatuses: Collection<ContributionStatus>,
+        @Param("excludedContributionStatus") excludedContributionStatus: ContributionStatus,
     ): List<PendingGiftVerificationTarget>
 }
