@@ -10,7 +10,19 @@ data class KakaoUserInfoResponse(
 ) {
     data class KakaoAccount(
         val profile: Profile?,
-    )
+
+        val email: String? = null,
+
+        @JsonProperty("is_email_valid")
+        val isEmailValid: Boolean? = null,
+
+        @JsonProperty("is_email_verified")
+        val isEmailVerified: Boolean? = null,
+    ) {
+        // 만료되었거나 인증되지 않은 이메일은 본인 이메일이라고 볼 수 없어 저장하지 않음
+        fun verifiedEmail(): String? =
+            email?.takeIf { isEmailValid == true && isEmailVerified == true }
+    }
 
     data class Profile(
         val nickname: String?,

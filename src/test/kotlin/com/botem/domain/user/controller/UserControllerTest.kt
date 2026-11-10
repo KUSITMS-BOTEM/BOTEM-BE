@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 import java.time.MonthDay
 
 @WebMvcTest(
@@ -106,6 +107,8 @@ class UserControllerTest {
                 birthday = MonthDay.of(10, 13),
                 wishProfileUrl = "https://botem.site/@key",
                 kakaoConnected = true,
+                email = "jiyu@kakao.com",
+                joinedAt = LocalDate.of(2026, 11, 10),
             ),
         )
 
@@ -118,6 +121,8 @@ class UserControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.birthday").value("10-13"))
+            .andExpect(jsonPath("$.data.email").value("jiyu@kakao.com"))
+            .andExpect(jsonPath("$.data.joinedAt").value("2026-11-10"))
     }
 
     @Test
