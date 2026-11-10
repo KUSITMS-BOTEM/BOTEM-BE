@@ -5,9 +5,11 @@ import com.botem.domain.home.dto.response.GiftVerificationBannerResponse
 import com.botem.domain.home.dto.response.GiftVerificationTargetListResponse
 import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeNoFundingResponse
+import com.botem.domain.home.dto.response.SurpriseRevealCardListResponse
 import com.botem.domain.home.service.HomeGiftVerificationService
 import com.botem.domain.home.service.HomeFundingService
 import com.botem.domain.home.service.HomeNoFundingService
+import com.botem.domain.home.service.HomeSurpriseRevealService
 import com.botem.global.response.ApiResponse
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -21,6 +23,7 @@ class HomeController(
     private val homeFundingService: HomeFundingService,
     private val homeNoFundingService: HomeNoFundingService,
     private val homeGiftVerificationService: HomeGiftVerificationService,
+    private val homeSurpriseRevealService: HomeSurpriseRevealService,
 ) : HomeControllerDocs {
 
     @GetMapping("/fundings")
@@ -48,4 +51,10 @@ class HomeController(
         @AuthenticationPrincipal userId: Long,
     ): ApiResponse<GiftVerificationTargetListResponse> =
         ApiResponse.success(homeGiftVerificationService.getTargets(userId))
+
+    @GetMapping("/surprise-reveals")
+    override fun getSurpriseRevealCards(
+        @AuthenticationPrincipal userId: Long,
+    ): ApiResponse<SurpriseRevealCardListResponse> =
+        ApiResponse.success(homeSurpriseRevealService.getCards(userId))
 }
