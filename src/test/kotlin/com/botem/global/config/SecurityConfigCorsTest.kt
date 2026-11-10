@@ -65,6 +65,16 @@ class SecurityConfigCorsTest {
             .andExpect(header().doesNotExist("Access-Control-Allow-Origin"))
     }
 
+    @Test
+    fun `Sentry 추적 헤더를 포함한 Preflight 요청을 허용한다`() {
+        mockMvc.perform(
+            preflight("https://botem.site")
+                .header("Access-Control-Request-Headers", "content-type,sentry-trace,baggage"),
+        )
+            .andExpect(status().isOk)
+            .andExpect(header().string("Access-Control-Allow-Headers", "content-type, sentry-trace, baggage"))
+    }
+
     private fun preflight(origin: String) =
         options("/api/auth/kakao/login")
             .header("Origin", origin)
