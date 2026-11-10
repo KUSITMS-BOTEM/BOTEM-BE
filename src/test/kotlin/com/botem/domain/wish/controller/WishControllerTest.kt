@@ -103,6 +103,7 @@ class WishControllerTest {
             productImageUrl = "https://example.com/airpods.jpg",
             price = 350_000L,
             productUrl = "https://link.coupang.com/a/example",
+            sellerName = "Apple 공식 브랜드관",
             status = status,
             fundingId = fundingId,
         )

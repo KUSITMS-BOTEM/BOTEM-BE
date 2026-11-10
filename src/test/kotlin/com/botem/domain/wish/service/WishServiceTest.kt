@@ -56,6 +56,7 @@ class WishServiceTest {
         assertEquals(product.name, wish.productName)
         assertEquals(product.price, wish.price)
         assertEquals(product.productUrl, wish.productUrl)
+        assertEquals(product.sellerName, wish.sellerName)
         assertEquals(product.id, wish.recommendedProductId)
     }
 

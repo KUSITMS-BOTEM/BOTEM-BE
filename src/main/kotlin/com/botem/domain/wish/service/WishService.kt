@@ -38,6 +38,7 @@ class WishService(
             productImageUrl = product.imageUrl,
             price = product.price,
             productUrl = product.productUrl,
+            sellerName = product.sellerName,
             recommendedProductId = product.id,
         )
 

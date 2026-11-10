@@ -9,6 +9,7 @@ data class WishResponse(
     val productImageUrl: String,
     val price: Long,
     val productUrl: String,
+    val sellerName: String?,
     val status: WishStatus,
     // 끝나지 않은 펀딩에 연결된 위시면 그 펀딩 ID. 상세의 "펀딩 보기" 이동에 사용
     val fundingId: Long?,
@@ -25,6 +26,7 @@ data class WishResponse(
                 productImageUrl = wish.productImageUrl,
                 price = wish.price,
                 productUrl = wish.productUrl,
+                sellerName = wish.sellerName,
                 status = status,
                 fundingId = fundingId,
             )

@@ -35,6 +35,10 @@ class Wish(
 
     productUrl: String,
 
+    // 추천 상품이 아닌 기존 위시는 판매처를 알 수 없어 null
+    @Column(length = 100, updatable = false)
+    val sellerName: String? = null,
+
     // 추천 상품에서 담은 위시면 원본 상품을 가리켜, 운영자가 판매 종료하면 위시에도 반영
     @Column(updatable = false)
     val recommendedProductId: Long? = null,
