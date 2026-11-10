@@ -38,7 +38,10 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
             funding.product.name,
             funding.product.imageUrl,
             funding.deadline,
-            COUNT(contribution.id),
+            COUNT(DISTINCT contribution.participantUserId)
+                + COALESCE(SUM(CASE
+                    WHEN contribution.id IS NOT NULL AND contribution.participantUserId IS NULL
+                    THEN 1 ELSE 0 END), 0),
             verification.replacementProductName
         )
         FROM GiftVerification verification

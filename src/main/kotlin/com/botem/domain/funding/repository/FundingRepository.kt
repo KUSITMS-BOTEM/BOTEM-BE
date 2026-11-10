@@ -34,7 +34,10 @@ interface FundingRepository : JpaRepository<Funding, Long> {
             funding.product.imageUrl,
             funding.product.name,
             COALESCE(owner.name, owner.nickname),
-            COUNT(contribution.id),
+            COUNT(DISTINCT contribution.participantUserId)
+                + COALESCE(SUM(CASE
+                    WHEN contribution.id IS NOT NULL AND contribution.participantUserId IS NULL
+                    THEN 1 ELSE 0 END), 0),
             funding.revealAt
         )
         FROM Funding funding

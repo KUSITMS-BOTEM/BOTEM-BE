@@ -194,6 +194,7 @@ class HomeDomainPersistenceTest {
     fun `사용자가 인증할 선물을 오래된 마감 순으로 조회하고 취소 참여와 완료 인증을 제외한다`() {
         val recipient = saveUser()
         val organizer = saveUser()
+        val participant = saveUser()
         val recipientAccount = savePayoutAccount(recipient.id)
         val organizerAccount = savePayoutAccount(organizer.id)
         val recipientWish = wishRepository.saveAndFlush(wish(recipient.id, "생일 선물"))
@@ -256,10 +257,17 @@ class HomeDomainPersistenceTest {
             fundingId = birthdayFunding.id,
             amount = 30_000L,
             status = ContributionStatus.AWAITING_TRANSFER,
+            participantUserId = participant.id,
         ).apply {
             markTransferSent()
             confirm(LocalDateTime.of(2026, 10, 1, 12, 0))
         }
+        val duplicatedParticipant = contribution(
+            fundingId = birthdayFunding.id,
+            amount = 5_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            participantUserId = participant.id,
+        )
         val messageOnly = contribution(
             fundingId = birthdayFunding.id,
             amount = 0L,
@@ -270,7 +278,7 @@ class HomeDomainPersistenceTest {
             amount = 10_000L,
             status = ContributionStatus.CANCELLED,
         )
-        contributionRepository.saveAllAndFlush(listOf(confirmed, messageOnly, cancelled))
+        contributionRepository.saveAllAndFlush(listOf(confirmed, duplicatedParticipant, messageOnly, cancelled))
         entityManager.clear()
 
         val pendingCount = giftVerificationRepository.countByRecipientAndStatus(
@@ -367,7 +375,18 @@ class HomeDomainPersistenceTest {
         )
         contributionRepository.saveAllAndFlush(
             listOf(
-                contribution(oldRevealed.id, 10_000L, ContributionStatus.AWAITING_TRANSFER),
+                contribution(
+                    oldRevealed.id,
+                    10_000L,
+                    ContributionStatus.AWAITING_TRANSFER,
+                    participantUserId = namedOrganizer.id,
+                ),
+                contribution(
+                    oldRevealed.id,
+                    5_000L,
+                    ContributionStatus.PENDING_CONFIRMATION,
+                    participantUserId = namedOrganizer.id,
+                ),
                 contribution(oldRevealed.id, 0L, ContributionStatus.MESSAGE_ONLY),
                 contribution(oldRevealed.id, 5_000L, ContributionStatus.CANCELLED),
             ),
@@ -439,14 +458,15 @@ class HomeDomainPersistenceTest {
         fundingId: Long,
         amount: Long,
         status: ContributionStatus,
+        participantUserId: Long? = null,
     ): Contribution =
         Contribution(
             fundingId = fundingId,
-            participantUserId = null,
+            participantUserId = participantUserId,
             participantName = "친구",
             amount = amount,
             status = status,
-            guestPasswordHash = "hashed-password-$amount",
+            guestPasswordHash = if (participantUserId == null) "hashed-password-$amount" else null,
         )
 
     private fun wish(userId: Long, productName: String): Wish =
