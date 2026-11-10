@@ -190,6 +190,109 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
+    fun `사용자가 인증할 선물을 오래된 마감 순으로 조회하고 취소 참여와 완료 인증을 제외한다`() {
+        val recipient = saveUser()
+        val organizer = saveUser()
+        val recipientAccount = savePayoutAccount(recipient.id)
+        val organizerAccount = savePayoutAccount(organizer.id)
+        val recipientWish = wishRepository.saveAndFlush(wish(recipient.id, "생일 선물"))
+        val organizerWish = wishRepository.saveAndFlush(wish(organizer.id, "서프라이즈 선물"))
+        val birthdayFunding = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = recipient.id,
+                recipientId = null,
+                type = FundingType.BIRTHDAY,
+                deadline = LocalDateTime.of(2026, 10, 1, 23, 59),
+                account = recipientAccount,
+                wish = recipientWish,
+            ),
+        )
+        val surpriseFunding = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = organizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 10, 2, 23, 59),
+                account = organizerAccount,
+                wish = organizerWish,
+            ),
+        )
+        val completedFunding = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = recipient.id,
+                recipientId = null,
+                type = FundingType.BIRTHDAY,
+                deadline = LocalDateTime.of(2026, 9, 30, 23, 59),
+                account = recipientAccount,
+                wish = recipientWish,
+            ),
+        )
+        val unrelatedFunding = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = organizer.id,
+                recipientId = null,
+                type = FundingType.BIRTHDAY,
+                deadline = LocalDateTime.of(2026, 9, 29, 23, 59),
+                account = organizerAccount,
+                wish = organizerWish,
+            ),
+        )
+        val birthdayVerification = giftVerificationRepository.saveAndFlush(
+            GiftVerification(birthdayFunding.id, replacementProductName = "스피커"),
+        )
+        val surpriseVerification = giftVerificationRepository.saveAndFlush(GiftVerification(surpriseFunding.id))
+        val completedVerification = giftVerificationRepository.saveAndFlush(GiftVerification(completedFunding.id))
+        giftVerificationRepository.saveAndFlush(GiftVerification(unrelatedFunding.id))
+        completedVerification.complete(
+            imageUrl = "https://image.example.com/completed.jpg",
+            thankYouMessage = null,
+            purchasedThroughBotemLink = true,
+            completedAt = LocalDateTime.of(2026, 11, 1, 12, 0),
+        )
+        giftVerificationRepository.flush()
+
+        val confirmed = contribution(
+            fundingId = birthdayFunding.id,
+            amount = 30_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+        ).apply {
+            markTransferSent()
+            confirm(LocalDateTime.of(2026, 10, 1, 12, 0))
+        }
+        val messageOnly = contribution(
+            fundingId = birthdayFunding.id,
+            amount = 0L,
+            status = ContributionStatus.MESSAGE_ONLY,
+        )
+        val cancelled = contribution(
+            fundingId = birthdayFunding.id,
+            amount = 10_000L,
+            status = ContributionStatus.CANCELLED,
+        )
+        contributionRepository.saveAllAndFlush(listOf(confirmed, messageOnly, cancelled))
+        entityManager.clear()
+
+        val pendingCount = giftVerificationRepository.countByRecipientAndStatus(
+            recipient.id,
+            GiftVerificationStatus.PENDING,
+        )
+        val targets = giftVerificationRepository.findTargetsByRecipientAndStatus(
+            recipient.id,
+            GiftVerificationStatus.PENDING,
+            ContributionStatus.CANCELLED,
+        )
+
+        assertEquals(2L, pendingCount)
+        assertEquals(
+            listOf(birthdayVerification.id, surpriseVerification.id),
+            targets.map { it.giftVerificationId },
+        )
+        assertEquals(2L, targets[0].participantCount)
+        assertEquals("스피커", targets[0].replacementProductName)
+        assertEquals(0L, targets[1].participantCount)
+    }
+
+    @Test
     fun `보탬 링크 구매를 확인하지 않으면 선물 인증을 완료할 수 없다`() {
         val verification = GiftVerification(fundingId = 1L)
 
@@ -269,6 +372,39 @@ class HomeDomainPersistenceTest {
             deadline = LocalDateTime.of(2026, 12, 1, 23, 59),
             revealAt = null,
             story = "갖고 싶었던 선물이에요.",
+            promise = null,
+            product = FundingProductSnapshot(
+                sourceWishId = wish.id,
+                name = wish.productName,
+                imageUrl = wish.productImageUrl,
+                price = wish.price,
+                url = wish.productUrl,
+            ),
+            payoutAccount = FundingPayoutAccountSnapshot(
+                sourcePayoutAccountId = account.id,
+                bank = account.bank,
+                encryptedAccountNumber = account.encryptedAccountNumber,
+                accountHolder = account.accountHolder,
+            ),
+        )
+
+    private fun fundingForVerification(
+        ownerId: Long,
+        recipientId: Long?,
+        type: FundingType,
+        deadline: LocalDateTime,
+        account: PayoutAccount,
+        wish: Wish,
+    ): Funding =
+        Funding(
+            ownerId = ownerId,
+            recipientId = recipientId,
+            type = type,
+            title = "선물 펀딩",
+            targetAmount = 50_000L,
+            deadline = deadline,
+            revealAt = if (type == FundingType.SURPRISE) deadline.plusDays(1) else null,
+            story = null,
             promise = null,
             product = FundingProductSnapshot(
                 sourceWishId = wish.id,
