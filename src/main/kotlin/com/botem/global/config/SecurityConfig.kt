@@ -4,6 +4,8 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtAuthenticationFilter
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.AdminProperties
+import com.botem.global.security.AdminApiKeyFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -19,6 +21,7 @@ class SecurityConfig(
     private val jwtProvider: JwtProvider,
     private val jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint,
     private val userRepository: UserRepository,
+    private val adminProperties: AdminProperties,
 ) {
 
     @Bean
@@ -32,6 +35,7 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
+                it.requestMatchers(AdminApiKeyFilter.ADMIN_URI_PATTERN).hasRole("ADMIN")
                 it.anyRequest().authenticated()
             }
             .exceptionHandling { it.authenticationEntryPoint(jwtAuthenticationEntryPoint) }
@@ -39,6 +43,7 @@ class SecurityConfig(
                 JwtAuthenticationFilter(jwtProvider, userRepository),
                 UsernamePasswordAuthenticationFilter::class.java,
             )
+            .addFilterAfter(AdminApiKeyFilter(adminProperties.apiKey), JwtAuthenticationFilter::class.java)
 
         return http.build()
     }

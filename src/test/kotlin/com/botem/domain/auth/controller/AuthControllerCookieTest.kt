@@ -7,6 +7,7 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.SecurityConfig
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.AdminProperties
 import com.botem.global.property.AuthCookieProperties
 import com.botem.global.property.JwtProperties
 import jakarta.servlet.http.Cookie
@@ -41,7 +42,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
     ],
 )
 @Import(SecurityConfig::class, AuthCookieFactory::class)
-@EnableConfigurationProperties(JwtProperties::class, AuthCookieProperties::class)
+@EnableConfigurationProperties(JwtProperties::class, AuthCookieProperties::class, AdminProperties::class)
 class AuthControllerCookieTest {
 
     @Autowired

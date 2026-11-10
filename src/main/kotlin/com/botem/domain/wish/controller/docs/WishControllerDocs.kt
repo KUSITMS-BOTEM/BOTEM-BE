@@ -149,6 +149,7 @@ interface WishControllerDocs {
                     "productImageUrl": "https://example.com/sony.jpg",
                     "price": 429000,
                     "productUrl": "https://link.coupang.com/a/sony",
+                    "sellerName": "쿠팡 Apple 공식 브랜드관",
                     "status": "FUNDING",
                     "fundingId": 7
                   },
@@ -158,6 +159,7 @@ interface WishControllerDocs {
                     "productImageUrl": "https://example.com/airpods.jpg",
                     "price": 350000,
                     "productUrl": "https://link.coupang.com/a/example",
+                    "sellerName": "쿠팡 Apple 공식 브랜드관",
                     "status": "DISCONTINUED",
                     "fundingId": null
                   }
@@ -203,6 +205,7 @@ interface WishControllerDocs {
                 "productImageUrl": "https://example.com/airpods.jpg",
                 "price": 350000,
                 "productUrl": "https://link.coupang.com/a/example",
+                "sellerName": "쿠팡 Apple 공식 브랜드관",
                 "status": "AVAILABLE",
                 "fundingId": null
               },

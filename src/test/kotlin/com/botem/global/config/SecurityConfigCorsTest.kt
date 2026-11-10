@@ -6,6 +6,7 @@ import com.botem.domain.auth.service.AuthService
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.AdminProperties
 import com.botem.global.property.JwtProperties
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,7 +28,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
     ],
 )
 @Import(SecurityConfig::class)
-@EnableConfigurationProperties(JwtProperties::class)
+@EnableConfigurationProperties(JwtProperties::class, AdminProperties::class)
 class SecurityConfigCorsTest {
 
     @Autowired
