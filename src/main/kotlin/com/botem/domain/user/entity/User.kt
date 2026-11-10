@@ -28,6 +28,8 @@ class User(
 
     name: String? = null,
 
+    email: String? = null,
+
     wishProfileKey: String? = generateWishProfileKey(),
 
     kakaoConnected: Boolean = true,
@@ -59,6 +61,9 @@ class User(
 
     @Column(length = 50)
     var name: String? = name
+        protected set
+
+    var email: String? = email
         protected set
 
     // 이전 버전이 사용하던 연도 포함 생일 컬럼. 탈퇴 시 개인정보를 지우기 위해서만 매핑하며, 컬럼 삭제 시 함께 제거한다.
@@ -97,6 +102,10 @@ class User(
         this.birthday = birthday
     }
 
+    fun updateEmail(email: String) {
+        this.email = email
+    }
+
     fun disconnectKakao() {
         kakaoConnected = false
     }
@@ -107,6 +116,7 @@ class User(
         profileImageUrl = null
         birthday = null
         name = null
+        email = null
         legacyBirthday = null
         wishProfileKey = null
         kakaoConnected = false
