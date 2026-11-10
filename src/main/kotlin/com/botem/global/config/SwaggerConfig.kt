@@ -1,6 +1,7 @@
 package com.botem.global.config
 
 import com.botem.global.property.SwaggerProperties
+import com.botem.global.security.AdminApiKeyFilter
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
@@ -36,6 +37,13 @@ class SwaggerConfig(
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
                         .bearerFormat("JWT"),
+                )
+                .addSecuritySchemes(
+                    ADMIN_API_KEY_AUTH,
+                    SecurityScheme()
+                        .type(SecurityScheme.Type.APIKEY)
+                        .`in`(SecurityScheme.In.HEADER)
+                        .name(AdminApiKeyFilter.ADMIN_API_KEY_HEADER),
                 ),
         )
         .addSecurityItem(SecurityRequirement().addList(BEARER_AUTH))
@@ -71,6 +79,7 @@ class SwaggerConfig(
 
     companion object {
         private const val BEARER_AUTH = "bearerAuth"
+        const val ADMIN_API_KEY_AUTH = "adminApiKey"
 
         private val SWAGGER_URIS = arrayOf(
             "/swagger-ui.html",
