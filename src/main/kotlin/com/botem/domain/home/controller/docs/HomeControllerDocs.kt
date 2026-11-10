@@ -1,5 +1,7 @@
 package com.botem.domain.home.controller.docs
 
+import com.botem.domain.home.dto.response.GiftVerificationBannerResponse
+import com.botem.domain.home.dto.response.GiftVerificationTargetListResponse
 import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeNoFundingResponse
 import com.botem.global.response.ApiResponse
@@ -73,6 +75,53 @@ interface HomeControllerDocs {
         @Parameter(description = "위시 페이지 번호(0부터 시작)", example = "0") page: Int,
         @Parameter(description = "페이지 크기(1~20)", example = "10") size: Int,
     ): ApiResponse<HomeNoFundingResponse>
+
+    @Operation(
+        summary = "선물 인증 대기 배너 조회",
+        description = """
+            로그인한 사용자가 인증해야 하는 선물의 개수와 홈 배너 노출 여부를 조회합니다.
+            인증 대기 건수가 0이면 visible은 false입니다.
+            홈의 펀딩 존재 여부와 관계없이 조회할 수 있습니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "배너 노출", value = GIFT_VERIFICATION_BANNER_VISIBLE_EXAMPLE),
+                        ExampleObject(name = "배너 숨김", value = GIFT_VERIFICATION_BANNER_HIDDEN_EXAMPLE),
+                    ],
+                ),
+            ],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+    )
+    fun getGiftVerificationBanner(
+        @Parameter(hidden = true) userId: Long,
+    ): ApiResponse<GiftVerificationBannerResponse>
+
+    @Operation(
+        summary = "선물 인증 대상 목록 조회",
+        description = """
+            로그인한 사용자가 인증해야 하는 선물 목록을 오래된 펀딩 마감 순으로 조회합니다.
+            완료된 인증과 취소된 참여는 제외하며, 30일이 지나도 인증 대상을 자동으로 제외하지 않습니다.
+            현재 메시지만 남긴 참여는 참여 인원에 포함합니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [Content(examples = [ExampleObject(value = GIFT_VERIFICATION_TARGETS_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+    )
+    fun getGiftVerificationTargets(
+        @Parameter(hidden = true) userId: Long,
+    ): ApiResponse<GiftVerificationTargetListResponse>
 
     companion object {
         private const val SUCCESS_EXAMPLE = """
@@ -161,6 +210,46 @@ interface HomeControllerDocs {
                 "code": "HOME_001",
                 "message": "홈에 표시할 펀딩이 존재합니다."
               }
+            }
+        """
+        private const val GIFT_VERIFICATION_BANNER_VISIBLE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "visible": true,
+                "pendingCount": 2
+              },
+              "error": null
+            }
+        """
+        private const val GIFT_VERIFICATION_BANNER_HIDDEN_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "visible": false,
+                "pendingCount": 0
+              },
+              "error": null
+            }
+        """
+        private const val GIFT_VERIFICATION_TARGETS_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "pendingCount": 1,
+                "targets": [
+                  {
+                    "giftVerificationId": 7,
+                    "fundingId": 12,
+                    "productName": "다이슨 에어랩",
+                    "productImageUrl": "https://image.example.com/product.jpg",
+                    "fundingDeadline": "2026-11-01T23:59:59",
+                    "participantCount": 6,
+                    "replacementProductName": null
+                  }
+                ]
+              },
+              "error": null
             }
         """
     }
