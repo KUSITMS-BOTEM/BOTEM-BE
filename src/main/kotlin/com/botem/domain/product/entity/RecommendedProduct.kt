@@ -11,7 +11,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 
-// 운영자가 고른 추천 상품. 등록·수정 방식이 정해지기 전까지 DB에서 직접 관리
+// 운영자가 고른 추천 상품. 운영자 API로 등록하고, 수정 방식이 정해지기 전까지 수정은 DB에서 직접 관리
 @Entity
 @Table(
     name = "recommended_products",

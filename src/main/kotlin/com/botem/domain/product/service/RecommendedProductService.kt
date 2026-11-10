@@ -1,5 +1,6 @@
 package com.botem.domain.product.service
 
+import com.botem.domain.product.dto.request.CreateRecommendedProductRequest
 import com.botem.domain.product.dto.response.RecommendedProductResponse
 import com.botem.domain.product.entity.ProductCategory
 import com.botem.domain.product.entity.RecommendedProduct
@@ -29,6 +30,21 @@ class RecommendedProductService(
         }
 
         return products.map(RecommendedProductResponse::from)
+    }
+
+    @Transactional
+    fun createRecommendedProduct(request: CreateRecommendedProductRequest): RecommendedProductResponse {
+        val product = RecommendedProduct(
+            name = request.name,
+            imageUrl = request.imageUrl,
+            price = request.price,
+            sellerName = request.sellerName,
+            productUrl = request.productUrl,
+            category = request.category,
+            displayOrder = request.displayOrder,
+        )
+
+        return RecommendedProductResponse.from(recommendedProductRepository.save(product))
     }
 
     @Transactional(readOnly = true)
