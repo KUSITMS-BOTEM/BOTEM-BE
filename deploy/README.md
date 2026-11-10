@@ -65,7 +65,7 @@ sudo certbot --nginx -d api.botem.site -m <이메일> --agree-tos --redirect -n
 |---|---|
 | AWS | `AWS_ROLE_ARN`, `AWS_REGION`, `ECR_REPOSITORY`, `EC2_SECURITY_GROUP_ID` |
 | SSH | `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `EC2_KNOWN_HOSTS` (`ssh-keyscan <host>` 결과를 확인 후 등록) |
-| 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `JWT_SECRET`, `PAYOUT_ACCOUNT_ENCRYPTION_KEY`, `AUTH_COOKIE_DOMAIN` (`.botem.site`) |
+| 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `JWT_SECRET`, `PAYOUT_ACCOUNT_ENCRYPTION_KEY`, `AUTH_COOKIE_DOMAIN` (`.botem.site`), `SENTRY_DSN` (Sentry `botem-be` 프로젝트 DSN) |
 
 `PAYOUT_ACCOUNT_ENCRYPTION_KEY`는 16, 24 또는 32바이트 난수를 Base64로 인코딩해 등록합니다. 운영 중 키를 잃거나 임의로 교체하면 저장된 계좌번호를 복호화할 수 없습니다.
 
