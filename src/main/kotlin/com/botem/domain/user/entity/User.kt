@@ -97,9 +97,11 @@ class User(
     fun updateOnboardingProfile(
         name: String,
         birthday: MonthDay?,
+        profileImageUrl: String?,
     ) {
         this.name = name
         this.birthday = birthday
+        profileImageUrl?.let { this.profileImageUrl = it }
     }
 
     fun updateEmail(email: String?) {

@@ -110,7 +110,7 @@ class UserServiceTest {
         val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null)
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
-        userService.updateOnboardingProfile(1L, " 이정민 ", MonthDay.of(10, 13))
+        userService.updateOnboardingProfile(1L, " 이정민 ", MonthDay.of(10, 13), null)
 
         assertEquals("이정민", user.name)
         assertEquals(MonthDay.of(10, 13), user.birthday)
@@ -122,7 +122,7 @@ class UserServiceTest {
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val exception = assertFailsWith<BusinessException> {
-            userService.updateOnboardingProfile(1L, "\u3000 ", null)
+            userService.updateOnboardingProfile(1L, "\u3000 ", null, null)
         }
 
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
