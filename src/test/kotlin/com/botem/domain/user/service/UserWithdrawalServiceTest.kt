@@ -13,6 +13,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.context.ApplicationEventPublisher
 import java.time.LocalDateTime
 import java.time.MonthDay
 import kotlin.test.assertEquals
@@ -27,6 +28,7 @@ class UserWithdrawalServiceTest {
     private val refreshTokenRepository = mock(RefreshTokenRepository::class.java)
     private val payoutAccountRepository = mock(PayoutAccountRepository::class.java)
     private val activeFundingChecker = mock(ActiveFundingChecker::class.java)
+    private val eventPublisher = mock(ApplicationEventPublisher::class.java)
 
     @Suppress("UNCHECKED_CAST")
     private val activeFundingCheckerProvider =
@@ -37,6 +39,7 @@ class UserWithdrawalServiceTest {
         refreshTokenRepository = refreshTokenRepository,
         payoutAccountRepository = payoutAccountRepository,
         activeFundingCheckerProvider = activeFundingCheckerProvider,
+        eventPublisher = eventPublisher,
     )
 
     @Test
@@ -50,6 +53,7 @@ class UserWithdrawalServiceTest {
 
         verify(refreshTokenRepository).deleteByUserId(USER_ID)
         verify(payoutAccountRepository).deleteAllByUserId(USER_ID)
+        verify(eventPublisher).publishEvent(UserWithdrawnEvent(USER_ID))
         assertEquals(UserStatus.WITHDRAWN, user.status)
         assertEquals(-USER_ID, user.kakaoId)
         assertEquals("탈퇴한 사용자", user.nickname)

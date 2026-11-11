@@ -78,13 +78,14 @@ interface UserControllerDocs {
         description = """
             프로필 이미지를 S3에 직접 업로드할 수 있는 URL을 발급합니다.
             contentType은 `image/jpeg`, `image/png`, `image/webp` 중 하나입니다.
-            1. 응답의 uploadUrl로 이미지 파일을 PUT 요청합니다. 요청의 Content-Type 헤더는 발급 시 전달한 contentType과 같아야 합니다.
+            contentLength는 업로드할 파일의 바이트 크기이며 5MB(5,242,880바이트) 이하여야 합니다.
+            1. 응답의 uploadUrl로 이미지 파일을 PUT 요청합니다. Content-Type 헤더와 파일 크기는 발급 시 전달한 값과 같아야 하며, 다르면 S3가 업로드를 거부합니다.
             2. 업로드가 성공하면 응답의 imageUrl을 온보딩 정보 등록 요청의 profileImageUrl로 전달합니다.
             uploadUrl은 5분 동안 유효합니다.
         """,
     )
     @RequestBody(
-        content = [Content(examples = [ExampleObject(value = """{ "contentType": "image/jpeg" }""")])],
+        content = [Content(examples = [ExampleObject(value = """{ "contentType": "image/jpeg", "contentLength": 1048576 }""")])],
     )
     @ApiResponses(
         SwaggerApiResponse(
@@ -94,7 +95,7 @@ interface UserControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "400",
-            description = "지원하지 않는 contentType",
+            description = "지원하지 않는 contentType 또는 허용 크기 초과",
             content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
         ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
@@ -173,7 +174,7 @@ interface UserControllerDocs {
         description = """
             로그인한 사용자를 탈퇴 처리합니다.
             진행 중인 일반 펀딩 또는 서프라이즈 펀딩이 있으면 탈퇴할 수 없습니다.
-            탈퇴하면 Refresh 토큰과 받을 계좌를 삭제하고 개인정보를 익명화합니다.
+            탈퇴하면 Refresh 토큰과 받을 계좌, 업로드한 프로필 이미지를 삭제하고 개인정보를 익명화합니다.
         """,
     )
     @ApiResponses(

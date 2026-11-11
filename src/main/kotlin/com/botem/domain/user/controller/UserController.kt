@@ -52,7 +52,7 @@ class UserController(
         @AuthenticationPrincipal userId: Long,
         @Valid @RequestBody request: CreateProfileImageUploadUrlRequest,
     ): ApiResponse<ProfileImageUploadUrlResponse> =
-        ApiResponse.success(profileImageService.createUploadUrl(userId, request.contentType))
+        ApiResponse.success(profileImageService.createUploadUrl(userId, request.contentType, request.contentLength))
 
     @PostMapping("/onboarding")
     override fun completeOnboarding(
