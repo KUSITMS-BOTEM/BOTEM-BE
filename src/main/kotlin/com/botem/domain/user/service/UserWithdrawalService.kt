@@ -7,6 +7,7 @@ import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -17,6 +18,7 @@ class UserWithdrawalService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val payoutAccountRepository: PayoutAccountRepository,
     private val activeFundingCheckerProvider: ObjectProvider<ActiveFundingChecker>,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -38,5 +40,6 @@ class UserWithdrawalService(
         refreshTokenRepository.deleteByUserId(userId)
         payoutAccountRepository.deleteAllByUserId(userId)
         user.withdraw(LocalDateTime.now())
+        eventPublisher.publishEvent(UserWithdrawnEvent(userId))
     }
 }

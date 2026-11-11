@@ -4,6 +4,7 @@ import com.botem.domain.auth.controller.AuthCookieFactory
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
 import com.botem.domain.user.service.OnboardingService
+import com.botem.domain.user.service.ProfileImageService
 import com.botem.domain.user.service.UserService
 import com.botem.domain.user.service.UserWithdrawalService
 import com.botem.global.property.AuthCookieProperties
@@ -58,6 +59,9 @@ class UserControllerTest {
 
     @MockitoBean
     private lateinit var onboardingService: OnboardingService
+
+    @MockitoBean
+    private lateinit var profileImageService: ProfileImageService
 
     @Test
     fun `회원 탈퇴에 성공하면 Refresh Token 쿠키와 로그인 상태 쿠키를 만료시킨다`() {

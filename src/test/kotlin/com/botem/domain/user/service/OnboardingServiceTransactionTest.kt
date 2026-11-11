@@ -9,8 +9,10 @@ import com.botem.domain.user.dto.request.RegisterOnboardingRequest
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
+import com.botem.global.config.S3Config
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.PayoutAccountEncryptionProperties
+import com.botem.global.property.S3Properties
 import com.botem.global.property.WishProfileProperties
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -32,11 +34,17 @@ import kotlin.test.assertNull
 @Import(
     JpaAuditingConfig::class,
     OnboardingService::class,
+    ProfileImageService::class,
+    S3Config::class,
     UserService::class,
     PayoutAccountService::class,
     AccountNumberCipher::class,
 )
-@EnableConfigurationProperties(WishProfileProperties::class, PayoutAccountEncryptionProperties::class)
+@EnableConfigurationProperties(
+    WishProfileProperties::class,
+    PayoutAccountEncryptionProperties::class,
+    S3Properties::class,
+)
 class OnboardingServiceTransactionTest {
 
     @Autowired

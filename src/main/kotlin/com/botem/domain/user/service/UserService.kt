@@ -51,7 +51,7 @@ class UserService(
     }
 
     @Transactional
-    fun updateOnboardingProfile(userId: Long, name: String, birthday: MonthDay?) {
+    fun updateOnboardingProfile(userId: Long, name: String, birthday: MonthDay?, profileImageUrl: String?) {
         val user = findActiveUserForUpdate(userId)
         val normalizedName = name.trim { it.isWhitespace() || Character.isSpaceChar(it) }
 
@@ -62,7 +62,7 @@ class UserService(
             throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "name: ${MAX_NAME_LENGTH}자 이하여야 합니다")
         }
 
-        user.updateOnboardingProfile(name = normalizedName, birthday = birthday)
+        user.updateOnboardingProfile(name = normalizedName, birthday = birthday, profileImageUrl = profileImageUrl)
     }
 
     private fun toProfileResponse(user: User): MyProfileResponse =

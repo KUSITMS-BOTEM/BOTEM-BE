@@ -12,12 +12,15 @@ import org.springframework.transaction.annotation.Transactional
 class OnboardingService(
     private val userService: UserService,
     private val payoutAccountService: PayoutAccountService,
+    private val profileImageService: ProfileImageService,
 ) {
 
     // 프로필 저장 시 회원 행을 잠가 동시 요청을 직렬화하고, 계좌 등록에 실패하면 프로필 저장도 함께 롤백
     @Transactional
     fun completeOnboarding(userId: Long, request: RegisterOnboardingRequest) {
-        userService.updateOnboardingProfile(userId, request.name, request.birthday)
+        request.profileImageUrl?.let { profileImageService.validateImageUrl(userId, it) }
+
+        userService.updateOnboardingProfile(userId, request.name, request.birthday, request.profileImageUrl)
 
         if (payoutAccountService.hasPayoutAccount(userId)) {
             throw BusinessException(UserErrorCode.ONBOARDING_ALREADY_COMPLETED)

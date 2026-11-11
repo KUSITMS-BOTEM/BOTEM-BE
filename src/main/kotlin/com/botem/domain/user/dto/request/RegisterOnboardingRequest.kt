@@ -21,4 +21,7 @@ data class RegisterOnboardingRequest(
     @field:NotBlank
     @field:Size(max = 30)
     val accountNumber: String,
+
+    // 프로필 이미지 업로드 URL 발급 API가 응답한 imageUrl. 비우면 카카오 프로필 이미지를 유지
+    val profileImageUrl: String? = null,
 )
