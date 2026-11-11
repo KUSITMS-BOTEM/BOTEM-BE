@@ -32,6 +32,7 @@ dependencies {
 	implementation("io.jsonwebtoken:jjwt-api:0.13.0")
 	implementation("io.sentry:sentry-spring-boot-4-starter:8.63.0")
 	implementation("io.sentry:sentry-logback:8.63.0")
+	implementation("software.amazon.awssdk:s3:2.57.0")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	runtimeOnly("com.mysql:mysql-connector-j")
