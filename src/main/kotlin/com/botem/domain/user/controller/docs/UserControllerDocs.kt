@@ -1,8 +1,10 @@
 package com.botem.domain.user.controller.docs
 
+import com.botem.domain.user.dto.request.CreateProfileImageUploadUrlRequest
 import com.botem.domain.user.dto.request.RegisterOnboardingRequest
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
+import com.botem.domain.user.dto.response.ProfileImageUploadUrlResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -72,11 +74,43 @@ interface UserControllerDocs {
     ): ApiResponse<MyProfileResponse>
 
     @Operation(
+        summary = "프로필 이미지 업로드 URL 발급",
+        description = """
+            프로필 이미지를 S3에 직접 업로드할 수 있는 URL을 발급합니다.
+            contentType은 `image/jpeg`, `image/png`, `image/webp` 중 하나입니다.
+            1. 응답의 uploadUrl로 이미지 파일을 PUT 요청합니다. 요청의 Content-Type 헤더는 발급 시 전달한 contentType과 같아야 합니다.
+            2. 업로드가 성공하면 응답의 imageUrl을 온보딩 정보 등록 요청의 profileImageUrl로 전달합니다.
+            uploadUrl은 5분 동안 유효합니다.
+        """,
+    )
+    @RequestBody(
+        content = [Content(examples = [ExampleObject(value = """{ "contentType": "image/jpeg" }""")])],
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "발급 성공",
+            content = [Content(examples = [ExampleObject(value = PROFILE_IMAGE_UPLOAD_URL_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "지원하지 않는 contentType",
+            content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+    )
+    fun createProfileImageUploadUrl(
+        @Parameter(hidden = true) userId: Long,
+        request: CreateProfileImageUploadUrlRequest,
+    ): ApiResponse<ProfileImageUploadUrlResponse>
+
+    @Operation(
         summary = "온보딩 정보 등록",
         description = """
             회원가입 온보딩의 마지막 단계("시작하기")에서 이름, 생일, 받을 계좌를 한 번에 등록합니다.
             생일은 필수이며 연도 없이 `MM-dd` 형식으로 전달합니다.
             계좌번호는 형식만 검증하며, 실제 계좌 존재 여부는 확인하지 않습니다.
+            profileImageUrl은 선택이며, 프로필 이미지 업로드 URL 발급 API가 응답한 imageUrl만 전달할 수 있습니다. 생략하면 카카오 프로필 이미지를 유지합니다.
             모든 정보가 함께 저장되며, 하나라도 실패하면 아무것도 저장되지 않습니다.
             받을 계좌가 이미 있는 회원(온보딩 완료)은 요청할 수 없습니다.
         """,
@@ -86,7 +120,7 @@ interface UserControllerDocs {
             Content(
                 examples = [
                     ExampleObject(
-                        value = """{ "name": "이정민", "birthday": "10-13", "bank": "TOSS_BANK", "accountNumber": "100159014821" }""",
+                        value = """{ "name": "이정민", "birthday": "10-13", "bank": "TOSS_BANK", "accountNumber": "100159014821", "profileImageUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/profile/1/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg" }""",
                     ),
                 ],
             ),
@@ -104,7 +138,7 @@ interface UserControllerDocs {
             content = [
                 Content(
                     examples = [
-                        ExampleObject(name = "COMMON_001", summary = "이름 누락 등 요청 값 오류", value = INVALID_INPUT_EXAMPLE),
+                        ExampleObject(name = "COMMON_001", summary = "이름 누락, 허용되지 않은 프로필 이미지 URL 등 요청 값 오류", value = INVALID_INPUT_EXAMPLE),
                         ExampleObject(
                             name = "PAYOUT_ACCOUNT_004",
                             summary = "계좌번호 형식 오류",
@@ -170,6 +204,17 @@ interface UserControllerDocs {
     ): ResponseEntity<ApiResponse<Nothing>>
 
     companion object {
+        private const val PROFILE_IMAGE_UPLOAD_URL_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "uploadUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/profile/1/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&...",
+                "imageUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/profile/1/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg"
+              },
+              "error": null
+            }
+        """
+
         private const val SUCCESS_EXAMPLE =
             """{ "success": true, "data": null, "error": null }"""
 

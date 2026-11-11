@@ -2,10 +2,13 @@ package com.botem.domain.user.controller
 
 import com.botem.domain.auth.controller.AuthCookieFactory
 import com.botem.domain.user.controller.docs.UserControllerDocs
+import com.botem.domain.user.dto.request.CreateProfileImageUploadUrlRequest
 import com.botem.domain.user.dto.request.RegisterOnboardingRequest
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
+import com.botem.domain.user.dto.response.ProfileImageUploadUrlResponse
 import com.botem.domain.user.service.OnboardingService
+import com.botem.domain.user.service.ProfileImageService
 import com.botem.domain.user.service.UserService
 import com.botem.domain.user.service.UserWithdrawalService
 import com.botem.global.response.ApiResponse
@@ -27,6 +30,7 @@ class UserController(
     private val userService: UserService,
     private val userWithdrawalService: UserWithdrawalService,
     private val onboardingService: OnboardingService,
+    private val profileImageService: ProfileImageService,
     private val authCookieFactory: AuthCookieFactory,
 ) : UserControllerDocs {
 
@@ -42,6 +46,13 @@ class UserController(
         @Valid @RequestBody request: UpdateMyProfileRequest,
     ): ApiResponse<MyProfileResponse> =
         ApiResponse.success(userService.updateMyProfile(userId, request))
+
+    @PostMapping("/profile-image/upload-url")
+    override fun createProfileImageUploadUrl(
+        @AuthenticationPrincipal userId: Long,
+        @Valid @RequestBody request: CreateProfileImageUploadUrlRequest,
+    ): ApiResponse<ProfileImageUploadUrlResponse> =
+        ApiResponse.success(profileImageService.createUploadUrl(userId, request.contentType))
 
     @PostMapping("/onboarding")
     override fun completeOnboarding(
