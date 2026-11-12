@@ -28,9 +28,11 @@ import org.mockito.Mockito.verifyNoMoreInteractions
 class UserServiceTest {
 
     private val userRepository = mock(UserRepository::class.java)
+    private val profileImageService = mock(ProfileImageService::class.java)
     private val userService = UserService(
         userRepository,
         WishProfileProperties(baseUrl = "https://botem.site/"),
+        profileImageService,
     )
 
     @Test
@@ -77,32 +79,65 @@ class UserServiceTest {
     }
 
     @Test
-    fun `내 프로필을 수정하고 수정된 정보를 반환한다`() {
+    fun `내 프로필의 이름과 생일을 수정하고 카카오 닉네임과 기존 이미지는 유지한다`() {
         val user = User(
             kakaoId = 1234L,
-            nickname = "기존 닉네임",
+            nickname = "지유",
             profileImageUrl = "https://example.com/old.jpg",
+            name = "기존 이름",
             wishProfileKey = "8f0c6d779fae47f3a979302f2782d20f",
         )
         val birthday = MonthDay.of(5, 20)
-        val request = UpdateMyProfileRequest(
-            nickname = " 새 닉네임 ",
-            birthday = birthday,
-        )
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
-        val response = userService.updateMyProfile(1L, request)
+        val response = userService.updateMyProfile(1L, UpdateMyProfileRequest(name = " 이정민 ", birthday = birthday))
 
-        assertEquals("새 닉네임", user.nickname)
-        assertEquals("https://example.com/old.jpg", user.profileImageUrl)
+        assertEquals("이정민", user.name)
         assertEquals(birthday, user.birthday)
-        assertEquals("새 닉네임", response.nickname)
-        assertEquals("https://example.com/old.jpg", response.profileImageUrl)
+        assertEquals("지유", user.nickname)
+        assertEquals("https://example.com/old.jpg", user.profileImageUrl)
+        assertEquals("이정민", response.name)
+        assertEquals("지유", response.nickname)
         assertEquals(birthday, response.birthday)
         assertEquals(
             "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
             response.wishProfileUrl,
         )
+    }
+
+    @Test
+    fun `프로필 이미지 URL을 전달하면 검증 후 변경한다`() {
+        val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = "https://example.com/old.jpg")
+        val imageUrl = "https://botem-images.s3.ap-northeast-2.amazonaws.com/profile/0/new.jpg"
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
+
+        val response = userService.updateMyProfile(
+            1L,
+            UpdateMyProfileRequest(name = "이정민", birthday = MonthDay.of(10, 13), profileImageUrl = imageUrl),
+        )
+
+        verify(profileImageService).validateImageUrl(user.id, imageUrl)
+        assertEquals(imageUrl, user.profileImageUrl)
+        assertEquals(imageUrl, response.profileImageUrl)
+    }
+
+    @Test
+    fun `허용되지 않은 프로필 이미지 URL이면 아무것도 변경하지 않는다`() {
+        val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = "https://example.com/old.jpg", name = "기존 이름")
+        val imageUrl = "https://evil.example.com/a.jpg"
+        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
+        `when`(profileImageService.validateImageUrl(user.id, imageUrl))
+            .thenThrow(BusinessException(CommonErrorCode.INVALID_INPUT_VALUE))
+
+        assertFailsWith<BusinessException> {
+            userService.updateMyProfile(
+                1L,
+                UpdateMyProfileRequest(name = "이정민", birthday = MonthDay.of(10, 13), profileImageUrl = imageUrl),
+            )
+        }
+
+        assertEquals("기존 이름", user.name)
+        assertEquals("https://example.com/old.jpg", user.profileImageUrl)
     }
 
     @Test
@@ -138,67 +173,35 @@ class UserServiceTest {
     }
 
     @Test
-    fun `공백 문자로만 이루어진 닉네임은 수정할 수 없다`() {
-        val user = User(
-            kakaoId = 1234L,
-            nickname = "기존 닉네임",
-            profileImageUrl = null,
-        )
-        val request = UpdateMyProfileRequest(
-            nickname = "\u00A0\u00A0",
-            birthday = MonthDay.of(10, 13),
-        )
+    fun `공백 문자로만 이루어진 이름으로는 수정할 수 없다`() {
+        val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null, name = "기존 이름")
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
 
         val exception = assertFailsWith<BusinessException> {
-            userService.updateMyProfile(1L, request)
+            userService.updateMyProfile(1L, UpdateMyProfileRequest(name = "\u00A0\u00A0", birthday = MonthDay.of(10, 13)))
         }
 
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
-        assertEquals("nickname: 공백일 수 없습니다", exception.detail)
-        assertEquals("기존 닉네임", user.nickname)
+        assertEquals("name: 공백일 수 없습니다", exception.detail)
+        assertEquals("기존 이름", user.name)
     }
 
     @Test
-    fun `닉네임 길이는 앞뒤 공백을 제거한 값으로 검증한다`() {
-        val user = User(
-            kakaoId = 1234L,
-            nickname = "기존 닉네임",
-            profileImageUrl = null,
-        )
-        val nickname = "가".repeat(255)
-        val request = UpdateMyProfileRequest(
-            nickname = " $nickname ",
-            birthday = MonthDay.of(10, 13),
-        )
+    fun `공백을 제거한 이름은 50자까지 수정할 수 있고 넘으면 수정할 수 없다`() {
+        val user = User(kakaoId = 1234L, nickname = "지유", profileImageUrl = null)
         `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
+        val maxName = "가".repeat(50)
 
-        val response = userService.updateMyProfile(1L, request)
+        userService.updateMyProfile(1L, UpdateMyProfileRequest(name = " $maxName ", birthday = MonthDay.of(10, 13)))
 
-        assertEquals(nickname, response.nickname)
-        assertEquals(nickname, user.nickname)
-    }
-
-    @Test
-    fun `공백을 제거한 닉네임이 255자를 초과하면 수정할 수 없다`() {
-        val user = User(
-            kakaoId = 1234L,
-            nickname = "기존 닉네임",
-            profileImageUrl = null,
-        )
-        val request = UpdateMyProfileRequest(
-            nickname = "가".repeat(256),
-            birthday = MonthDay.of(10, 13),
-        )
-        `when`(userRepository.findByIdForUpdate(1L)).thenReturn(user.joined())
+        assertEquals(maxName, user.name)
 
         val exception = assertFailsWith<BusinessException> {
-            userService.updateMyProfile(1L, request)
+            userService.updateMyProfile(1L, UpdateMyProfileRequest(name = "가".repeat(51), birthday = MonthDay.of(10, 13)))
         }
 
-        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
-        assertEquals("nickname: 255자 이하여야 합니다", exception.detail)
-        assertEquals("기존 닉네임", user.nickname)
+        assertEquals("name: 50자 이하여야 합니다", exception.detail)
+        assertEquals(maxName, user.name)
     }
 
     @Test

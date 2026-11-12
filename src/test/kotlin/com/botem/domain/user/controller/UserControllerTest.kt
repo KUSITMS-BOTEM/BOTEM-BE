@@ -103,10 +103,11 @@ class UserControllerTest {
     @Test
     fun `생일은 연도 없이 MM-dd 형식으로 주고받는다`() {
         val authentication = UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())
-        val request = UpdateMyProfileRequest(nickname = "지유", birthday = MonthDay.of(10, 13))
+        val request = UpdateMyProfileRequest(name = "이정민", birthday = MonthDay.of(10, 13))
         given(userService.updateMyProfile(USER_ID, request)).willReturn(
             MyProfileResponse(
                 nickname = "지유",
+                name = "이정민",
                 profileImageUrl = null,
                 birthday = MonthDay.of(10, 13),
                 wishProfileUrl = "https://botem.site/@key",
@@ -121,9 +122,10 @@ class UserControllerTest {
                 .with(authentication(authentication))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{ "nickname": "지유", "birthday": "10-13" }"""),
+                .content("""{ "name": "이정민", "birthday": "10-13" }"""),
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.name").value("이정민"))
             .andExpect(jsonPath("$.data.birthday").value("10-13"))
             .andExpect(jsonPath("$.data.email").value("jiyu@kakao.com"))
             .andExpect(jsonPath("$.data.joinedAt").value("2026-11-10"))
@@ -138,9 +140,9 @@ class UserControllerTest {
             "bank" to post("/api/users/me/onboarding")
                 .content("""{ "name": "이정민", "birthday": "10-13", "accountNumber": "100159014821" }"""),
             "birthday" to put("/api/users/me/profile")
-                .content("""{ "nickname": "지유", "birthday": null }"""),
+                .content("""{ "name": "이정민", "birthday": null }"""),
             "birthday" to put("/api/users/me/profile")
-                .content("""{ "nickname": "지유", "birthday": "13-45" }"""),
+                .content("""{ "name": "이정민", "birthday": "13-45" }"""),
         )
 
         requests.forEach { (field, request) ->

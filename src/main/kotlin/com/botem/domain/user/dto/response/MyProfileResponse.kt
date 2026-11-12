@@ -8,6 +8,7 @@ import java.time.ZoneId
 
 data class MyProfileResponse(
     val nickname: String,
+    val name: String?,
     val profileImageUrl: String?,
     @get:JsonFormat(pattern = "MM-dd")
     val birthday: MonthDay?,
@@ -25,6 +26,7 @@ data class MyProfileResponse(
         ): MyProfileResponse =
             MyProfileResponse(
                 nickname = user.nickname,
+                name = user.name,
                 profileImageUrl = user.profileImageUrl,
                 birthday = user.birthday,
                 wishProfileUrl = "${wishProfileBaseUrl.trimEnd('/')}/@$wishProfileKey",

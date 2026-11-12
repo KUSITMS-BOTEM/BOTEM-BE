@@ -6,12 +6,10 @@ import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.user.dto.request.RegisterOnboardingRequest
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.global.exception.BusinessException
-import com.botem.global.exception.CommonErrorCode
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.verifyNoMoreInteractions
 import java.time.MonthDay
 import kotlin.test.assertEquals
@@ -21,8 +19,7 @@ class OnboardingServiceTest {
 
     private val userService = mock(UserService::class.java)
     private val payoutAccountService = mock(PayoutAccountService::class.java)
-    private val profileImageService = mock(ProfileImageService::class.java)
-    private val onboardingService = OnboardingService(userService, payoutAccountService, profileImageService)
+    private val onboardingService = OnboardingService(userService, payoutAccountService)
 
     private val request = RegisterOnboardingRequest(
         name = "이정민",
@@ -42,19 +39,6 @@ class OnboardingServiceTest {
             USER_ID,
             SavePayoutAccountRequest(bank = Bank.TOSS_BANK, accountNumber = "100159014821"),
         )
-    }
-
-    @Test
-    fun `프로필 이미지 URL이 허용되지 않으면 아무것도 저장하지 않는다`() {
-        val imageUrl = "https://evil.example.com/a.jpg"
-        given(profileImageService.validateImageUrl(USER_ID, imageUrl))
-            .willThrow(BusinessException(CommonErrorCode.INVALID_INPUT_VALUE))
-
-        assertFailsWith<BusinessException> {
-            onboardingService.completeOnboarding(USER_ID, request.copy(profileImageUrl = imageUrl))
-        }
-
-        verifyNoInteractions(userService, payoutAccountService)
     }
 
     @Test

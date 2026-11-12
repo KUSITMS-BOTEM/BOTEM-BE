@@ -18,6 +18,7 @@ import java.time.MonthDay
 class UserService(
     private val userRepository: UserRepository,
     private val wishProfileProperties: WishProfileProperties,
+    private val profileImageService: ProfileImageService,
 ) {
 
     @Transactional
@@ -30,22 +31,8 @@ class UserService(
     @Transactional
     fun updateMyProfile(userId: Long, request: UpdateMyProfileRequest): MyProfileResponse {
         val user = findActiveUserForUpdate(userId)
-        val nickname = request.nickname.trim { it.isWhitespace() || Character.isSpaceChar(it) }
 
-        if (nickname.isEmpty()) {
-            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "nickname: 공백일 수 없습니다")
-        }
-        if (nickname.length > MAX_NICKNAME_LENGTH) {
-            throw BusinessException(
-                CommonErrorCode.INVALID_INPUT_VALUE,
-                "nickname: ${MAX_NICKNAME_LENGTH}자 이하여야 합니다",
-            )
-        }
-
-        user.updateProfile(
-            nickname = nickname,
-            birthday = request.birthday,
-        )
+        updateProfile(user, request.name, request.birthday, request.profileImageUrl)
 
         return toProfileResponse(user)
     }
@@ -53,6 +40,12 @@ class UserService(
     @Transactional
     fun updateOnboardingProfile(userId: Long, name: String, birthday: MonthDay?, profileImageUrl: String?) {
         val user = findActiveUserForUpdate(userId)
+
+        updateProfile(user, name, birthday, profileImageUrl)
+    }
+
+    // 온보딩과 내 프로필 수정이 같은 이름 정규화·이미지 URL 검증을 따르도록 한 곳에서 처리
+    private fun updateProfile(user: User, name: String, birthday: MonthDay?, profileImageUrl: String?) {
         val normalizedName = name.trim { it.isWhitespace() || Character.isSpaceChar(it) }
 
         if (normalizedName.isEmpty()) {
@@ -62,7 +55,9 @@ class UserService(
             throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "name: ${MAX_NAME_LENGTH}자 이하여야 합니다")
         }
 
-        user.updateOnboardingProfile(name = normalizedName, birthday = birthday, profileImageUrl = profileImageUrl)
+        profileImageUrl?.let { profileImageService.validateImageUrl(user.id, it) }
+
+        user.updateProfile(name = normalizedName, birthday = birthday, profileImageUrl = profileImageUrl)
     }
 
     private fun toProfileResponse(user: User): MyProfileResponse =
@@ -98,7 +93,6 @@ class UserService(
     }
 
     companion object {
-        private const val MAX_NICKNAME_LENGTH = 255
         private const val MAX_NAME_LENGTH = 50
     }
 }
