@@ -50,8 +50,10 @@ class FriendServiceTest {
         friendService.addFriend(me.id, checkNotNull(friend.wishProfileKey))
         friendService.addFriend(friend.id, checkNotNull(me.wishProfileKey))
 
-        assertTrue(friendshipRepository.existsByUserIdAndFriendId(me.id, friend.id))
-        assertTrue(friendshipRepository.existsByUserIdAndFriendId(friend.id, me.id))
+        assertEquals(
+            setOf(me.id to friend.id, friend.id to me.id),
+            friendshipRepository.findAll().map { it.userId to it.friendId }.toSet(),
+        )
         assertEquals(2, friendshipRepository.count())
     }
 
