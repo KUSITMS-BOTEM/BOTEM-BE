@@ -1,7 +1,9 @@
 package com.botem.domain.product.controller
 
+import com.botem.domain.product.dto.request.RequestProductRequest
 import com.botem.domain.product.service.ProductRequestService
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -23,6 +25,24 @@ class ProductRequestControllerTest {
 
     @MockitoBean
     private lateinit var productRequestService: ProductRequestService
+
+    @Test
+    fun `상품 추가를 요청하면 201을 반환한다`() {
+        mockMvc.perform(
+            post("/api/product-requests")
+                .with(authentication(UsernamePasswordAuthenticationToken(1L, null, emptyList())))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{ "productUrl": "https://www.coupang.com/vp/products/1", "productName": "텀블러" }"""),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.success").value(true))
+
+        verify(productRequestService).requestProduct(
+            1L,
+            RequestProductRequest(productUrl = "https://www.coupang.com/vp/products/1", productName = "텀블러"),
+        )
+    }
 
     @Test
     fun `상품 링크가 비어 있으면 400을 반환한다`() {
