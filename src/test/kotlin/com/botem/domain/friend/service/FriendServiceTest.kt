@@ -50,11 +50,10 @@ class FriendServiceTest {
         friendService.addFriend(me.id, checkNotNull(friend.wishProfileKey))
         friendService.addFriend(friend.id, checkNotNull(me.wishProfileKey))
 
-        assertEquals(
-            setOf(me.id to friend.id, friend.id to me.id),
-            friendshipRepository.findAll().map { it.userId to it.friendId }.toSet(),
-        )
-        assertEquals(2, friendshipRepository.count())
+        val friendships = friendshipRepository.findAll()
+        assertEquals(2, friendships.size)
+        assertEquals(setOf(me.id to friend.id, friend.id to me.id), friendships.map { it.userId to it.friendId }.toSet())
+        assertTrue(friendships.all { it.id > 0 })
     }
 
     @Test
