@@ -283,7 +283,7 @@ interface UserControllerDocs {
               "error": {
                 "code": "COMMON_001",
                 "message": "입력값이 올바르지 않습니다.",
-                "detail": "nickname: 공백일 수 없습니다"
+                "detail": "name: 공백일 수 없습니다"
               }
             }
         """
