@@ -41,7 +41,13 @@ interface FriendshipRepository : JpaRepository<Friendship, Long> {
     )
     fun deleteBetween(@Param("userId") userId: Long, @Param("friendId") friendId: Long): Int
 
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("DELETE FROM Friendship friendship WHERE friendship.userId = :userId OR friendship.friendId = :userId")
-    fun deleteAllByUser(@Param("userId") userId: Long): Int
+    // 탈퇴 트랜잭션 안에서 실행되므로 영속성 컨텍스트를 비우지 않는다.
+    // OR 조건은 전체 스캔으로 테이블 전체를 잠글 수 있어 컬럼별 인덱스를 타도록 두 쿼리로 나눈다
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Friendship friendship WHERE friendship.userId = :userId")
+    fun deleteAllByUserId(@Param("userId") userId: Long): Int
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Friendship friendship WHERE friendship.friendId = :friendId")
+    fun deleteAllByFriendId(@Param("friendId") friendId: Long): Int
 }

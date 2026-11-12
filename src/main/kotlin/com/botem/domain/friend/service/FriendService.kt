@@ -75,7 +75,8 @@ class FriendService(
     // 탈퇴 트랜잭션 안에서 실행해 탈퇴와 친구 관계 삭제가 함께 커밋·롤백되게 한다
     @EventListener
     fun deleteAllFriendships(event: UserWithdrawnEvent) {
-        friendshipRepository.deleteAllByUser(event.userId)
+        friendshipRepository.deleteAllByUserId(event.userId)
+        friendshipRepository.deleteAllByFriendId(event.userId)
     }
 
     companion object {
