@@ -5,6 +5,7 @@ import com.botem.domain.home.dto.response.HomeNoFundingState
 import com.botem.domain.home.dto.response.HomeWishPageResponse
 import com.botem.domain.home.exception.HomeErrorCode
 import com.botem.domain.user.entity.UserStatus
+import com.botem.domain.user.entity.daysUntilNextBirthday
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.wish.repository.WishRepository
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDate
 import java.time.MonthDay
-import java.time.temporal.ChronoUnit
 
 @Service
 class HomeNoFundingService(
@@ -75,12 +75,7 @@ class HomeNoFundingService(
     ): Long? {
         birthday ?: return null
 
-        var nextBirthday = birthday.atYear(today.year)
-        if (nextBirthday.isBefore(today)) {
-            nextBirthday = birthday.atYear(today.year + 1)
-        }
-
-        return ChronoUnit.DAYS.between(today, nextBirthday)
+        return birthday.daysUntilNextBirthday(today)
             .takeIf { it <= BIRTHDAY_DDAY_EXPOSURE_DAYS }
     }
 

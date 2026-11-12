@@ -13,6 +13,8 @@ interface UserRepository : JpaRepository<User, Long> {
 
     fun findByKakaoId(kakaoId: Long): User?
 
+    fun findByWishProfileKey(wishProfileKey: String): User?
+
     @Query("SELECT u.status FROM User u WHERE u.id = :userId")
     fun findStatusById(@Param("userId") userId: Long): UserStatus?
 
