@@ -54,7 +54,7 @@ class HomeNoFundingService(
 
         return HomeNoFundingResponse(
             state = if (wishes.totalElements == 0L) HomeNoFundingState.EMPTY else HomeNoFundingState.WISH_RECOMMENDATION,
-            nickname = user.nickname,
+            nickname = user.name ?: user.nickname,
             birthdayDday = calculateBirthdayDday(user.birthday, LocalDate.now(clock)),
             wishes = HomeWishPageResponse.from(wishes),
         )

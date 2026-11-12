@@ -40,6 +40,18 @@ class HomeNoFundingServiceTest {
     )
 
     @Test
+    fun `이름이 있으면 카카오 닉네임 대신 이름을 표시한다`() {
+        given(homeFundingService.getHomeFundings(USER_ID)).willReturn(emptyHomeFundings())
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user(MonthDay.of(12, 1), name = "이정민")))
+        given(wishRepository.findAllByUserId(USER_ID, wishPageRequest()))
+            .willReturn(PageImpl(emptyList(), wishPageRequest(), 0L))
+
+        val response = service.getNoFundingHome(USER_ID)
+
+        assertEquals("이정민", response.nickname)
+    }
+
+    @Test
     fun `펀딩이 없고 위시가 있으면 최신순 위시와 생일 D-day를 반환한다`() {
         val latestWish = wish(id = 2L, productName = "무선 헤드폰")
         val olderWish = wish(id = 1L, productName = "향수")
@@ -146,12 +158,13 @@ class HomeNoFundingServiceTest {
             ),
         )
 
-    private fun user(birthday: MonthDay): User =
+    private fun user(birthday: MonthDay, name: String? = null): User =
         User(
             kakaoId = 12345L,
             nickname = "지유",
             profileImageUrl = null,
             birthday = birthday,
+            name = name,
         )
 
     private fun wish(
