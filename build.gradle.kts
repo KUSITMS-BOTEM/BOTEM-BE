@@ -79,8 +79,7 @@ kover {
 		}
 		verify {
 			rule {
-				// 테스트 보강 후 90%로 상향 예정
-				minBound(86)
+				minBound(90)
 			}
 		}
 	}
