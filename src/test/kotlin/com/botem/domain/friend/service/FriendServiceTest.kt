@@ -15,6 +15,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -41,6 +42,9 @@ class FriendServiceTest {
     @Autowired
     private lateinit var wishRepository: WishRepository
 
+    @Autowired
+    private lateinit var jdbcTemplate: JdbcTemplate
+
     @Test
     fun `위시 프로필 키로 서로 친구가 되고 다시 맺어도 중복 저장하지 않는다`() {
         val me = saveUser(kakaoId = 1L)
@@ -54,6 +58,21 @@ class FriendServiceTest {
         assertEquals(2, friendships.size)
         assertEquals(setOf(me.id to friend.id, friend.id to me.id), friendships.map { it.userId to it.friendId }.toSet())
         assertTrue(friendships.all { it.id > 0 })
+    }
+
+    @Test
+    fun `조회 후 잠금을 기다리는 사이 상대가 탈퇴하면 친구를 맺지 않는다`() {
+        val me = saveUser(kakaoId = 1L)
+        val friend = saveUser(kakaoId = 2L)
+        val key = checkNotNull(friend.wishProfileKey)
+        userRepository.findByWishProfileKey(key)
+        // 영속성 컨텍스트의 friend는 ACTIVE로 남겨 둔 채 DB만 탈퇴 상태로 바꿔, 다른 트랜잭션의 탈퇴 커밋을 흉내낸다
+        jdbcTemplate.update("UPDATE users SET status = 'WITHDRAWN' WHERE id = ?", friend.id)
+
+        val exception = assertFailsWith<BusinessException> { friendService.addFriend(me.id, key) }
+
+        assertEquals(FriendErrorCode.FRIEND_TARGET_NOT_FOUND, exception.errorCode)
+        assertEquals(0, friendshipRepository.count())
     }
 
     @Test

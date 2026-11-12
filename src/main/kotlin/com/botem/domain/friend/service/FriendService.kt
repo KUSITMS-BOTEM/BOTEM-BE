@@ -11,6 +11,7 @@ import com.botem.domain.user.service.UserWithdrawnEvent
 import com.botem.global.exception.BusinessException
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import java.text.Collator
 import java.time.Clock
@@ -24,8 +25,10 @@ class FriendService(
     private val clock: Clock,
 ) {
 
-    // 친구 요청·수락 없이 친구의 위시 프로필(초대 링크)에서 로그인하면 서로 친구가 된다
-    @Transactional
+    // 친구 요청·수락 없이 친구의 위시 프로필(초대 링크)에서 로그인하면 서로 친구가 된다.
+    // REPEATABLE READ면 첫 조회 시점 스냅샷이 고정돼 잠금 대기 중 커밋된 친구 관계·탈퇴를 못 보므로,
+    // READ COMMITTED로 잠금 이후 조회가 최신 커밋 값을 읽게 한다 (중복 확인에 잠금 읽기를 쓰면 gap lock 교착 위험)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     fun addFriend(userId: Long, wishProfileKey: String) {
         val friend = userRepository.findByWishProfileKey(wishProfileKey)
             ?.takeIf { it.status == UserStatus.ACTIVE }
@@ -37,6 +40,11 @@ class FriendService(
 
         // 두 회원 행을 id 순서로 잠가 같은 쌍의 동시 요청을 직렬화하고 교착을 피한다
         listOf(userId, friend.id).sorted().forEach { userRepository.findByIdForUpdate(it) }
+
+        // 영속성 컨텍스트의 friend는 갱신되지 않으므로 상태 값을 DB에서 다시 읽어 잠금 대기 중 탈퇴를 막는다
+        if (userRepository.findStatusById(friend.id) != UserStatus.ACTIVE) {
+            throw BusinessException(FriendErrorCode.FRIEND_TARGET_NOT_FOUND)
+        }
 
         if (friendshipRepository.existsByUserIdAndFriendId(userId, friend.id)) {
             return
