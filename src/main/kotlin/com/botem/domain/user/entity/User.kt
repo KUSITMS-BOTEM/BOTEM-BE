@@ -87,14 +87,6 @@ class User(
         protected set
 
     fun updateProfile(
-        nickname: String,
-        birthday: MonthDay?,
-    ) {
-        this.nickname = nickname
-        this.birthday = birthday
-    }
-
-    fun updateOnboardingProfile(
         name: String,
         birthday: MonthDay?,
         profileImageUrl: String?,

@@ -21,7 +21,7 @@ interface UserControllerDocs {
 
     @Operation(
         summary = "내 프로필 조회",
-        description = "로그인한 사용자의 닉네임, 프로필 이미지, 생일, 위시 프로필 링크, 카카오 계정 연결 상태, 이메일과 가입일을 조회합니다. 이메일은 마지막 로그인 때 카카오가 준 이메일이 만료되었거나 인증되지 않은 경우 null이며, 가입일(joinedAt)은 한국 날짜 기준 `yyyy-MM-dd`입니다.",
+        description = "로그인한 사용자의 카카오 닉네임, 이름, 프로필 이미지, 생일, 위시 프로필 링크, 카카오 계정 연결 상태, 이메일과 가입일을 조회합니다. 이름(name)은 온보딩 전이면 null입니다. 이메일은 마지막 로그인 때 카카오가 준 이메일이 만료되었거나 인증되지 않은 경우 null이며, 가입일(joinedAt)은 한국 날짜 기준 `yyyy-MM-dd`입니다.",
     )
     @ApiResponses(
         SwaggerApiResponse(
@@ -45,7 +45,23 @@ interface UserControllerDocs {
 
     @Operation(
         summary = "내 프로필 수정",
-        description = "로그인한 사용자의 닉네임과 생일을 수정합니다. 전체 수정 값을 전달해야 합니다. 생일은 필수이며 연도 없이 `MM-dd` 형식으로 전달합니다.",
+        description = """
+            로그인한 사용자의 이름, 생일, 프로필 이미지를 수정합니다. 이름과 생일은 매번 전체 값을 전달해야 합니다.
+            생일은 필수이며 연도 없이 `MM-dd` 형식으로 전달합니다.
+            profileImageUrl은 선택이며, 프로필 이미지 업로드 URL 발급 API가 응답한 imageUrl만 전달할 수 있습니다. 생략하면 기존 이미지를 유지합니다.
+            카카오 닉네임(nickname)은 수정할 수 없습니다.
+        """,
+    )
+    @RequestBody(
+        content = [
+            Content(
+                examples = [
+                    ExampleObject(
+                        value = """{ "name": "이정민", "birthday": "10-13", "profileImageUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/profile/1/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg" }""",
+                    ),
+                ],
+            ),
+        ],
     )
     @ApiResponses(
         SwaggerApiResponse(
@@ -248,6 +264,7 @@ interface UserControllerDocs {
               "success": true,
               "data": {
                 "nickname": "지유",
+                "name": "이정민",
                 "profileImageUrl": "https://example.com/profile.jpg",
                 "birthday": "10-13",
                 "wishProfileUrl": "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
