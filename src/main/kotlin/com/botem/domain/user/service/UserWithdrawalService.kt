@@ -6,7 +6,6 @@ import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,7 +16,7 @@ class UserWithdrawalService(
     private val userRepository: UserRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val payoutAccountRepository: PayoutAccountRepository,
-    private val activeFundingCheckerProvider: ObjectProvider<ActiveFundingChecker>,
+    private val activeFundingChecker: ActiveFundingChecker,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
 
@@ -29,9 +28,6 @@ class UserWithdrawalService(
         if (user.status == UserStatus.WITHDRAWN) {
             return
         }
-
-        val activeFundingChecker = activeFundingCheckerProvider.ifAvailable
-            ?: throw BusinessException(UserErrorCode.WITHDRAWAL_CHECK_UNAVAILABLE)
 
         if (activeFundingChecker.existsByUserId(userId)) {
             throw BusinessException(UserErrorCode.ACTIVE_FUNDING_EXISTS)
