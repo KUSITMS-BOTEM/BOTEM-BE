@@ -22,7 +22,8 @@ interface HomeControllerDocs {
         description = """
             로그인한 사용자의 마감 후 팡을 열지 않은 펀딩과 진행 중인 펀딩 카드를 조회합니다.
             마감 카드를 먼저 반환하고, 진행 중 카드는 마감일 또는 서프라이즈 공개일이 가까운 순서로 반환합니다.
-            확정 및 확인 대기 달성률과 진행 중인 펀딩 개수를 함께 반환합니다.
+            목표 금액, 전체 참여자 수, 확정 및 확인 대기 달성률과 진행 중인 펀딩 개수를 함께 반환합니다.
+            참여자 수는 취소된 참여를 제외하며, 로그인 참여자는 계정 기준으로 중복을 제거합니다.
         """,
     )
     @ApiResponses(
@@ -163,6 +164,8 @@ interface HomeControllerDocs {
                     "fundingType": "BIRTHDAY",
                     "productName": "다이슨 에어랩",
                     "productImageUrl": "https://image.example.com/product.jpg",
+                    "targetAmount": 699000,
+                    "participantCount": 8,
                     "remainingDays": null,
                     "confirmedPercentage": 100,
                     "pendingPercentage": 0,
@@ -174,6 +177,8 @@ interface HomeControllerDocs {
                     "fundingType": "SURPRISE",
                     "productName": "무선 헤드폰",
                     "productImageUrl": "https://image.example.com/headphone.jpg",
+                    "targetAmount": 350000,
+                    "participantCount": 6,
                     "remainingDays": 7,
                     "confirmedPercentage": 55,
                     "pendingPercentage": 15,
