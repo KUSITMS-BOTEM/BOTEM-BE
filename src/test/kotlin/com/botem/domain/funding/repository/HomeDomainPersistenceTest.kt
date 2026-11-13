@@ -116,8 +116,9 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
-    fun `여러 참여 상태를 펀딩별 확정 금액과 확인 대기 정보로 집계한다`() {
+    fun `여러 참여 상태를 펀딩별 금액과 참여자 수로 집계한다`() {
         val user = saveUser()
+        val participant = saveNamedUser(nickname = "참여자", name = null)
         val account = savePayoutAccount(user.id)
         val wish = wishRepository.saveAndFlush(wish(user.id, "생일 선물"))
         val funding = fundingRepository.saveAndFlush(funding(user.id, account, wish))
@@ -125,6 +126,7 @@ class HomeDomainPersistenceTest {
             fundingId = funding.id,
             amount = 30_000L,
             status = ContributionStatus.AWAITING_TRANSFER,
+            participantUserId = participant.id,
         ).apply {
             markTransferSent()
             confirm(LocalDateTime.of(2026, 11, 8, 10, 0))
@@ -133,19 +135,31 @@ class HomeDomainPersistenceTest {
             fundingId = funding.id,
             amount = 20_000L,
             status = ContributionStatus.PENDING_CONFIRMATION,
+            participantUserId = participant.id,
+        )
+        val guest = contribution(
+            fundingId = funding.id,
+            amount = 5_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+        )
+        val messageOnlyGuest = contribution(
+            fundingId = funding.id,
+            amount = 0L,
+            status = ContributionStatus.MESSAGE_ONLY,
         )
         val cancelled = contribution(
             fundingId = funding.id,
             amount = 10_000L,
             status = ContributionStatus.CANCELLED,
         )
-        contributionRepository.saveAllAndFlush(listOf(confirmed, pending, cancelled))
+        contributionRepository.saveAllAndFlush(listOf(confirmed, pending, guest, messageOnlyGuest, cancelled))
 
         val summary = contributionRepository.summarizeByFundingIds(listOf(funding.id)).single()
 
         assertEquals(30_000L, summary.confirmedAmount)
         assertEquals(20_000L, summary.pendingAmount)
         assertEquals(1L, summary.pendingCount)
+        assertEquals(3L, summary.participantCount)
     }
 
     @Test

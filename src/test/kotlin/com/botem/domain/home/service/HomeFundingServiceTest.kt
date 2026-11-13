@@ -107,7 +107,7 @@ class HomeFundingServiceTest {
     }
 
     @Test
-    fun `달성률과 확인 대기 건수를 계산하고 진행 중 펀딩이 다섯 개면 개설을 제한한다`() {
+    fun `목표 금액과 참여자 집계 및 달성률을 반환하고 진행 중 펀딩이 다섯 개면 개설을 제한한다`() {
         val fundings = (1L..5L).map { id ->
             funding(
                 id = id,
@@ -125,6 +125,7 @@ class HomeFundingServiceTest {
                         confirmedAmount = 55_000L,
                         pendingAmount = 15_000L,
                         pendingCount = 2L,
+                        participantCount = 7L,
                     ),
                 ),
             )
@@ -132,6 +133,8 @@ class HomeFundingServiceTest {
         val response = service.getHomeFundings(USER_ID)
         val firstCard = response.fundingCards.first { it.fundingId == 1L }
 
+        assertEquals(100_000L, firstCard.targetAmount)
+        assertEquals(7L, firstCard.participantCount)
         assertEquals(55, firstCard.confirmedPercentage)
         assertEquals(15, firstCard.pendingPercentage)
         assertEquals(2L, firstCard.pendingContributionCount)
@@ -192,12 +195,14 @@ class HomeFundingServiceTest {
         confirmedAmount: Long = 0L,
         pendingAmount: Long = 0L,
         pendingCount: Long = 0L,
+        participantCount: Long = 0L,
     ): FundingContributionSummary =
         FundingContributionSummary(
             fundingId = fundingId,
             confirmedAmount = confirmedAmount,
             pendingAmount = pendingAmount,
             pendingCount = pendingCount,
+            participantCount = participantCount,
         )
 
     private fun setField(target: Any, fieldName: String, value: Any) {

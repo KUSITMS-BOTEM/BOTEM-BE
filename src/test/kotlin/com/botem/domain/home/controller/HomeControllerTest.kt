@@ -63,6 +63,8 @@ class HomeControllerTest {
                         fundingType = FundingType.BIRTHDAY,
                         productName = "무선 헤드폰",
                         productImageUrl = "https://image.example.com/product.jpg",
+                        targetAmount = 100_000L,
+                        participantCount = 7L,
                         remainingDays = 7L,
                         confirmedPercentage = 55,
                         pendingPercentage = 15,
@@ -82,6 +84,8 @@ class HomeControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.fundingCards[0].fundingId").value(10L))
             .andExpect(jsonPath("$.data.fundingCards[0].cardType").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.fundingCards[0].targetAmount").value(100_000L))
+            .andExpect(jsonPath("$.data.fundingCards[0].participantCount").value(7L))
             .andExpect(jsonPath("$.data.fundingCards[0].remainingDays").value(7L))
             .andExpect(jsonPath("$.data.fundingCards[0].confirmedPercentage").value(55))
             .andExpect(jsonPath("$.data.fundingCards[0].pendingPercentage").value(15))

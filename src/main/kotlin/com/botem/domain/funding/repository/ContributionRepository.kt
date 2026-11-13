@@ -22,7 +22,14 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
                 THEN contribution.amount ELSE 0 END), 0),
             COALESCE(SUM(CASE
                 WHEN contribution.status = com.botem.domain.funding.entity.ContributionStatus.PENDING_CONFIRMATION
-                THEN 1 ELSE 0 END), 0)
+                THEN 1 ELSE 0 END), 0),
+            COUNT(DISTINCT CASE
+                WHEN contribution.status <> com.botem.domain.funding.entity.ContributionStatus.CANCELLED
+                THEN contribution.participantUserId ELSE NULL END)
+                + COALESCE(SUM(CASE
+                    WHEN contribution.status <> com.botem.domain.funding.entity.ContributionStatus.CANCELLED
+                        AND contribution.participantUserId IS NULL
+                    THEN 1 ELSE 0 END), 0)
         )
         FROM Contribution contribution
         WHERE contribution.fundingId IN :fundingIds
