@@ -8,6 +8,8 @@ data class HomeFundingCardResponse(
     val fundingType: FundingType,
     val productName: String,
     val productImageUrl: String,
+    val targetAmount: Long,
+    val participantCount: Long,
     val remainingDays: Long?,
     val confirmedPercentage: Int,
     val pendingPercentage: Int,

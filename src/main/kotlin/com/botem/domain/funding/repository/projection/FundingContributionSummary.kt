@@ -5,6 +5,7 @@ data class FundingContributionSummary(
     val confirmedAmount: Long,
     val pendingAmount: Long,
     val pendingCount: Long,
+    val participantCount: Long,
 ) {
     companion object {
         fun empty(fundingId: Long): FundingContributionSummary =
@@ -13,6 +14,7 @@ data class FundingContributionSummary(
                 confirmedAmount = 0L,
                 pendingAmount = 0L,
                 pendingCount = 0L,
+                participantCount = 0L,
             )
     }
 }

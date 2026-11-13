@@ -72,6 +72,8 @@ class HomeFundingService(
             fundingType = funding.type,
             productName = funding.product.name,
             productImageUrl = funding.product.imageUrl,
+            targetAmount = funding.targetAmount,
+            participantCount = summary.participantCount,
             remainingDays = remainingDays,
             confirmedPercentage = percentage(summary.confirmedAmount, funding.targetAmount),
             pendingPercentage = percentage(summary.pendingAmount, funding.targetAmount),
