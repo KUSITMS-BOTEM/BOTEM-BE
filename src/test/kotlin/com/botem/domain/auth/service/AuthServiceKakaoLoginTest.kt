@@ -7,10 +7,13 @@ import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.exception.AuthErrorCode
+import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -26,6 +29,7 @@ import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.SimpleTransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.LocalDateTime
 
 class AuthServiceKakaoLoginTest {
 
@@ -89,6 +93,36 @@ class AuthServiceKakaoLoginTest {
 
         assertTrue(result.isNewUser)
         verify(userRepository, never()).save(any(User::class.java))
+    }
+
+    @Test
+    fun `탈퇴한 회원은 다시 로그인할 수 없다`() {
+        user.withdraw(LocalDateTime.now())
+        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(user)
+
+        val exception = assertThrows(BusinessException::class.java) { authService.kakaoLogin("code", null) }
+
+        assertEquals(AuthErrorCode.WITHDRAWN_USER, exception.errorCode)
+        verify(jwtProvider, never()).createRefreshToken(anyLong())
+    }
+
+    @Test
+    fun `카카오 닉네임 제공에 동의하지 않으면 가입하지 않는다`() {
+        given(kakaoOAuthClient.getUserInfo("no-nickname", null)).willReturn(
+            KakaoUserInfoResponse(id = KAKAO_ID, kakaoAccount = KakaoUserInfoResponse.KakaoAccount(profile = null)),
+        )
+
+        val exception = assertThrows(BusinessException::class.java) { authService.kakaoLogin("no-nickname", null) }
+
+        assertEquals(AuthErrorCode.KAKAO_LOGIN_FAILED, exception.errorCode)
+        verify(userRepository, never()).save(any(User::class.java))
+    }
+
+    @Test
+    fun `카카오 로그인 URI는 카카오 클라이언트가 만든 값을 그대로 응답한다`() {
+        given(kakaoOAuthClient.getLoginUri(null)).willReturn("https://kauth.kakao.com/oauth/authorize?client_id=x")
+
+        assertEquals("https://kauth.kakao.com/oauth/authorize?client_id=x", authService.getKakaoLoginUri(null).loginUri)
     }
 
     @Test

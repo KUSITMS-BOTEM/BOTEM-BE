@@ -7,14 +7,16 @@ import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.account.exception.PayoutAccountErrorCode
 import com.botem.domain.account.repository.PayoutAccountRepository
 import com.botem.domain.user.entity.User
+import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -179,6 +181,53 @@ class PayoutAccountServiceTest {
         }
 
         assertEquals(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER, exception.errorCode)
+    }
+
+    @Test
+    fun `받을 계좌 목록은 기본 계좌를 먼저 보여주고 계좌번호를 복호화한다`() {
+        val older = PayoutAccount(
+            userId = 1L,
+            bank = Bank.TOSS_BANK,
+            encryptedAccountNumber = cipher.encrypt("100012345678"),
+            accountHolder = null,
+            isDefault = false,
+        )
+        val newerDefault = PayoutAccount(
+            userId = 1L,
+            bank = Bank.KAKAO_BANK,
+            encryptedAccountNumber = cipher.encrypt("333312345678"),
+            accountHolder = null,
+            isDefault = true,
+        )
+        `when`(payoutAccountRepository.findAllByUserIdOrderByCreatedAtAsc(1L)).thenReturn(listOf(older, newerDefault))
+
+        val accounts = service.getPayoutAccounts(1L)
+
+        assertEquals(listOf(Bank.KAKAO_BANK, Bank.TOSS_BANK), accounts.map { it.bank })
+        assertEquals(listOf("333312345678", "100012345678"), accounts.map { it.accountNumber })
+    }
+
+    @Test
+    fun `존재하지 않는 회원은 받을 계좌를 등록할 수 없다`() {
+        val exception = assertFailsWith<BusinessException> {
+            service.createPayoutAccount(2L, SavePayoutAccountRequest(bank = Bank.TOSS_BANK, accountNumber = "100012345678"))
+        }
+
+        assertEquals(UserErrorCode.USER_NOT_FOUND, exception.errorCode)
+    }
+
+    @Test
+    fun `예금주가 너무 길면 등록할 수 없다`() {
+        `when`(payoutAccountRepository.findAllByUserIdOrderByCreatedAtAsc(1L)).thenReturn(emptyList())
+
+        val exception = assertFailsWith<BusinessException> {
+            service.createPayoutAccount(
+                1L,
+                SavePayoutAccountRequest(bank = Bank.TOSS_BANK, accountNumber = "100012345678", accountHolder = "가".repeat(101)),
+            )
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
     }
 
     @Test

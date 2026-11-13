@@ -1,8 +1,11 @@
 package com.botem.domain.user.controller
 
+import com.botem.domain.account.entity.Bank
 import com.botem.domain.auth.controller.AuthCookieFactory
+import com.botem.domain.user.dto.request.RegisterOnboardingRequest
 import com.botem.domain.user.dto.request.UpdateMyProfileRequest
 import com.botem.domain.user.dto.response.MyProfileResponse
+import com.botem.domain.user.dto.response.ProfileImageUploadUrlResponse
 import com.botem.domain.user.service.OnboardingService
 import com.botem.domain.user.service.ProfileImageService
 import com.botem.domain.user.service.UserService
@@ -28,6 +31,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
@@ -62,6 +66,70 @@ class UserControllerTest {
 
     @MockitoBean
     private lateinit var profileImageService: ProfileImageService
+
+    @Test
+    fun `내 프로필을 조회한다`() {
+        given(userService.getMyProfile(USER_ID)).willReturn(
+            MyProfileResponse(
+                nickname = "지유",
+                name = "이정민",
+                profileImageUrl = null,
+                birthday = MonthDay.of(10, 13),
+                wishProfileUrl = "https://botem.site/@key",
+                kakaoConnected = true,
+                email = null,
+                joinedAt = LocalDate.of(2026, 11, 10),
+            ),
+        )
+
+        mockMvc.perform(get("/api/users/me/profile").with(authentication(loggedIn())))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.name").value("이정민"))
+            .andExpect(jsonPath("$.data.wishProfileUrl").value("https://botem.site/@key"))
+    }
+
+    @Test
+    fun `프로필 이미지 업로드 URL을 발급한다`() {
+        given(profileImageService.createUploadUrl(USER_ID, "image/png", 1024)).willReturn(
+            ProfileImageUploadUrlResponse(uploadUrl = "https://s3/upload?sig", imageUrl = "https://s3/profile/1/a.png"),
+        )
+
+        mockMvc.perform(
+            post("/api/users/me/profile-image/upload-url")
+                .with(authentication(loggedIn()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{ "contentType": "image/png", "contentLength": 1024 }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.uploadUrl").value("https://s3/upload?sig"))
+            .andExpect(jsonPath("$.data.imageUrl").value("https://s3/profile/1/a.png"))
+    }
+
+    @Test
+    fun `온보딩 정보를 등록한다`() {
+        mockMvc.perform(
+            post("/api/users/me/onboarding")
+                .with(authentication(loggedIn()))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{ "name": "이정민", "birthday": "10-13", "bank": "TOSS_BANK", "accountNumber": "100159014821" }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+
+        verify(onboardingService).completeOnboarding(
+            USER_ID,
+            RegisterOnboardingRequest(
+                name = "이정민",
+                birthday = MonthDay.of(10, 13),
+                bank = Bank.TOSS_BANK,
+                accountNumber = "100159014821",
+            ),
+        )
+    }
+
+    private fun loggedIn() = UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())
 
     @Test
     fun `회원 탈퇴에 성공하면 Refresh Token 쿠키와 로그인 상태 쿠키를 만료시킨다`() {

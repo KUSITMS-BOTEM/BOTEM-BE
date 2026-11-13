@@ -37,7 +37,7 @@ jobs:
           title: 📊 커버리지 리포트
           update-comment: true
           coverage-counter-type: LINE
-          min-coverage-overall: 86
+          min-coverage-overall: 90
 
       - name: 커버리지 기준 검증
         run: ./gradlew koverVerify
