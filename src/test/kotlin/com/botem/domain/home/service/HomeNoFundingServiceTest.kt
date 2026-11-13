@@ -142,6 +142,8 @@ class HomeNoFundingServiceTest {
             fundingType = FundingType.BIRTHDAY,
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
+            targetAmount = 100_000L,
+            participantCount = 3L,
             remainingDays = 7L,
             confirmedPercentage = 50,
             pendingPercentage = 10,
