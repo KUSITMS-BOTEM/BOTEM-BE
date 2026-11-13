@@ -12,7 +12,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.ApplicationEventPublisher
 import java.time.LocalDateTime
 import java.time.MonthDay
@@ -30,15 +29,11 @@ class UserWithdrawalServiceTest {
     private val activeFundingChecker = mock(ActiveFundingChecker::class.java)
     private val eventPublisher = mock(ApplicationEventPublisher::class.java)
 
-    @Suppress("UNCHECKED_CAST")
-    private val activeFundingCheckerProvider =
-        mock(ObjectProvider::class.java) as ObjectProvider<ActiveFundingChecker>
-
     private val service = UserWithdrawalService(
         userRepository = userRepository,
         refreshTokenRepository = refreshTokenRepository,
         payoutAccountRepository = payoutAccountRepository,
-        activeFundingCheckerProvider = activeFundingCheckerProvider,
+        activeFundingChecker = activeFundingChecker,
         eventPublisher = eventPublisher,
     )
 
@@ -46,7 +41,6 @@ class UserWithdrawalServiceTest {
     fun `진행 중인 펀딩이 없으면 인증 정보와 계좌를 삭제하고 개인정보를 익명화한다`() {
         val user = user()
         `when`(userRepository.findByIdForUpdate(USER_ID)).thenReturn(user)
-        `when`(activeFundingCheckerProvider.ifAvailable).thenReturn(activeFundingChecker)
         `when`(activeFundingChecker.existsByUserId(USER_ID)).thenReturn(false)
 
         service.withdraw(USER_ID)
@@ -68,7 +62,6 @@ class UserWithdrawalServiceTest {
     fun `진행 중인 펀딩이 있으면 탈퇴할 수 없다`() {
         val user = user()
         `when`(userRepository.findByIdForUpdate(USER_ID)).thenReturn(user)
-        `when`(activeFundingCheckerProvider.ifAvailable).thenReturn(activeFundingChecker)
         `when`(activeFundingChecker.existsByUserId(USER_ID)).thenReturn(true)
 
         val exception = assertFailsWith<BusinessException> {
@@ -77,21 +70,7 @@ class UserWithdrawalServiceTest {
 
         assertEquals(UserErrorCode.ACTIVE_FUNDING_EXISTS, exception.errorCode)
         assertEquals(UserStatus.ACTIVE, user.status)
-        verifyNoInteractions(refreshTokenRepository, payoutAccountRepository)
-    }
-
-    @Test
-    fun `펀딩 확인 기능이 연결되지 않으면 탈퇴를 진행하지 않는다`() {
-        val user = user()
-        `when`(userRepository.findByIdForUpdate(USER_ID)).thenReturn(user)
-
-        val exception = assertFailsWith<BusinessException> {
-            service.withdraw(USER_ID)
-        }
-
-        assertEquals(UserErrorCode.WITHDRAWAL_CHECK_UNAVAILABLE, exception.errorCode)
-        assertEquals(UserStatus.ACTIVE, user.status)
-        verifyNoInteractions(refreshTokenRepository, payoutAccountRepository)
+        verifyNoInteractions(refreshTokenRepository, payoutAccountRepository, eventPublisher)
     }
 
     @Test
@@ -101,7 +80,7 @@ class UserWithdrawalServiceTest {
 
         service.withdraw(USER_ID)
 
-        verifyNoInteractions(activeFundingCheckerProvider, refreshTokenRepository, payoutAccountRepository)
+        verifyNoInteractions(activeFundingChecker, refreshTokenRepository, payoutAccountRepository, eventPublisher)
     }
 
     @Test
@@ -111,7 +90,7 @@ class UserWithdrawalServiceTest {
         }
 
         assertEquals(UserErrorCode.USER_NOT_FOUND, exception.errorCode)
-        verifyNoInteractions(activeFundingCheckerProvider, refreshTokenRepository, payoutAccountRepository)
+        verifyNoInteractions(activeFundingChecker, refreshTokenRepository, payoutAccountRepository, eventPublisher)
     }
 
     private fun user(): User =
