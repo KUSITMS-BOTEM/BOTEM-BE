@@ -10,6 +10,11 @@ import java.time.LocalDateTime
 
 interface FundingRepository : JpaRepository<Funding, Long> {
 
+    fun existsByOwnerIdAndStatusNotIn(
+        ownerId: Long,
+        statuses: Collection<FundingStatus>,
+    ): Boolean
+
     fun findAllByOwnerIdAndStatusIn(
         ownerId: Long,
         statuses: Collection<FundingStatus>,
