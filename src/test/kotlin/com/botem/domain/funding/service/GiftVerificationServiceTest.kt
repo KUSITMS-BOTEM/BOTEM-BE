@@ -45,7 +45,7 @@ class GiftVerificationServiceTest {
 
         val response = service.complete(USER_ID, VERIFICATION_ID, request())
 
-        verify(imageService).validateImageUrl(USER_ID, VERIFICATION_ID, IMAGE_URL)
+        verify(imageService).validateUploadedImage(USER_ID, VERIFICATION_ID, IMAGE_URL)
         assertEquals(GiftVerificationStatus.COMPLETED, verification.status)
         assertEquals(IMAGE_URL, response.imageUrl)
         assertEquals("고마워!", response.thankYouMessage)
@@ -65,6 +65,22 @@ class GiftVerificationServiceTest {
             USER_ID,
             VERIFICATION_ID,
             request(thankYouMessage = "   ", replacementProductName = "   "),
+        )
+
+        assertEquals(null, response.thankYouMessage)
+        assertEquals(null, response.replacementProductName)
+    }
+
+    @Test
+    fun `선택 입력을 생략하면 감사 메시지와 대체 상품명을 저장하지 않는다`() {
+        val verification = verification()
+        val funding = funding()
+        givenLockedEntities(verification, funding)
+
+        val response = service.complete(
+            USER_ID,
+            VERIFICATION_ID,
+            request(thankYouMessage = null, replacementProductName = null),
         )
 
         assertEquals(null, response.thankYouMessage)
@@ -97,7 +113,7 @@ class GiftVerificationServiceTest {
         }
 
         assertEquals(FundingErrorCode.GIFT_VERIFICATION_RECIPIENT_ONLY, exception.errorCode)
-        verify(imageService, never()).validateImageUrl(USER_ID, VERIFICATION_ID, IMAGE_URL)
+        verify(imageService, never()).validateUploadedImage(USER_ID, VERIFICATION_ID, IMAGE_URL)
     }
 
     @Test
@@ -127,7 +143,7 @@ class GiftVerificationServiceTest {
 
         assertEquals(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE, exception.errorCode)
         assertEquals(GiftVerificationStatus.PENDING, verification.status)
-        verify(imageService, never()).validateImageUrl(USER_ID, VERIFICATION_ID, IMAGE_URL)
+        verify(imageService, never()).validateUploadedImage(USER_ID, VERIFICATION_ID, IMAGE_URL)
     }
 
     @Test
@@ -148,7 +164,11 @@ class GiftVerificationServiceTest {
             ),
         )
 
-        verify(imageService, never()).validateImageUrl(USER_ID, VERIFICATION_ID, "https://invalid.example.com/changed.jpg")
+        verify(imageService, never()).validateUploadedImage(
+            USER_ID,
+            VERIFICATION_ID,
+            "https://invalid.example.com/changed.jpg",
+        )
         assertEquals(IMAGE_URL, response.imageUrl)
         assertEquals("기존 메시지", response.thankYouMessage)
         assertEquals(COMPLETED_AT, response.completedAt)

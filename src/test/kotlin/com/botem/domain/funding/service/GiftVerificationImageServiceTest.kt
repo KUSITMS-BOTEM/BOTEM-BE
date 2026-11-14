@@ -16,10 +16,19 @@ import com.botem.global.property.S3Properties
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.CALLS_REAL_METHODS
+import org.mockito.Mockito.doReturn
+import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.mock
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.exception.SdkClientException
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse
+import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import java.time.LocalDateTime
 import java.util.Optional
@@ -35,10 +44,12 @@ class GiftVerificationImageServiceTest {
         .region(Region.AP_NORTHEAST_2)
         .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
         .build()
+    private val s3Client = mock(S3Client::class.java, CALLS_REAL_METHODS)
     private val service = GiftVerificationImageService(
         giftVerificationRepository = giftVerificationRepository,
         fundingRepository = fundingRepository,
         s3Presigner = s3Presigner,
+        s3Client = s3Client,
         s3Properties = S3Properties("botem-test", "ap-northeast-2"),
     )
 
@@ -61,7 +72,9 @@ class GiftVerificationImageServiceTest {
         assertTrue(response.imageUrl.endsWith(".png"))
         assertTrue(response.uploadUrl.startsWith(response.imageUrl + "?"))
         assertTrue(response.uploadUrl.contains("content-length"))
-        service.validateImageUrl(USER_ID, VERIFICATION_ID, response.imageUrl)
+        doReturn(HeadObjectResponse.builder().build())
+            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+        service.validateUploadedImage(USER_ID, VERIFICATION_ID, response.imageUrl)
     }
 
     @Test
@@ -140,6 +153,42 @@ class GiftVerificationImageServiceTest {
             }
             assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
         }
+    }
+
+    @Test
+    fun `S3에 업로드된 객체가 없으면 이미지 검증을 거부한다`() {
+        doThrow(S3Exception.builder().statusCode(404).message("not found").build())
+            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.validateUploadedImage(USER_ID, VERIFICATION_ID, validImageUrl(USER_ID, VERIFICATION_ID))
+        }
+
+        assertEquals(FundingErrorCode.GIFT_VERIFICATION_IMAGE_NOT_UPLOADED, exception.errorCode)
+    }
+
+    @Test
+    fun `S3 객체 확인 장애가 발생하면 인증 완료를 중단한다`() {
+        doThrow(S3Exception.builder().statusCode(500).message("unavailable").build())
+            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.validateUploadedImage(USER_ID, VERIFICATION_ID, validImageUrl(USER_ID, VERIFICATION_ID))
+        }
+
+        assertEquals(FundingErrorCode.GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE, exception.errorCode)
+    }
+
+    @Test
+    fun `S3 연결 장애가 발생하면 인증 완료를 중단한다`() {
+        doThrow(SdkClientException.create("connection timeout"))
+            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.validateUploadedImage(USER_ID, VERIFICATION_ID, validImageUrl(USER_ID, VERIFICATION_ID))
+        }
+
+        assertEquals(FundingErrorCode.GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE, exception.errorCode)
     }
 
     private fun givenPendingVerification(funding: Funding) {
