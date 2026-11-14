@@ -39,4 +39,14 @@ enum class FundingErrorCode(
         "FUNDING_011",
         "현재 펀딩 상태에서는 선물 인증을 완료할 수 없습니다.",
     ),
+    GIFT_VERIFICATION_IMAGE_NOT_UPLOADED(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_012",
+        "업로드된 선물 인증 이미지를 찾을 수 없습니다.",
+    ),
+    GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "FUNDING_013",
+        "선물 인증 이미지 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    ),
 }

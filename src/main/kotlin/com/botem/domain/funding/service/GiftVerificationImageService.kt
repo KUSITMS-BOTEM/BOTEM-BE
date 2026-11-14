@@ -10,6 +10,9 @@ import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.S3Properties
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import software.amazon.awssdk.core.exception.SdkException
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.S3Exception
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
@@ -21,6 +24,7 @@ class GiftVerificationImageService(
     private val giftVerificationRepository: GiftVerificationRepository,
     private val fundingRepository: FundingRepository,
     private val s3Presigner: S3Presigner,
+    private val s3Client: S3Client,
     private val s3Properties: S3Properties,
 ) {
 
@@ -76,6 +80,28 @@ class GiftVerificationImageService(
         }
     }
 
+    fun validateUploadedImage(
+        userId: Long,
+        giftVerificationId: Long,
+        imageUrl: String,
+    ) {
+        validateImageUrl(userId, giftVerificationId, imageUrl)
+        val key = imageUrl.removePrefix("${s3Properties.publicBaseUrl}/")
+
+        try {
+            s3Client.headObject { request ->
+                request.bucket(s3Properties.bucket).key(key)
+            }
+        } catch (exception: S3Exception) {
+            if (exception.statusCode() == NOT_FOUND_STATUS) {
+                throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_IMAGE_NOT_UPLOADED)
+            }
+            throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE)
+        } catch (exception: SdkException) {
+            throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE)
+        }
+    }
+
     private fun validatePendingVerification(userId: Long, giftVerificationId: Long) {
         val verification = giftVerificationRepository.findById(giftVerificationId)
             .orElseThrow { BusinessException(FundingErrorCode.GIFT_VERIFICATION_NOT_FOUND) }
@@ -91,6 +117,7 @@ class GiftVerificationImageService(
 
     companion object {
         private const val KEY_PREFIX = "gift-verification"
+        private const val NOT_FOUND_STATUS = 404
         private const val MAX_CONTENT_LENGTH = 5L * 1024 * 1024
         private val UPLOAD_URL_EXPIRATION: Duration = Duration.ofMinutes(5)
         private val EXTENSIONS_BY_CONTENT_TYPE = mapOf(

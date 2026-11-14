@@ -37,7 +37,7 @@ class GiftVerificationService(
 
         val completedAt = LocalDateTime.now(clock)
         if (verification.status == GiftVerificationStatus.PENDING) {
-            giftVerificationImageService.validateImageUrl(userId, giftVerificationId, request.imageUrl)
+            giftVerificationImageService.validateUploadedImage(userId, giftVerificationId, request.imageUrl)
             verification.complete(
                 imageUrl = request.imageUrl,
                 thankYouMessage = request.thankYouMessage?.trim()?.takeIf(String::isNotEmpty),

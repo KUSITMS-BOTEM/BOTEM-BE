@@ -75,7 +75,8 @@ interface GiftVerificationControllerDocs {
         summary = "선물 인증 완료",
         description = """
             S3에 업로드한 인증 이미지와 감사 메시지를 저장하고 선물 인증 및 펀딩을 완료합니다.
-            imageUrl은 이미지 업로드 URL 발급 API가 해당 사용자와 인증 ID에 대해 반환한 값만 허용합니다.
+            imageUrl은 이미지 업로드 URL 발급 API의 사용자·인증 ID 경로에 실제 업로드가 완료된 값만 허용합니다.
+            완료 처리 전에 S3 객체 존재 여부를 확인하며, 객체가 없거나 확인할 수 없으면 상태를 변경하지 않습니다.
             purchasedThroughBotemLink가 true여야 완료할 수 있으며, 다른 상품을 받은 경우 replacementProductName을 전달합니다.
             이미 완료한 인증에 다시 요청하면 내용을 변경하지 않고 기존 완료 결과를 반환합니다.
         """,
@@ -92,7 +93,22 @@ interface GiftVerificationControllerDocs {
         SwaggerApiResponse(
             responseCode = "400",
             description = "잘못된 이미지 URL, 구매 확인 누락 또는 요청 값 오류",
-            content = [Content(examples = [ExampleObject(value = PURCHASE_CONFIRMATION_REQUIRED_EXAMPLE)])],
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(
+                            name = "FUNDING_001",
+                            summary = "구매 확인 누락",
+                            value = PURCHASE_CONFIRMATION_REQUIRED_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_012",
+                            summary = "업로드된 이미지 없음",
+                            value = IMAGE_NOT_UPLOADED_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
@@ -135,6 +151,11 @@ interface GiftVerificationControllerDocs {
                     ],
                 ),
             ],
+        ),
+        SwaggerApiResponse(
+            responseCode = "503",
+            description = "S3 이미지 확인 일시 실패",
+            content = [Content(examples = [ExampleObject(value = IMAGE_CHECK_UNAVAILABLE_EXAMPLE)])],
         ),
     )
     fun complete(
@@ -246,6 +267,28 @@ interface GiftVerificationControllerDocs {
               "error": {
                 "code": "FUNDING_011",
                 "message": "현재 펀딩 상태에서는 선물 인증을 완료할 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val IMAGE_NOT_UPLOADED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_012",
+                "message": "업로드된 선물 인증 이미지를 찾을 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val IMAGE_CHECK_UNAVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_013",
+                "message": "선물 인증 이미지 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
                 "detail": null
               }
             }
