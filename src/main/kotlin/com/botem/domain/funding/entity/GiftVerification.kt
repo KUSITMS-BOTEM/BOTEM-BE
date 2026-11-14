@@ -66,6 +66,7 @@ class GiftVerification(
         thankYouMessage: String?,
         purchasedThroughBotemLink: Boolean,
         completedAt: LocalDateTime,
+        replacementProductName: String? = this.replacementProductName,
     ) {
         if (this.completedAt != null) {
             return
@@ -80,6 +81,7 @@ class GiftVerification(
         this.imageUrl = imageUrl
         this.thankYouMessage = thankYouMessage
         this.purchasedThroughBotemLink = purchasedThroughBotemLink
+        this.replacementProductName = replacementProductName
         status = GiftVerificationStatus.COMPLETED
         this.completedAt = completedAt
     }

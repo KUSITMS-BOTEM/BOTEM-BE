@@ -1,7 +1,9 @@
 package com.botem.domain.funding.controller.docs
 
+import com.botem.domain.funding.dto.request.CompleteGiftVerificationRequest
 import com.botem.domain.funding.dto.request.CreateGiftVerificationImageUploadUrlRequest
 import com.botem.domain.funding.dto.response.GiftVerificationImageUploadUrlResponse
+import com.botem.domain.funding.dto.response.GiftVerificationResponse
 import com.botem.global.response.ApiResponse
 
 interface GiftVerificationControllerDocs {
@@ -10,4 +12,10 @@ interface GiftVerificationControllerDocs {
         giftVerificationId: Long,
         request: CreateGiftVerificationImageUploadUrlRequest,
     ): ApiResponse<GiftVerificationImageUploadUrlResponse>
+
+    fun complete(
+        userId: Long,
+        giftVerificationId: Long,
+        request: CompleteGiftVerificationRequest,
+    ): ApiResponse<GiftVerificationResponse>
 }
