@@ -134,7 +134,18 @@ Kotlin + Spring Boot 백엔드 코드를 PR 생성 전에 검토한다. 단순�
 - 컬럼 삭제와 이름 변경이 하위 호환성을 깨뜨리지 않는가?
 - Entity 변경과 Migration이 함께 반영됐는가?
 
-## 15. 중요 위험 신호
+## 15. 평가 기준 연계
+
+`.claude/docs/be/evaluation-criteria.md`의 항목 중 PR diff로 확인할 수 있는 것만 점검한다. 변경 사항이 해당 영역을 건드릴 때만 지적하고, 범위 밖의 기술 도입(캐싱, 모니터링, k8s 등)을 요구하지 않는다.
+
+- **API 문서화**: 새로 추가하거나 변경한 API에 springdoc(OpenAPI) 설명, 응답 형식과 예제 값, 에러 응답이 문서화되어 있는가?
+- **RESTful 설계**: 리소스 중심의 URI, 적절한 HTTP Method와 Status Code를 사용하는가?
+- **인덱스 설계**: 새 조회 조건이나 정렬 조건에 필요한 인덱스를 Migration에 함께 추가했는가?
+- **CI/CD 보안**: `.github/workflows`, `Dockerfile`, `deploy/`, 설정 파일에 시크릿이 하드코딩되지 않고 GitHub Secrets나 환경 변수로 주입되는가?
+- **운영 안정성**: 주요 실패 경로에 로그를 남기는가? Actuator Health Check 노출 범위가 적절한가?
+- **테스트 구성**: 단위 테스트(Mocking)와 DB 연동 테스트를 목적에 맞게 구분해 사용하는가?
+
+## 16. 중요 위험 신호
 
 다음 항목은 실제 문제가 확인되면 우선적으로 보고한다.
 
