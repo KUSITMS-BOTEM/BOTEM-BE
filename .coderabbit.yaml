@@ -23,6 +23,34 @@ reviews:
         - JPA Entity에 data class와 public setter를 사용하지 않습니다.
         - 트랜잭션 경계, N+1, 반복문 내부 쿼리를 확인합니다.
         - `!!` 사용과 과도한 추상화를 지적합니다.
+        .claude/docs/be/evaluation-criteria.md 중 변경 사항과 관련된 항목만 확인합니다.
+        - 추가하거나 변경한 API에 springdoc 설명, 응답 예제, 에러 응답이 문서화되어 있는지 확인합니다.
+        - RESTful URI, HTTP Method, Status Code가 적절한지 확인합니다.
+        - 인가 검증 누락, 민감 정보 로그 출력을 확인합니다.
+        - 범위 밖의 기술 도입(캐싱, 모니터링, k8s 등)은 제안하지 않습니다.
+    - path: "src/test/**/*.kt"
+      instructions: |
+        비즈니스 규칙, 예외 상황, 경계값을 검증하는지 확인해주세요.
+        단위 테스트(Mocking)와 DB 연동 테스트를 목적에 맞게 구분해 사용하는지 확인합니다.
+    - path: "src/main/resources/db/migration/**"
+      instructions: |
+        이미 적용된 Migration 파일을 수정하지 않았는지, 버전이 중복되지 않는지 확인해주세요.
+        새 조회 조건에 필요한 인덱스, NOT NULL 컬럼 추가 시 기존 데이터 처리, Unique Constraint를 확인합니다.
+    - path: "src/main/resources/*.yaml"
+      instructions: |
+        비밀번호, 토큰, 키 등 자격증명이 하드코딩되지 않고 환경 변수로 주입되는지 확인해주세요.
+        Actuator 엔드포인트 노출 범위가 적절한지 확인합니다.
+    - path: "{.github/workflows/**,Dockerfile,docker-compose.yml,deploy/**}"
+      instructions: |
+        시크릿이 하드코딩되거나 로그에 출력되지 않고 GitHub Secrets로 주입되는지 확인해주세요.
+        빌드, 테스트, 배포 단계가 명확하고 실패 시 배포가 중단되는지 확인합니다.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - ".claude/rules/*.md"
+      - ".claude/docs/be/evaluation-criteria.md"
 
 chat:
   auto_reply: true
