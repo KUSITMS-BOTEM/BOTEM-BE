@@ -83,7 +83,7 @@ class FundingResultService(
         if (funding.deadline.isAfter(now)) {
             throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
         }
-        if (funding.status == FundingStatus.CANCELLED) {
+        if (funding.status !in RESULT_VIEWABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE)
         }
     }
@@ -103,5 +103,12 @@ class FundingResultService(
     companion object {
         private val ONE_HUNDRED = BigDecimal.valueOf(100L)
         private val MAX_INT = BigDecimal.valueOf(Int.MAX_VALUE.toLong())
+        private val RESULT_VIEWABLE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
+            FundingStatus.GIFT_PREPARING,
+            FundingStatus.WAITING_GIFT_VERIFICATION,
+            FundingStatus.COMPLETED,
+        )
     }
 }
