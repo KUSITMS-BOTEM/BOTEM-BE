@@ -8,4 +8,9 @@ interface FundingControllerDocs {
         userId: Long,
         fundingId: Long,
     ): ApiResponse<FundingResultResponse>
+
+    fun openFundingResult(
+        userId: Long,
+        fundingId: Long,
+    ): ApiResponse<FundingResultResponse>
 }
