@@ -22,8 +22,10 @@ interface HomeControllerDocs {
         description = """
             로그인한 사용자의 마감 후 팡을 열지 않은 펀딩과 진행 중인 펀딩 카드를 조회합니다.
             마감 카드를 먼저 반환하고, 진행 중 카드는 마감일 또는 서프라이즈 공개일이 가까운 순서로 반환합니다.
-            목표 금액, 전체 참여자 수, 확정 및 확인 대기 달성률과 진행 중인 펀딩 개수를 함께 반환합니다.
+            목표 금액, 전체 참여자 수, 참여자 미리보기, 확정 및 확인 대기 달성률과 진행 중인 펀딩 개수를 함께 반환합니다.
             참여자 수는 취소된 참여를 제외하며, 로그인 참여자는 계정 기준으로 중복을 제거합니다.
+            참여자 미리보기는 참여 시각이 빠른 순서로 카드당 최대 3명까지 반환합니다.
+            비로그인 참여자와 프로필 이미지가 없는 회원의 profileImageUrl은 null이며, 기본 이미지는 프론트엔드에서 표시합니다.
         """,
     )
     @ApiResponses(
@@ -166,6 +168,20 @@ interface HomeControllerDocs {
                     "productImageUrl": "https://image.example.com/product.jpg",
                     "targetAmount": 699000,
                     "participantCount": 8,
+                    "participantPreviews": [
+                      {
+                        "participantName": "민지",
+                        "profileImageUrl": "https://image.example.com/profile/minji.jpg"
+                      },
+                      {
+                        "participantName": "준호",
+                        "profileImageUrl": null
+                      },
+                      {
+                        "participantName": "보탬친구",
+                        "profileImageUrl": null
+                      }
+                    ],
                     "remainingDays": null,
                     "confirmedPercentage": 100,
                     "pendingPercentage": 0,
@@ -179,6 +195,16 @@ interface HomeControllerDocs {
                     "productImageUrl": "https://image.example.com/headphone.jpg",
                     "targetAmount": 350000,
                     "participantCount": 6,
+                    "participantPreviews": [
+                      {
+                        "participantName": "수빈",
+                        "profileImageUrl": "https://image.example.com/profile/subin.jpg"
+                      },
+                      {
+                        "participantName": "현우",
+                        "profileImageUrl": null
+                      }
+                    ],
                     "remainingDays": 7,
                     "confirmedPercentage": 55,
                     "pendingPercentage": 15,

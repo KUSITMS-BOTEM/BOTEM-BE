@@ -9,6 +9,7 @@ import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.home.dto.response.HomeFundingCardResponse
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import com.botem.domain.home.dto.response.HomeFundingListResponse
+import com.botem.domain.home.dto.response.HomeFundingParticipantPreviewResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -29,8 +30,14 @@ class HomeFundingService(
         val now = LocalDateTime.now(clock)
         val fundings = fundingRepository.findAllByOwnerIdAndStatusIn(userId, HOME_CANDIDATE_STATUSES)
         val summaries = getContributionSummaries(fundings)
+        val participantPreviews = getParticipantPreviews(fundings)
         val cards = fundings.mapNotNull { funding ->
-            toCard(funding, summaries[funding.id] ?: FundingContributionSummary.empty(funding.id), now)
+            toCard(
+                funding = funding,
+                summary = summaries[funding.id] ?: FundingContributionSummary.empty(funding.id),
+                participantPreviews = participantPreviews[funding.id].orEmpty(),
+                now = now,
+            )
         }
         val activeFundingCount = cards.count { it.cardType == HomeFundingCardType.IN_PROGRESS }
 
@@ -50,9 +57,24 @@ class HomeFundingService(
             .associateBy(FundingContributionSummary::fundingId)
     }
 
+    private fun getParticipantPreviews(
+        fundings: List<Funding>,
+    ): Map<Long, List<HomeFundingParticipantPreviewResponse>> {
+        if (fundings.isEmpty()) {
+            return emptyMap()
+        }
+
+        return contributionRepository.findParticipantPreviewsByFundingIds(fundings.map(Funding::id))
+            .groupBy(
+                keySelector = { it.fundingId },
+                valueTransform = HomeFundingParticipantPreviewResponse::from,
+            )
+    }
+
     private fun toCard(
         funding: Funding,
         summary: FundingContributionSummary,
+        participantPreviews: List<HomeFundingParticipantPreviewResponse>,
         now: LocalDateTime,
     ): HomeFundingCardResponse? {
         val cardType = when {
@@ -74,6 +96,7 @@ class HomeFundingService(
             productImageUrl = funding.product.imageUrl,
             targetAmount = funding.targetAmount,
             participantCount = summary.participantCount,
+            participantPreviews = participantPreviews,
             remainingDays = remainingDays,
             confirmedPercentage = percentage(summary.confirmedAmount, funding.targetAmount),
             pendingPercentage = percentage(summary.pendingAmount, funding.targetAmount),

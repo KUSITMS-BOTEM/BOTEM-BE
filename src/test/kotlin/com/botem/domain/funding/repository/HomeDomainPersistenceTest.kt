@@ -196,6 +196,107 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
+    fun `펀딩별 참여자 미리보기는 로그인 참여자를 중복 제거하고 취소 참여를 제외해 세 명까지 조회한다`() {
+        val owner = saveUser()
+        val participantWithImage = saveNamedUser(
+            nickname = "이미지 회원",
+            name = null,
+            profileImageUrl = "https://image.example.com/profile.jpg",
+        )
+        val participantWithoutImage = saveNamedUser(nickname = "기본 이미지 회원", name = null)
+        val otherFundingParticipant = saveNamedUser(nickname = "다른 펀딩 회원", name = null)
+        val account = savePayoutAccount(owner.id)
+        val firstWish = wishRepository.saveAndFlush(wish(owner.id, "첫 번째 선물"))
+        val secondWish = wishRepository.saveAndFlush(wish(owner.id, "두 번째 선물"))
+        val firstFunding = fundingRepository.saveAndFlush(funding(owner.id, account, firstWish))
+        val secondFunding = fundingRepository.saveAndFlush(funding(owner.id, account, secondWish))
+
+        val cancelled = contribution(
+            fundingId = firstFunding.id,
+            amount = 1_000L,
+            status = ContributionStatus.CANCELLED,
+            participantName = "취소 참여자",
+        )
+        val loggedIn = contribution(
+            fundingId = firstFunding.id,
+            amount = 10_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            participantUserId = participantWithImage.id,
+            participantName = "민지",
+        )
+        val duplicatedLoggedIn = contribution(
+            fundingId = firstFunding.id,
+            amount = 5_000L,
+            status = ContributionStatus.PENDING_CONFIRMATION,
+            participantUserId = participantWithImage.id,
+            participantName = "민지 중복",
+        )
+        val guest = contribution(
+            fundingId = firstFunding.id,
+            amount = 3_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            participantName = "비회원",
+        )
+        val messageOnly = contribution(
+            fundingId = firstFunding.id,
+            amount = 0L,
+            status = ContributionStatus.MESSAGE_ONLY,
+            participantName = "메시지 참여자",
+        )
+        val fourthParticipant = contribution(
+            fundingId = firstFunding.id,
+            amount = 2_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            participantUserId = participantWithoutImage.id,
+            participantName = "네 번째 참여자",
+        )
+        val otherFundingContribution = contribution(
+            fundingId = secondFunding.id,
+            amount = 7_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            participantUserId = otherFundingParticipant.id,
+            participantName = "다른 펀딩 참여자",
+        )
+        contributionRepository.saveAllAndFlush(
+            listOf(
+                cancelled,
+                loggedIn,
+                duplicatedLoggedIn,
+                guest,
+                messageOnly,
+                fourthParticipant,
+                otherFundingContribution,
+            ),
+        )
+        val baseTime = LocalDateTime.of(2026, 11, 8, 10, 0)
+        listOf(
+            cancelled,
+            loggedIn,
+            duplicatedLoggedIn,
+            guest,
+            messageOnly,
+            fourthParticipant,
+            otherFundingContribution,
+        ).forEachIndexed { index, contribution ->
+            updateContributionCreatedAt(contribution.id, baseTime.plusMinutes(index.toLong()))
+        }
+        entityManager.clear()
+
+        val previews = contributionRepository.findParticipantPreviewsByFundingIds(
+            listOf(firstFunding.id, secondFunding.id),
+        )
+        val firstFundingPreviews = previews.filter { it.fundingId == firstFunding.id }
+        val secondFundingPreviews = previews.filter { it.fundingId == secondFunding.id }
+
+        assertEquals(listOf("민지", "비회원", "메시지 참여자"), firstFundingPreviews.map { it.participantName })
+        assertEquals(participantWithImage.id, firstFundingPreviews[0].participantUserId)
+        assertEquals("https://image.example.com/profile.jpg", firstFundingPreviews[0].profileImageUrl)
+        assertNull(firstFundingPreviews[1].participantUserId)
+        assertNull(firstFundingPreviews[1].profileImageUrl)
+        assertEquals(listOf("다른 펀딩 참여자"), secondFundingPreviews.map { it.participantName })
+    }
+
+    @Test
     fun `참여 내역은 확인 완료 상태로 직접 생성할 수 없다`() {
         assertFailsWith<IllegalArgumentException> {
             Contribution(
@@ -480,12 +581,13 @@ class HomeDomainPersistenceTest {
     private fun saveNamedUser(
         nickname: String,
         name: String?,
+        profileImageUrl: String? = null,
     ): User =
         userRepository.saveAndFlush(
             User(
                 kakaoId = System.nanoTime(),
                 nickname = nickname,
-                profileImageUrl = null,
+                profileImageUrl = profileImageUrl,
                 name = name,
             ),
         )
@@ -506,11 +608,12 @@ class HomeDomainPersistenceTest {
         amount: Long,
         status: ContributionStatus,
         participantUserId: Long? = null,
+        participantName: String = "친구",
     ): Contribution =
         Contribution(
             fundingId = fundingId,
             participantUserId = participantUserId,
-            participantName = "친구",
+            participantName = participantName,
             amount = amount,
             status = status,
             guestPasswordHash = if (participantUserId == null) "hashed-password-$amount" else null,
@@ -529,6 +632,15 @@ class HomeDomainPersistenceTest {
         entityManager.createNativeQuery("UPDATE wishes SET created_at = :createdAt WHERE id = :wishId")
             .setParameter("createdAt", createdAt)
             .setParameter("wishId", wishId)
+            .executeUpdate()
+    }
+
+    private fun updateContributionCreatedAt(contributionId: Long, createdAt: LocalDateTime) {
+        entityManager.createNativeQuery(
+            "UPDATE contributions SET created_at = :createdAt WHERE id = :contributionId",
+        )
+            .setParameter("createdAt", createdAt)
+            .setParameter("contributionId", contributionId)
             .executeUpdate()
     }
 
