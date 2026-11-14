@@ -75,7 +75,7 @@ class UserControllerTest {
                 name = "이정민",
                 profileImageUrl = null,
                 birthday = MonthDay.of(10, 13),
-                wishProfileUrl = "https://botem.site/@key",
+                wishProfileUrl = "https://botem.me/@key",
                 kakaoConnected = true,
                 email = null,
                 joinedAt = LocalDate.of(2026, 11, 10),
@@ -85,7 +85,7 @@ class UserControllerTest {
         mockMvc.perform(get("/api/users/me/profile").with(authentication(loggedIn())))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.name").value("이정민"))
-            .andExpect(jsonPath("$.data.wishProfileUrl").value("https://botem.site/@key"))
+            .andExpect(jsonPath("$.data.wishProfileUrl").value("https://botem.me/@key"))
     }
 
     @Test
@@ -178,7 +178,7 @@ class UserControllerTest {
                 name = "이정민",
                 profileImageUrl = null,
                 birthday = MonthDay.of(10, 13),
-                wishProfileUrl = "https://botem.site/@key",
+                wishProfileUrl = "https://botem.me/@key",
                 kakaoConnected = true,
                 email = "jiyu@kakao.com",
                 joinedAt = LocalDate.of(2026, 11, 10),

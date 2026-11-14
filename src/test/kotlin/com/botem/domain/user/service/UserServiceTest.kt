@@ -31,7 +31,7 @@ class UserServiceTest {
     private val profileImageService = mock(ProfileImageService::class.java)
     private val userService = UserService(
         userRepository,
-        WishProfileProperties(baseUrl = "https://botem.site/"),
+        WishProfileProperties(baseUrl = "https://botem.me/"),
         profileImageService,
     )
 
@@ -54,7 +54,7 @@ class UserServiceTest {
         assertEquals("https://example.com/profile.jpg", response.profileImageUrl)
         assertEquals(birthday, response.birthday)
         assertEquals(
-            "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
+            "https://botem.me/@8f0c6d779fae47f3a979302f2782d20f",
             response.wishProfileUrl,
         )
         assertEquals(true, response.kakaoConnected)
@@ -100,7 +100,7 @@ class UserServiceTest {
         assertEquals("지유", response.nickname)
         assertEquals(birthday, response.birthday)
         assertEquals(
-            "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
+            "https://botem.me/@8f0c6d779fae47f3a979302f2782d20f",
             response.wishProfileUrl,
         )
     }
@@ -237,7 +237,7 @@ class UserServiceTest {
 
         val response = userService.getMyProfile(1L)
 
-        assertEquals("https://botem.site/@$winnerKey", response.wishProfileUrl)
+        assertEquals("https://botem.me/@$winnerKey", response.wishProfileUrl)
     }
 
     @Test

@@ -15,15 +15,15 @@ class KakaoOAuthClientRedirectUriTest {
             clientId = "client-id",
             clientSecret = "client-secret",
             redirectUri = "https://default.example/callback",
-            allowedRedirectUris = listOf("https://botem.site/auth/callback"),
+            allowedRedirectUris = listOf("https://botem.me/auth/callback"),
         ),
         RestClient.builder(),
     )
 
     @Test
     fun `허용된 redirect URI로 로그인 URI를 만든다`() {
-        assertThat(client.getLoginUri("https://botem.site/auth/callback"))
-            .contains("redirect_uri=https://botem.site/auth/callback")
+        assertThat(client.getLoginUri("https://botem.me/auth/callback"))
+            .contains("redirect_uri=https://botem.me/auth/callback")
     }
 
     @Test
@@ -33,7 +33,7 @@ class KakaoOAuthClientRedirectUriTest {
 
     @Test
     fun `허용 목록에 없는 redirect URI는 거부한다`() {
-        assertThatThrownBy { client.getLoginUri("https://botem.site/auth/callback/evil") }
+        assertThatThrownBy { client.getLoginUri("https://botem.me/auth/callback/evil") }
             .isInstanceOf(BusinessException::class.java)
             .extracting("errorCode")
             .isEqualTo(AuthErrorCode.INVALID_REDIRECT_URI)
