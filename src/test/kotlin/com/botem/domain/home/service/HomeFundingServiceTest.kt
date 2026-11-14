@@ -9,6 +9,7 @@ import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
+import com.botem.domain.funding.repository.projection.FundingParticipantPreviewProjection
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -143,6 +144,39 @@ class HomeFundingServiceTest {
     }
 
     @Test
+    fun `펀딩별 참여자 미리보기를 홈 카드 응답으로 변환한다`() {
+        val funding = funding(
+            id = 1L,
+            type = FundingType.BIRTHDAY,
+            deadline = LocalDateTime.of(2026, 11, 15, 23, 59),
+        )
+        val participantWithImage = participantPreview(
+            fundingId = funding.id,
+            participantName = "민지",
+            profileImageUrl = "https://image.example.com/profile.jpg",
+        )
+        val guest = participantPreview(
+            fundingId = funding.id,
+            participantUserId = null,
+            participantName = "비회원",
+            profileImageUrl = null,
+        )
+        given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
+            .willReturn(listOf(funding))
+        given(contributionRepository.summarizeByFundingIds(listOf(funding.id)))
+            .willReturn(listOf(summary(fundingId = funding.id, participantCount = 2L)))
+        given(contributionRepository.findParticipantPreviewsByFundingIds(listOf(funding.id)))
+            .willReturn(listOf(participantWithImage, guest))
+
+        val card = service.getHomeFundings(USER_ID).fundingCards.single()
+
+        assertEquals(2L, card.participantCount)
+        assertEquals(listOf("민지", "비회원"), card.participantPreviews.map { it.participantName })
+        assertEquals("https://image.example.com/profile.jpg", card.participantPreviews[0].profileImageUrl)
+        assertEquals(null, card.participantPreviews[1].profileImageUrl)
+    }
+
+    @Test
     fun `조회할 펀딩이 없으면 참여 집계 없이 빈 목록과 개설 가능 상태를 반환한다`() {
         given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
             .willReturn(emptyList())
@@ -204,6 +238,19 @@ class HomeFundingServiceTest {
             pendingCount = pendingCount,
             participantCount = participantCount,
         )
+
+    private fun participantPreview(
+        fundingId: Long,
+        participantUserId: Long? = 2L,
+        participantName: String,
+        profileImageUrl: String?,
+    ): FundingParticipantPreviewProjection =
+        mock(FundingParticipantPreviewProjection::class.java).also { preview ->
+            given(preview.fundingId).willReturn(fundingId)
+            given(preview.participantUserId).willReturn(participantUserId)
+            given(preview.participantName).willReturn(participantName)
+            given(preview.profileImageUrl).willReturn(profileImageUrl)
+        }
 
     private fun setField(target: Any, fieldName: String, value: Any) {
         target.javaClass.getDeclaredField(fieldName).apply {

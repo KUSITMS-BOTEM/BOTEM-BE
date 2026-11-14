@@ -7,6 +7,7 @@ import com.botem.domain.home.dto.response.GiftVerificationTargetResponse
 import com.botem.domain.home.dto.response.HomeFundingCardResponse
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import com.botem.domain.home.dto.response.HomeFundingListResponse
+import com.botem.domain.home.dto.response.HomeFundingParticipantPreviewResponse
 import com.botem.domain.home.dto.response.HomeNoFundingResponse
 import com.botem.domain.home.dto.response.HomeNoFundingState
 import com.botem.domain.home.dto.response.HomeWishCardResponse
@@ -65,6 +66,16 @@ class HomeControllerTest {
                         productImageUrl = "https://image.example.com/product.jpg",
                         targetAmount = 100_000L,
                         participantCount = 7L,
+                        participantPreviews = listOf(
+                            HomeFundingParticipantPreviewResponse(
+                                participantName = "민지",
+                                profileImageUrl = "https://image.example.com/profile.jpg",
+                            ),
+                            HomeFundingParticipantPreviewResponse(
+                                participantName = "비회원",
+                                profileImageUrl = null,
+                            ),
+                        ),
                         remainingDays = 7L,
                         confirmedPercentage = 55,
                         pendingPercentage = 15,
@@ -86,6 +97,13 @@ class HomeControllerTest {
             .andExpect(jsonPath("$.data.fundingCards[0].cardType").value("IN_PROGRESS"))
             .andExpect(jsonPath("$.data.fundingCards[0].targetAmount").value(100_000L))
             .andExpect(jsonPath("$.data.fundingCards[0].participantCount").value(7L))
+            .andExpect(jsonPath("$.data.fundingCards[0].participantPreviews[0].participantName").value("민지"))
+            .andExpect(
+                jsonPath("$.data.fundingCards[0].participantPreviews[0].profileImageUrl")
+                    .value("https://image.example.com/profile.jpg"),
+            )
+            .andExpect(jsonPath("$.data.fundingCards[0].participantPreviews[1].participantName").value("비회원"))
+            .andExpect(jsonPath("$.data.fundingCards[0].participantPreviews[1].profileImageUrl").isEmpty)
             .andExpect(jsonPath("$.data.fundingCards[0].remainingDays").value(7L))
             .andExpect(jsonPath("$.data.fundingCards[0].confirmedPercentage").value(55))
             .andExpect(jsonPath("$.data.fundingCards[0].pendingPercentage").value(15))
