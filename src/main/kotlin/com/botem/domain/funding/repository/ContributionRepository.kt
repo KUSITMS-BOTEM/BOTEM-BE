@@ -1,6 +1,7 @@
 package com.botem.domain.funding.repository
 
 import com.botem.domain.funding.entity.Contribution
+import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.funding.repository.projection.FundingParticipantPreviewProjection
 import org.springframework.data.jpa.repository.JpaRepository
@@ -10,6 +11,11 @@ import org.springframework.data.repository.query.Param
 interface ContributionRepository : JpaRepository<Contribution, Long> {
 
     fun findAllByFundingIdOrderByCreatedAtAsc(fundingId: Long): List<Contribution>
+
+    fun existsByFundingIdAndStatus(
+        fundingId: Long,
+        status: ContributionStatus,
+    ): Boolean
 
     @Query(
         """

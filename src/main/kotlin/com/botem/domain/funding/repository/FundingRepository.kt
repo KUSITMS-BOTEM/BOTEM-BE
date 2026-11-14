@@ -3,12 +3,18 @@ package com.botem.domain.funding.repository
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.projection.RevealedSurpriseCardProjection
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.LocalDateTime
 
 interface FundingRepository : JpaRepository<Funding, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT funding FROM Funding funding WHERE funding.id = :fundingId")
+    fun findByIdForUpdate(@Param("fundingId") fundingId: Long): Funding?
 
     fun existsByOwnerIdAndStatusNotIn(
         ownerId: Long,
