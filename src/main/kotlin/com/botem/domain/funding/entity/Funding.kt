@@ -136,12 +136,19 @@ class Funding(
         if (this.completedAt != null) {
             return
         }
-        if (status != FundingStatus.WAITING_GIFT_VERIFICATION) {
-            throw BusinessException(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE)
-        }
+        validateGiftVerificationCompletable()
 
         status = FundingStatus.COMPLETED
         this.completedAt = completedAt
+    }
+
+    fun validateGiftVerificationCompletable() {
+        if (completedAt != null) {
+            return
+        }
+        if (status != FundingStatus.WAITING_GIFT_VERIFICATION) {
+            throw BusinessException(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE)
+        }
     }
 
     companion object {

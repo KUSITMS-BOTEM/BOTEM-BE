@@ -33,6 +33,7 @@ class GiftVerificationService(
         if (!funding.isGiftRecipient(userId)) {
             throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_RECIPIENT_ONLY)
         }
+        funding.validateGiftVerificationCompletable()
 
         val completedAt = LocalDateTime.now(clock)
         if (verification.status == GiftVerificationStatus.PENDING) {
