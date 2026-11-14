@@ -1,6 +1,8 @@
 package com.botem.domain.funding.entity
 
+import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.entity.BaseEntity
+import com.botem.global.exception.BusinessException
 import jakarta.persistence.Column
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
@@ -105,4 +107,29 @@ class Funding(
 
     var completedAt: LocalDateTime? = null
         protected set
+
+    fun openResult(openedAt: LocalDateTime) {
+        if (resultOpenedAt != null) {
+            return
+        }
+        if (type != FundingType.BIRTHDAY) {
+            throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
+        }
+        if (deadline.isAfter(openedAt)) {
+            throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
+        }
+        if (status !in RESULT_OPENABLE_STATUSES) {
+            throw BusinessException(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE)
+        }
+
+        resultOpenedAt = openedAt
+        status = FundingStatus.GIFT_PREPARING
+    }
+
+    companion object {
+        private val RESULT_OPENABLE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
+        )
+    }
 }
