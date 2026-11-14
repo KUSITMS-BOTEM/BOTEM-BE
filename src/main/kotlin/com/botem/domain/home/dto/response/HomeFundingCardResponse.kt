@@ -10,6 +10,7 @@ data class HomeFundingCardResponse(
     val productImageUrl: String,
     val targetAmount: Long,
     val participantCount: Long,
+    val participantPreviews: List<HomeFundingParticipantPreviewResponse> = emptyList(),
     val remainingDays: Long?,
     val confirmedPercentage: Int,
     val pendingPercentage: Int,
