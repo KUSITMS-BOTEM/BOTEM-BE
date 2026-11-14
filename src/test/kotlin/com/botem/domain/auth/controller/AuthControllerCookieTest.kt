@@ -38,7 +38,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
         "jwt.secret=test-secret",
         "jwt.access-token-expiration=60m",
         "jwt.refresh-token-expiration=7d",
-        "auth-cookie.domain=.botem.site",
+        "auth-cookie.domain=.botem.me",
     ],
 )
 @Import(SecurityConfig::class, AuthCookieFactory::class)
@@ -97,7 +97,7 @@ class AuthControllerCookieTest {
                     hasItem(
                         allOf(
                             containsString("isLoggedIn=true"),
-                            containsString("Domain=.botem.site"),
+                            containsString("Domain=.botem.me"),
                             containsString("Path=/"),
                             containsString("Max-Age=604800"),
                             containsString("Secure"),
@@ -140,7 +140,7 @@ class AuthControllerCookieTest {
             .andExpect(
                 header().stringValues(
                     HttpHeaders.SET_COOKIE,
-                    hasItem(allOf(containsString("isLoggedIn="), containsString("Domain=.botem.site"), containsString("Max-Age=0"))),
+                    hasItem(allOf(containsString("isLoggedIn="), containsString("Domain=.botem.me"), containsString("Max-Age=0"))),
                 ),
             )
 

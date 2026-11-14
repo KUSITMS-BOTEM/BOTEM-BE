@@ -21,14 +21,20 @@ sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-이어서 HTTPS 인증서를 발급합니다. `api.botem.site`의 DNS가 EC2를 가리키고 80/443이 열려 있어야 합니다.
+이어서 HTTPS 인증서를 발급합니다. `api.botem.me`의 DNS가 EC2를 가리키고 80/443이 열려 있어야 합니다.
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d api.botem.site -m <이메일> --agree-tos --redirect -n
+sudo certbot --nginx -d api.botem.me -m <이메일> --agree-tos --redirect -n
 ```
 
 위 절차는 새 서버에서만 실행합니다. 운영 중인 서버에서 다시 실행하면 Certbot HTTPS 설정과 활성 upstream이 덮어써집니다. `deploy/nginx.conf`는 배포 시 자동 반영되지 않으므로, 운영 설정을 바꿀 때는 `/etc/nginx/conf.d/botem.conf`를 직접 수정하고 `sudo nginx -t && sudo systemctl reload nginx`를 실행합니다.
+
+운영 서버에 도메인을 추가할 때는 `botem.conf`의 `server_name`(80, 443 블록 모두)에 새 도메인을 추가하고 reload한 뒤, 기존 인증서를 확장합니다. 인증서 이름은 최초 발급 도메인(`api.botem.site`)으로 유지됩니다.
+
+```bash
+sudo certbot --nginx -d api.botem.site -d api.botem.me --expand
+```
 
 ## 보안 그룹
 
@@ -65,7 +71,7 @@ sudo certbot --nginx -d api.botem.site -m <이메일> --agree-tos --redirect -n
 |---|---|
 | AWS | `AWS_ROLE_ARN`, `AWS_REGION`, `ECR_REPOSITORY`, `EC2_SECURITY_GROUP_ID` |
 | SSH | `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`, `EC2_KNOWN_HOSTS` (`ssh-keyscan <host>` 결과를 확인 후 등록) |
-| 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `JWT_SECRET`, `PAYOUT_ACCOUNT_ENCRYPTION_KEY`, `AUTH_COOKIE_DOMAIN` (`.botem.site`), `SENTRY_DSN` (Sentry `botem-be` 프로젝트 DSN) |
+| 앱 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `KAKAO_ALLOWED_REDIRECT_URIS` (쉼표로 구분, 카카오 콘솔 Redirect URI와 일치), `JWT_SECRET`, `PAYOUT_ACCOUNT_ENCRYPTION_KEY`, `AUTH_COOKIE_DOMAIN` (`.botem.me`), `SENTRY_DSN` (Sentry `botem-be` 프로젝트 DSN) |
 
 `PAYOUT_ACCOUNT_ENCRYPTION_KEY`는 16, 24 또는 32바이트 난수를 Base64로 인코딩해 등록합니다. 운영 중 키를 잃거나 임의로 교체하면 저장된 계좌번호를 복호화할 수 없습니다.
 

@@ -262,7 +262,7 @@ interface UserControllerDocs {
                 "name": "이정민",
                 "profileImageUrl": "https://example.com/profile.jpg",
                 "birthday": "10-13",
-                "wishProfileUrl": "https://botem.site/@8f0c6d779fae47f3a979302f2782d20f",
+                "wishProfileUrl": "https://botem.me/@8f0c6d779fae47f3a979302f2782d20f",
                 "kakaoConnected": true,
                 "email": "jiyu@kakao.com",
                 "joinedAt": "2026-11-10"

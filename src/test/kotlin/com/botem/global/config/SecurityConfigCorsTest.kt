@@ -51,7 +51,7 @@ class SecurityConfigCorsTest {
 
     @Test
     fun `허용된 프론트 Origin의 Preflight 요청을 허용한다`() {
-        listOf("https://botem.site", "https://botem-fe.vercel.app", "http://localhost:3000").forEach { origin ->
+        listOf("https://botem.me", "https://botem.site", "https://botem-fe.vercel.app", "http://localhost:3000").forEach { origin ->
             mockMvc.perform(preflight(origin))
                 .andExpect(status().isOk)
                 .andExpect(header().string("Access-Control-Allow-Origin", origin))
@@ -69,7 +69,7 @@ class SecurityConfigCorsTest {
     @Test
     fun `Sentry 추적 헤더를 포함한 Preflight 요청을 허용한다`() {
         mockMvc.perform(
-            preflight("https://botem.site")
+            preflight("https://botem.me")
                 .header("Access-Control-Request-Headers", "content-type,sentry-trace,baggage"),
         )
             .andExpect(status().isOk)

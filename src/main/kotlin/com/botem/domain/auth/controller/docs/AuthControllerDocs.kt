@@ -58,7 +58,7 @@ interface AuthControllerDocs {
         ),
     )
     fun getKakaoLoginUri(
-        @Parameter(description = "카카오 로그인 후 이동할 redirect URI", example = "https://botem.site/auth/callback")
+        @Parameter(description = "카카오 로그인 후 이동할 redirect URI", example = "https://botem.me/auth/callback")
         redirectUri: String?,
     ): ApiResponse<KakaoLoginUriResponse>
 
@@ -82,7 +82,7 @@ interface AuthControllerDocs {
             Content(
                 examples = [
                     ExampleObject(
-                        value = """{ "code": "카카오에서 전달받은 인가 코드", "redirectUri": "https://botem.site/auth/callback" }""",
+                        value = """{ "code": "카카오에서 전달받은 인가 코드", "redirectUri": "https://botem.me/auth/callback" }""",
                     ),
                 ],
             ),

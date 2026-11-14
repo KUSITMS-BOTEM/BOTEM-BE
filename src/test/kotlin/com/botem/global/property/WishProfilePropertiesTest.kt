@@ -20,10 +20,10 @@ class WishProfilePropertiesTest {
     @Test
     fun `위시 프로필 기본 주소는 올바른 절대 URL이어야 한다`() {
         val invalidUrls = listOf(
-            "botem.site",
-            "ftp://botem.site",
-            "https://botem.site?ref=campaign",
-            "https://botem.site#profile",
+            "botem.me",
+            "ftp://botem.me",
+            "https://botem.me?ref=campaign",
+            "https://botem.me#profile",
         )
 
         invalidUrls.forEach { baseUrl ->
@@ -37,7 +37,7 @@ class WishProfilePropertiesTest {
     @Test
     fun `위시 프로필 기본 주소는 경로와 마지막 슬래시를 포함할 수 있다`() {
         val violations = validator.validate(
-            WishProfileProperties(baseUrl = "https://botem.site/wish/"),
+            WishProfileProperties(baseUrl = "https://botem.me/wish/"),
         )
 
         assertTrue(violations.isEmpty())

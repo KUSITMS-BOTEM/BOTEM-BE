@@ -105,7 +105,7 @@ class KakaoOAuthClientTest {
     }
 
     companion object {
-        private const val REDIRECT_URI = "https://botem.site/auth/callback"
+        private const val REDIRECT_URI = "https://botem.me/auth/callback"
         private const val TOKEN_URI = "https://kauth.kakao.com/oauth/token"
         private const val USER_INFO_URI = "https://kapi.kakao.com/v2/user/me?secure_resource=true"
     }

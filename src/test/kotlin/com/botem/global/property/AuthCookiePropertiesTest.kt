@@ -15,8 +15,8 @@ class AuthCookiePropertiesTest {
             "\${AUTH_COOKIE_DOMAIN}",
             "",
             " ",
-            "https://botem.site",
-            "botem.site/",
+            "https://botem.me",
+            "botem.me/",
             "localhost",
         )
 
@@ -30,7 +30,7 @@ class AuthCookiePropertiesTest {
 
     @Test
     fun `쿠키 도메인은 지정하지 않거나 올바른 도메인이어야 한다`() {
-        listOf(null, ".botem.site", "botem.site", "api.botem.site").forEach { domain ->
+        listOf(null, ".botem.me", "botem.me", "api.botem.me").forEach { domain ->
             assertTrue(validator.validate(AuthCookieProperties(domain = domain)).isEmpty(), domain)
         }
     }

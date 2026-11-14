@@ -9,7 +9,7 @@ spring:
       read-timeout: 5s
 
 wish-profile:
-  base-url: ${WISH_PROFILE_BASE_URL:https://botem.site}
+  base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}
 
 payout-account:
   encryption:
