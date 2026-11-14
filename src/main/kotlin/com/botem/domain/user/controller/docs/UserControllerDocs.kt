@@ -189,7 +189,7 @@ interface UserControllerDocs {
         summary = "회원 탈퇴",
         description = """
             로그인한 사용자를 탈퇴 처리합니다.
-            진행 중인 일반 펀딩 또는 서프라이즈 펀딩이 있으면 탈퇴할 수 없습니다.
+            사용자가 개설한 종료되지 않은 일반 펀딩 또는 서프라이즈 펀딩이 있으면 탈퇴할 수 없습니다.
             탈퇴하면 Refresh 토큰과 받을 계좌, 업로드한 프로필 이미지를 삭제하고 개인정보를 익명화합니다.
         """,
     )
@@ -209,11 +209,6 @@ interface UserControllerDocs {
             responseCode = "409",
             description = "진행 중인 펀딩 존재",
             content = [Content(examples = [ExampleObject(value = ACTIVE_FUNDING_EXAMPLE)])],
-        ),
-        SwaggerApiResponse(
-            responseCode = "503",
-            description = "펀딩 확인 기능 미연결",
-            content = [Content(examples = [ExampleObject(value = WITHDRAWAL_CHECK_UNAVAILABLE_EXAMPLE)])],
         ),
     )
     fun withdraw(
@@ -307,18 +302,6 @@ interface UserControllerDocs {
               "error": {
                 "code": "USER_002",
                 "message": "진행 중인 펀딩이 끝난 뒤 탈퇴할 수 있어요.",
-                "detail": null
-              }
-            }
-        """
-
-        private const val WITHDRAWAL_CHECK_UNAVAILABLE_EXAMPLE = """
-            {
-              "success": false,
-              "data": null,
-              "error": {
-                "code": "USER_003",
-                "message": "현재 회원 탈퇴 가능 여부를 확인할 수 없습니다.",
                 "detail": null
               }
             }

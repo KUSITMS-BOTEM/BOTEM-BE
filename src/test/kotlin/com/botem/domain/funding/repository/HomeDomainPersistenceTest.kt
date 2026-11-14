@@ -27,7 +27,9 @@ import org.springframework.context.annotation.Import
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @DataJpaTest
 @Import(JpaAuditingConfig::class)
@@ -53,6 +55,37 @@ class HomeDomainPersistenceTest {
 
     @Autowired
     private lateinit var entityManager: EntityManager
+
+    @Test
+    fun `소유한 일반 또는 서프라이즈 펀딩 중 종료되지 않은 펀딩 존재 여부를 조회한다`() {
+        val owner = saveUser()
+        val recipient = saveNamedUser(nickname = "수신자", name = null)
+        val unrelatedOwner = saveNamedUser(nickname = "다른 사용자", name = null)
+        val ownerAccount = savePayoutAccount(owner.id)
+        val ownerWish = wishRepository.saveAndFlush(wish(owner.id, "생일 선물"))
+        val unrelatedAccount = savePayoutAccount(unrelatedOwner.id)
+        val unrelatedWish = wishRepository.saveAndFlush(wish(unrelatedOwner.id, "다른 선물"))
+        val completedBirthday = fundingRepository.saveAndFlush(funding(owner.id, ownerAccount, ownerWish))
+        val activeSurprise = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = owner.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 12, 1, 23, 59),
+                account = ownerAccount,
+                wish = ownerWish,
+            ),
+        )
+        fundingRepository.saveAndFlush(funding(unrelatedOwner.id, unrelatedAccount, unrelatedWish))
+        updateFundingStatus(completedBirthday.id, FundingStatus.COMPLETED)
+
+        assertTrue(fundingRepository.existsByOwnerIdAndStatusNotIn(owner.id, ENDED_FUNDING_STATUSES))
+
+        updateFundingStatus(activeSurprise.id, FundingStatus.CANCELLED)
+
+        assertFalse(fundingRepository.existsByOwnerIdAndStatusNotIn(owner.id, ENDED_FUNDING_STATUSES))
+        assertTrue(fundingRepository.existsByOwnerIdAndStatusNotIn(unrelatedOwner.id, ENDED_FUNDING_STATUSES))
+    }
 
     @Test
     fun `위시를 저장하고 사용자별 최신순으로 조회한다`() {
@@ -568,4 +601,11 @@ class HomeDomainPersistenceTest {
                 accountHolder = account.accountHolder,
             ),
         )
+
+    companion object {
+        private val ENDED_FUNDING_STATUSES = setOf(
+            FundingStatus.COMPLETED,
+            FundingStatus.CANCELLED,
+        )
+    }
 }
