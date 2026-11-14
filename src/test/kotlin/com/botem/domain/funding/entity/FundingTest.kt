@@ -11,6 +11,30 @@ import kotlin.test.assertFailsWith
 class FundingTest {
 
     @Test
+    fun `새 펀딩은 전달받은 정보와 초기 상태를 가진다`() {
+        val deadline = OPENED_AT.plusDays(1)
+        val funding = funding(deadline = deadline)
+
+        assertEquals(1L, funding.ownerId)
+        assertEquals(null, funding.recipientId)
+        assertEquals(FundingType.BIRTHDAY, funding.type)
+        assertEquals("생일 선물 펀딩", funding.title)
+        assertEquals(100_000L, funding.targetAmount)
+        assertEquals(deadline, funding.deadline)
+        assertEquals(null, funding.revealAt)
+        assertEquals(null, funding.story)
+        assertEquals(null, funding.promise)
+        assertEquals("무선 헤드폰", funding.product.name)
+        assertEquals(Bank.KAKAO_BANK, funding.payoutAccount.bank)
+        assertEquals(FundingStatus.FUNDING, funding.status)
+        assertEquals(0, funding.extensionCount)
+        assertEquals(null, funding.extendedAt)
+        assertEquals(null, funding.resultOpenedAt)
+        assertEquals(null, funding.giftPreparedAt)
+        assertEquals(null, funding.completedAt)
+    }
+
+    @Test
     fun `마감된 생일 펀딩 결과를 열면 열람 시각을 기록하고 선물 준비 상태로 전환한다`() {
         val funding = funding(deadline = OPENED_AT.minusDays(1))
 

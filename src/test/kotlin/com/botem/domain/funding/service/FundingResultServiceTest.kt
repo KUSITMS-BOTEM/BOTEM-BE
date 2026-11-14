@@ -80,6 +80,56 @@ class FundingResultServiceTest {
     }
 
     @Test
+    fun `참여 내역이 없는 펀딩 결과는 금액과 참여자 수를 0으로 반환한다`() {
+        val funding = funding()
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID))).willReturn(emptyList())
+
+        val result = service.getResult(USER_ID, FUNDING_ID)
+
+        assertEquals(0L, result.confirmedAmount)
+        assertEquals(0, result.achievementPercentage)
+        assertFalse(result.targetReached)
+        assertEquals(0L, result.participantCount)
+    }
+
+    @Test
+    fun `서프라이즈 펀딩 결과 조회를 거부한다`() {
+        val funding = funding(type = FundingType.SURPRISE)
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.getResult(USER_ID, FUNDING_ID)
+        }
+
+        assertEquals(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED, exception.errorCode)
+    }
+
+    @Test
+    fun `마감 전 펀딩 결과 조회를 거부한다`() {
+        val funding = funding(deadline = NOW.plusMinutes(1))
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.getResult(USER_ID, FUNDING_ID)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_NOT_ENDED, exception.errorCode)
+    }
+
+    @Test
+    fun `결과 조회가 허용되지 않은 펀딩 상태를 거부한다`() {
+        val funding = funding(status = FundingStatus.WAITING_REVEAL)
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.getResult(USER_ID, FUNDING_ID)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE, exception.errorCode)
+    }
+
+    @Test
     fun `확인 대기 참여가 없으면 펀딩 결과를 열고 최신 결과를 반환한다`() {
         val funding = funding()
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
@@ -98,6 +148,37 @@ class FundingResultServiceTest {
         assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
         assertEquals(120, result.achievementPercentage)
         assertTrue(result.targetReached)
+    }
+
+    @Test
+    fun `참여 내역이 없는 펀딩도 결과를 열 수 있다`() {
+        val funding = funding()
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(
+            contributionRepository.existsByFundingIdAndStatus(
+                FUNDING_ID,
+                ContributionStatus.PENDING_CONFIRMATION,
+            ),
+        ).willReturn(false)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID))).willReturn(emptyList())
+
+        val result = service.openResult(USER_ID, FUNDING_ID)
+
+        assertEquals(NOW, result.resultOpenedAt)
+        assertEquals(0L, result.confirmedAmount)
+        assertEquals(0, result.achievementPercentage)
+        assertEquals(0L, result.participantCount)
+    }
+
+    @Test
+    fun `존재하지 않는 펀딩 결과 열기를 거부한다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
+
+        val exception = assertFailsWith<BusinessException> {
+            service.openResult(USER_ID, FUNDING_ID)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
     }
 
     @Test
@@ -139,15 +220,19 @@ class FundingResultServiceTest {
         )
     }
 
-    private fun funding(): Funding =
+    private fun funding(
+        type: FundingType = FundingType.BIRTHDAY,
+        deadline: LocalDateTime = NOW.minusHours(1),
+        status: FundingStatus = FundingStatus.CLOSED,
+    ): Funding =
         Funding(
             ownerId = USER_ID,
-            recipientId = null,
-            type = FundingType.BIRTHDAY,
+            recipientId = if (type == FundingType.SURPRISE) 2L else null,
+            type = type,
             title = "생일 선물 펀딩",
             targetAmount = 100_000L,
-            deadline = NOW.minusHours(1),
-            revealAt = null,
+            deadline = deadline,
+            revealAt = if (type == FundingType.SURPRISE) NOW.minusMinutes(1) else null,
             story = null,
             promise = null,
             product = FundingProductSnapshot(
@@ -165,7 +250,7 @@ class FundingResultServiceTest {
             ),
         ).also { funding ->
             setField(funding, "id", FUNDING_ID)
-            setField(funding, "status", FundingStatus.CLOSED)
+            setField(funding, "status", status)
         }
 
     private fun summary(
