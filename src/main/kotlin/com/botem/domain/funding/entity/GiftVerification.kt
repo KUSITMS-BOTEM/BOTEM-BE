@@ -67,6 +67,12 @@ class GiftVerification(
         purchasedThroughBotemLink: Boolean,
         completedAt: LocalDateTime,
     ) {
+        if (this.completedAt != null) {
+            return
+        }
+        if (status != GiftVerificationStatus.PENDING) {
+            throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_NOT_COMPLETABLE)
+        }
         if (!purchasedThroughBotemLink) {
             throw BusinessException(FundingErrorCode.GIFT_PURCHASE_CONFIRMATION_REQUIRED)
         }
