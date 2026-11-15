@@ -7,10 +7,12 @@ import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.SurpriseThankCard
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.GiftVerificationRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.SurpriseThankCardRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
@@ -25,6 +27,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -39,12 +42,14 @@ import kotlin.test.assertTrue
 class SurpriseRevealServiceTest {
 
     private val fundingRepository = mock(FundingRepository::class.java)
+    private val giftVerificationRepository = mock(GiftVerificationRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val surpriseThankCardRepository = mock(SurpriseThankCardRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val service = SurpriseRevealService(
         fundingRepository = fundingRepository,
+        giftVerificationRepository = giftVerificationRepository,
         contributionRepository = contributionRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
         surpriseThankCardRepository = surpriseThankCardRepository,
@@ -80,6 +85,10 @@ class SurpriseRevealServiceTest {
             service.getDetail(RECIPIENT_ID, FUNDING_ID)
         }
         assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE, beforeRevealException.errorCode)
+        val hiddenFromOtherUser = assertFailsWith<BusinessException> {
+            service.getDetail(RECIPIENT_ID + 1, FUNDING_ID)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE, hiddenFromOtherUser.errorCode)
 
         val revealed = funding()
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(revealed))
@@ -183,6 +192,8 @@ class SurpriseRevealServiceTest {
             .willAnswer { invocation ->
                 (invocation.arguments[0] as SurpriseThankCard).also { setField(it, "id", THANK_CARD_ID) }
             }
+        given(giftVerificationRepository.save(org.mockito.ArgumentMatchers.any(GiftVerification::class.java)))
+            .willAnswer { invocation -> invocation.arguments[0] as GiftVerification }
 
         val result = service.sendThankCard(
             RECIPIENT_ID,
@@ -193,17 +204,19 @@ class SurpriseRevealServiceTest {
         assertEquals(THANK_CARD_ID, result.thankCardId)
         assertEquals("정말 고마워!", result.message)
         assertEquals(NOW, result.sentAt)
-        assertEquals(FundingStatus.REVEALED, funding.status)
+        assertEquals(FundingStatus.WAITING_GIFT_VERIFICATION, funding.status)
 
         val captor = ArgumentCaptor.forClass(SurpriseThankCard::class.java)
         verify(surpriseThankCardRepository).save(captor.capture())
         assertEquals(RECIPIENT_ID, captor.value.senderUserId)
         assertEquals("정말 고마워!", captor.value.message)
+        verify(giftVerificationRepository).findByFundingId(FUNDING_ID)
+        verify(giftVerificationRepository).save(org.mockito.ArgumentMatchers.any(GiftVerification::class.java))
     }
 
     @Test
     fun `감사 카드 재요청은 최초 카드를 그대로 반환한다`() {
-        val funding = openedFunding()
+        val funding = openedFunding().also { it.beginGiftVerification() }
         val existing = thankCard("최초 메시지")
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
         given(surpriseThankCardRepository.findByFundingId(FUNDING_ID)).willReturn(existing)
@@ -216,6 +229,29 @@ class SurpriseRevealServiceTest {
 
         assertEquals("최초 메시지", result.message)
         verify(surpriseThankCardRepository, never()).save(org.mockito.ArgumentMatchers.any())
+        verifyNoInteractions(giftVerificationRepository)
+    }
+
+    @Test
+    fun `기존 선물 인증이 있으면 감사 카드 전송 시 중복 생성하지 않는다`() {
+        val funding = openedFunding()
+        val existingVerification = GiftVerification(FUNDING_ID)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(surpriseThankCardRepository.findByFundingId(FUNDING_ID)).willReturn(null)
+        given(surpriseThankCardRepository.save(org.mockito.ArgumentMatchers.any(SurpriseThankCard::class.java)))
+            .willAnswer { invocation ->
+                (invocation.arguments[0] as SurpriseThankCard).also { setField(it, "id", THANK_CARD_ID) }
+            }
+        given(giftVerificationRepository.findByFundingId(FUNDING_ID)).willReturn(existingVerification)
+
+        service.sendThankCard(
+            RECIPIENT_ID,
+            FUNDING_ID,
+            SendSurpriseThankCardRequest("고마워!"),
+        )
+
+        assertEquals(FundingStatus.WAITING_GIFT_VERIFICATION, funding.status)
+        verify(giftVerificationRepository, never()).save(org.mockito.ArgumentMatchers.any())
     }
 
     @Test

@@ -158,11 +158,11 @@ class Funding(
         if (type != FundingType.SURPRISE) {
             throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_REQUIRED)
         }
-        if (recipientId != userId) {
-            throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
-        }
         if (revealAt?.isAfter(now) != false) {
             throw BusinessException(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE)
+        }
+        if (recipientId != userId) {
+            throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
         }
         if (status !in SURPRISE_REVEAL_VIEWABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE)
@@ -180,6 +180,17 @@ class Funding(
 
         surpriseOpenedAt = openedAt
         status = FundingStatus.REVEALED
+    }
+
+    fun beginGiftVerification() {
+        if (status == FundingStatus.WAITING_GIFT_VERIFICATION) {
+            return
+        }
+        if (type != FundingType.SURPRISE || status != FundingStatus.REVEALED) {
+            throw BusinessException(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE)
+        }
+
+        status = FundingStatus.WAITING_GIFT_VERIFICATION
     }
 
     companion object {

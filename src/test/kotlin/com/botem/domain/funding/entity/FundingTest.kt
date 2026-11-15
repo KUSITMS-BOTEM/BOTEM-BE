@@ -155,23 +155,29 @@ class FundingTest {
     }
 
     @Test
-    fun `공개 전 서프라이즈 또는 다른 사용자의 열기를 거부한다`() {
-        val funding = funding(
+    fun `공개 전에는 수신자가 아니어도 서프라이즈 존재를 노출하지 않는다`() {
+        val beforeReveal = funding(
             type = FundingType.SURPRISE,
             deadline = OPENED_AT.minusDays(1),
             revealAt = OPENED_AT.plusMinutes(1),
         )
-        setField(funding, "status", FundingStatus.WAITING_REVEAL)
+        setField(beforeReveal, "status", FundingStatus.WAITING_REVEAL)
 
+        val beforeRevealException = assertFailsWith<BusinessException> {
+            beforeReveal.revealSurprise(userId = 3L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE, beforeRevealException.errorCode)
+
+        val revealed = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(revealed, "status", FundingStatus.WAITING_REVEAL)
         val recipientException = assertFailsWith<BusinessException> {
-            funding.revealSurprise(userId = 3L, openedAt = OPENED_AT)
+            revealed.revealSurprise(userId = 3L, openedAt = OPENED_AT)
         }
         assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_ONLY, recipientException.errorCode)
-
-        val revealException = assertFailsWith<BusinessException> {
-            funding.revealSurprise(userId = 2L, openedAt = OPENED_AT)
-        }
-        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE, revealException.errorCode)
     }
 
     @Test
@@ -234,6 +240,43 @@ class FundingTest {
         }
 
         assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE, exception.errorCode)
+    }
+
+    @Test
+    fun `공개된 서프라이즈는 선물 인증 대기 상태로 전환한다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(funding, "status", FundingStatus.WAITING_REVEAL)
+        funding.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+
+        funding.beginGiftVerification()
+        funding.beginGiftVerification()
+
+        assertEquals(FundingStatus.WAITING_GIFT_VERIFICATION, funding.status)
+    }
+
+    @Test
+    fun `공개 상태가 아닌 펀딩은 선물 인증 대기로 전환할 수 없다`() {
+        val birthday = funding(deadline = OPENED_AT.minusDays(1))
+
+        val typeException = assertFailsWith<BusinessException> {
+            birthday.beginGiftVerification()
+        }
+        assertEquals(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE, typeException.errorCode)
+
+        val waitingReveal = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(waitingReveal, "status", FundingStatus.WAITING_REVEAL)
+        val statusException = assertFailsWith<BusinessException> {
+            waitingReveal.beginGiftVerification()
+        }
+        assertEquals(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE, statusException.errorCode)
     }
 
     private fun funding(

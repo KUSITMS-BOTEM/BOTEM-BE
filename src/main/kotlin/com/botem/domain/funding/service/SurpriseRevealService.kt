@@ -4,10 +4,12 @@ import com.botem.domain.funding.dto.request.SendSurpriseThankCardRequest
 import com.botem.domain.funding.dto.response.SurpriseRevealDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseThankCardResponse
 import com.botem.domain.funding.entity.Funding
+import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.SurpriseThankCard
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.GiftVerificationRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.SurpriseThankCardRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
@@ -23,6 +25,7 @@ import java.time.LocalDateTime
 @Service
 class SurpriseRevealService(
     private val fundingRepository: FundingRepository,
+    private val giftVerificationRepository: GiftVerificationRepository,
     private val contributionRepository: ContributionRepository,
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
     private val surpriseThankCardRepository: SurpriseThankCardRepository,
@@ -78,6 +81,10 @@ class SurpriseRevealService(
                 sentAt = LocalDateTime.now(clock),
             ),
         )
+        funding.beginGiftVerification()
+        if (giftVerificationRepository.findByFundingId(fundingId) == null) {
+            giftVerificationRepository.save(GiftVerification(fundingId))
+        }
 
         return SurpriseThankCardResponse.from(thankCard)
     }

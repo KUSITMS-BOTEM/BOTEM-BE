@@ -24,6 +24,10 @@ CREATE TABLE rolling_paper_messages
     CONSTRAINT chk_rolling_paper_messages_voice
         CHECK (
             (voice_url IS NULL AND voice_duration_seconds IS NULL)
-            OR (voice_url IS NOT NULL AND voice_duration_seconds > 0)
+            OR (
+                voice_url IS NOT NULL
+                AND voice_duration_seconds IS NOT NULL
+                AND voice_duration_seconds > 0
+            )
         )
 );
