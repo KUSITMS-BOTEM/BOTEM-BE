@@ -126,6 +126,31 @@ class Funding(
         status = FundingStatus.GIFT_PREPARING
     }
 
+    fun isGiftRecipient(userId: Long): Boolean =
+        when (type) {
+            FundingType.BIRTHDAY -> ownerId == userId
+            FundingType.SURPRISE -> recipientId == userId
+        }
+
+    fun completeGiftVerification(completedAt: LocalDateTime) {
+        if (this.completedAt != null) {
+            return
+        }
+        validateGiftVerificationCompletable()
+
+        status = FundingStatus.COMPLETED
+        this.completedAt = completedAt
+    }
+
+    fun validateGiftVerificationCompletable() {
+        if (completedAt != null) {
+            return
+        }
+        if (status != FundingStatus.WAITING_GIFT_VERIFICATION) {
+            throw BusinessException(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE)
+        }
+    }
+
     companion object {
         private val RESULT_OPENABLE_STATUSES = setOf(
             FundingStatus.FUNDING,

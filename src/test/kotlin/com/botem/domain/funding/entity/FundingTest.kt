@@ -87,6 +87,54 @@ class FundingTest {
         assertEquals(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE, exception.errorCode)
     }
 
+    @Test
+    fun `생일 펀딩 개설자와 서프라이즈 수신자를 선물 수신자로 판단한다`() {
+        val birthday = funding(deadline = OPENED_AT)
+        val surprise = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT,
+            revealAt = OPENED_AT,
+        )
+
+        assertEquals(true, birthday.isGiftRecipient(1L))
+        assertEquals(false, birthday.isGiftRecipient(2L))
+        assertEquals(true, surprise.isGiftRecipient(2L))
+        assertEquals(false, surprise.isGiftRecipient(1L))
+    }
+
+    @Test
+    fun `선물 인증 대기 펀딩을 완료하면 상태와 완료 시각을 변경한다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+        setField(funding, "status", FundingStatus.WAITING_GIFT_VERIFICATION)
+
+        funding.completeGiftVerification(OPENED_AT)
+
+        assertEquals(FundingStatus.COMPLETED, funding.status)
+        assertEquals(OPENED_AT, funding.completedAt)
+    }
+
+    @Test
+    fun `완료된 펀딩의 선물 인증 완료 재요청은 최초 완료 상태를 유지한다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+        setField(funding, "status", FundingStatus.WAITING_GIFT_VERIFICATION)
+        funding.completeGiftVerification(OPENED_AT)
+
+        funding.completeGiftVerification(OPENED_AT.plusHours(1))
+
+        assertEquals(OPENED_AT, funding.completedAt)
+    }
+
+    @Test
+    fun `선물 인증 대기가 아닌 펀딩은 완료할 수 없다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+
+        val exception = assertFailsWith<BusinessException> {
+            funding.completeGiftVerification(OPENED_AT)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE, exception.errorCode)
+    }
+
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,
         deadline: LocalDateTime,

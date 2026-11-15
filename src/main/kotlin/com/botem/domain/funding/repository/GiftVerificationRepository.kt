@@ -4,11 +4,17 @@ import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.GiftVerificationStatus
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.repository.projection.PendingGiftVerificationTarget
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT verification FROM GiftVerification verification WHERE verification.id = :verificationId")
+    fun findByIdForUpdate(@Param("verificationId") verificationId: Long): GiftVerification?
 
     fun findByFundingId(fundingId: Long): GiftVerification?
 
