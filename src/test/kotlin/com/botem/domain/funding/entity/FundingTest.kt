@@ -194,6 +194,48 @@ class FundingTest {
         assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE, statusException.errorCode)
     }
 
+    @Test
+    fun `공개 시각이 없거나 수신자가 없는 서프라이즈는 공개할 수 없다`() {
+        val noRevealAt = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = null,
+        )
+        setField(noRevealAt, "status", FundingStatus.WAITING_REVEAL)
+        val revealAtException = assertFailsWith<BusinessException> {
+            noRevealAt.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE, revealAtException.errorCode)
+
+        val noRecipient = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(noRecipient, "recipientId", null)
+        assertEquals(false, noRecipient.isGiftRecipient(2L))
+        val recipientException = assertFailsWith<BusinessException> {
+            noRecipient.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_ONLY, recipientException.errorCode)
+    }
+
+    @Test
+    fun `열람 기록 없이 이미 공개 상태인 서프라이즈는 다시 열 수 없다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(funding, "status", FundingStatus.REVEALED)
+
+        val exception = assertFailsWith<BusinessException> {
+            funding.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+        }
+
+        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE, exception.errorCode)
+    }
+
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,
         deadline: LocalDateTime,
@@ -224,7 +266,7 @@ class FundingTest {
             ),
         )
 
-    private fun setField(target: Any, fieldName: String, value: Any) {
+    private fun setField(target: Any, fieldName: String, value: Any?) {
         target.javaClass.getDeclaredField(fieldName).apply {
             isAccessible = true
             set(target, value)

@@ -91,6 +91,74 @@ class SurpriseRevealServiceTest {
     }
 
     @Test
+    fun `존재하지 않는 서프라이즈는 조회하거나 열거나 감사 카드를 보낼 수 없다`() {
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.empty())
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
+
+        val detailException = assertFailsWith<BusinessException> {
+            service.getDetail(RECIPIENT_ID, FUNDING_ID)
+        }
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, detailException.errorCode)
+
+        val openException = assertFailsWith<BusinessException> {
+            service.open(RECIPIENT_ID, FUNDING_ID)
+        }
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, openException.errorCode)
+
+        val thankCardException = assertFailsWith<BusinessException> {
+            service.sendThankCard(
+                RECIPIENT_ID,
+                FUNDING_ID,
+                SendSurpriseThankCardRequest("고마워!"),
+            )
+        }
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, thankCardException.errorCode)
+    }
+
+    @Test
+    fun `참여 요약과 메시지가 없으면 빈 상세과 닉네임을 반환한다`() {
+        val funding = funding()
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(userRepository.findById(RECIPIENT_ID)).willReturn(
+            Optional.of(user(RECIPIENT_ID, name = null, nickname = "수신자 닉네임")),
+        )
+        given(userRepository.findById(OWNER_ID)).willReturn(
+            Optional.of(user(OWNER_ID, name = null, nickname = "주최자 닉네임")),
+        )
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID))).willReturn(emptyList())
+        given(rollingPaperMessageRepository.findAllByFundingId(FUNDING_ID)).willReturn(emptyList())
+        given(surpriseThankCardRepository.existsByFundingId(FUNDING_ID)).willReturn(true)
+
+        val result = service.getDetail(RECIPIENT_ID, FUNDING_ID)
+
+        assertEquals("수신자 닉네임", result.recipientName)
+        assertEquals("주최자 닉네임", result.organizerName)
+        assertEquals(0L, result.confirmedAmount)
+        assertEquals(0L, result.participantCount)
+        assertEquals(0, result.messageCount)
+        assertTrue(result.thankCardSent)
+    }
+
+    @Test
+    fun `수신자 또는 주최자 정보가 없으면 상세 조회를 중단한다`() {
+        val funding = funding()
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(userRepository.findById(RECIPIENT_ID)).willReturn(Optional.empty())
+
+        val recipientException = assertFailsWith<BusinessException> {
+            service.getDetail(RECIPIENT_ID, FUNDING_ID)
+        }
+        assertEquals(com.botem.domain.user.exception.UserErrorCode.USER_NOT_FOUND, recipientException.errorCode)
+
+        given(userRepository.findById(RECIPIENT_ID)).willReturn(Optional.of(user(RECIPIENT_ID, "지유")))
+        given(userRepository.findById(OWNER_ID)).willReturn(Optional.empty())
+        val organizerException = assertFailsWith<BusinessException> {
+            service.getDetail(RECIPIENT_ID, FUNDING_ID)
+        }
+        assertEquals(com.botem.domain.user.exception.UserErrorCode.USER_NOT_FOUND, organizerException.errorCode)
+    }
+
+    @Test
     fun `수신자가 서프라이즈를 열면 최초 열람 시각과 상태를 변경한다`() {
         val funding = funding(status = FundingStatus.WAITING_REVEAL)
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
@@ -254,10 +322,14 @@ class SurpriseRevealServiceTest {
     private fun openedFunding(): Funding =
         funding().also { it.revealSurprise(RECIPIENT_ID, NOW) }
 
-    private fun user(id: Long, name: String): User =
+    private fun user(
+        id: Long,
+        name: String?,
+        nickname: String = "nickname-$id",
+    ): User =
         User(
             kakaoId = id,
-            nickname = "nickname-$id",
+            nickname = nickname,
             profileImageUrl = null,
             name = name,
         ).also { setField(it, "id", id) }

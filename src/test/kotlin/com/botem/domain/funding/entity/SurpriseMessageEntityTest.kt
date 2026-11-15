@@ -10,6 +10,12 @@ class SurpriseMessageEntityTest {
     @Test
     fun `롤링페이퍼는 텍스트 외에 사진이나 음성만으로도 생성할 수 있다`() {
         val text = RollingPaperMessage(1L, "축하해!", "LIME_DOT_GRID")
+        val decoration = RollingPaperMessage(
+            contributionId = 4L,
+            content = null,
+            paperTemplateCode = "PINK_GRID",
+            decorationCode = "PARTY_POPPER",
+        )
         val photo = RollingPaperMessage(
             contributionId = 2L,
             content = null,
@@ -25,6 +31,9 @@ class SurpriseMessageEntityTest {
         )
 
         assertEquals("축하해!", text.content)
+        assertEquals(1L, text.contributionId)
+        assertEquals(0L, text.id)
+        assertEquals("PARTY_POPPER", decoration.decorationCode)
         assertEquals("https://image.example.com/photo.jpg", photo.photoUrl)
         assertEquals(12, voice.voiceDurationSeconds)
     }
@@ -33,6 +42,9 @@ class SurpriseMessageEntityTest {
     fun `내용이 없거나 음성 정보가 불완전한 롤링페이퍼는 생성할 수 없다`() {
         assertFailsWith<IllegalArgumentException> {
             RollingPaperMessage(1L, null, "LIME_DOT_GRID")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            RollingPaperMessage(1L, "축하해!", " ")
         }
         assertFailsWith<IllegalArgumentException> {
             RollingPaperMessage(
