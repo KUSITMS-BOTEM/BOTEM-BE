@@ -9,6 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Lob
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.hibernate.Length
 import java.time.LocalDateTime
 
 @Entity
@@ -26,7 +27,7 @@ class SurpriseThankCard(
     val senderUserId: Long,
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, length = Length.LONG32)
     val message: String,
 
     @Column(nullable = false, updatable = false)
