@@ -1,5 +1,6 @@
 package com.botem.domain.funding.controller
 
+import com.botem.domain.funding.controller.docs.SurpriseRevealControllerDocs
 import com.botem.domain.funding.dto.request.SendSurpriseThankCardRequest
 import com.botem.domain.funding.dto.response.SurpriseRevealDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseThankCardResponse
@@ -18,24 +19,24 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/fundings")
 class SurpriseRevealController(
     private val surpriseRevealService: SurpriseRevealService,
-) {
+) : SurpriseRevealControllerDocs {
 
     @GetMapping("/{fundingId}/surprise")
-    fun getSurpriseRevealDetail(
+    override fun getSurpriseRevealDetail(
         @AuthenticationPrincipal userId: Long,
         @PathVariable fundingId: Long,
     ): ApiResponse<SurpriseRevealDetailResponse> =
         ApiResponse.success(surpriseRevealService.getDetail(userId, fundingId))
 
     @PostMapping("/{fundingId}/surprise/open")
-    fun openSurprise(
+    override fun openSurprise(
         @AuthenticationPrincipal userId: Long,
         @PathVariable fundingId: Long,
     ): ApiResponse<SurpriseRevealDetailResponse> =
         ApiResponse.success(surpriseRevealService.open(userId, fundingId))
 
     @PostMapping("/{fundingId}/surprise/thank-card")
-    fun sendThankCard(
+    override fun sendThankCard(
         @AuthenticationPrincipal userId: Long,
         @PathVariable fundingId: Long,
         @Valid @RequestBody request: SendSurpriseThankCardRequest,
