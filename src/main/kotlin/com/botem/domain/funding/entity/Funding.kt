@@ -102,6 +102,9 @@ class Funding(
     var resultOpenedAt: LocalDateTime? = null
         protected set
 
+    var surpriseOpenedAt: LocalDateTime? = null
+        protected set
+
     var giftPreparedAt: LocalDateTime? = null
         protected set
 
@@ -151,10 +154,44 @@ class Funding(
         }
     }
 
+    fun validateSurpriseRevealAccess(userId: Long, now: LocalDateTime) {
+        if (type != FundingType.SURPRISE) {
+            throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_REQUIRED)
+        }
+        if (recipientId != userId) {
+            throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
+        }
+        if (revealAt?.isAfter(now) != false) {
+            throw BusinessException(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE)
+        }
+        if (status !in SURPRISE_REVEAL_VIEWABLE_STATUSES) {
+            throw BusinessException(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE)
+        }
+    }
+
+    fun revealSurprise(userId: Long, openedAt: LocalDateTime) {
+        validateSurpriseRevealAccess(userId, openedAt)
+        if (surpriseOpenedAt != null) {
+            return
+        }
+        if (status != FundingStatus.WAITING_REVEAL) {
+            throw BusinessException(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE)
+        }
+
+        surpriseOpenedAt = openedAt
+        status = FundingStatus.REVEALED
+    }
+
     companion object {
         private val RESULT_OPENABLE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
+        )
+        private val SURPRISE_REVEAL_VIEWABLE_STATUSES = setOf(
+            FundingStatus.WAITING_REVEAL,
+            FundingStatus.REVEALED,
+            FundingStatus.WAITING_GIFT_VERIFICATION,
+            FundingStatus.COMPLETED,
         )
     }
 }

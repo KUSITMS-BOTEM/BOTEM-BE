@@ -49,4 +49,16 @@ enum class FundingErrorCode(
         "FUNDING_013",
         "선물 인증 이미지 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     ),
+    SURPRISE_FUNDING_REQUIRED(HttpStatus.BAD_REQUEST, "FUNDING_014", "서프라이즈 펀딩에서만 사용할 수 있습니다."),
+    SURPRISE_RECIPIENT_ONLY(HttpStatus.FORBIDDEN, "FUNDING_015", "서프라이즈를 받는 사용자만 접근할 수 있습니다."),
+    SURPRISE_REVEAL_NOT_AVAILABLE(
+        HttpStatus.NOT_FOUND,
+        "FUNDING_016",
+        "공개된 서프라이즈를 찾을 수 없습니다.",
+    ),
+    SURPRISE_REVEAL_NOT_OPENABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_017",
+        "현재 상태에서는 서프라이즈를 열 수 없습니다.",
+    ),
 }
