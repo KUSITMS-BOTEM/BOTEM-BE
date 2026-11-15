@@ -61,4 +61,9 @@ enum class FundingErrorCode(
         "FUNDING_017",
         "현재 상태에서는 서프라이즈를 열 수 없습니다.",
     ),
+    SURPRISE_NOT_OPENED(
+        HttpStatus.CONFLICT,
+        "FUNDING_018",
+        "서프라이즈를 연 후 감사 카드를 보낼 수 있습니다.",
+    ),
 }

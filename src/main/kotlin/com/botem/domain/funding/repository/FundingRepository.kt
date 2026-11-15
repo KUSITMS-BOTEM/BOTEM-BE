@@ -61,6 +61,11 @@ interface FundingRepository : JpaRepository<Funding, Long> {
           AND funding.revealAt <= :now
           AND funding.status <> com.botem.domain.funding.entity.FundingStatus.COMPLETED
           AND funding.status <> com.botem.domain.funding.entity.FundingStatus.CANCELLED
+          AND NOT EXISTS (
+              SELECT thankCard.id
+              FROM SurpriseThankCard thankCard
+              WHERE thankCard.fundingId = funding.id
+          )
         GROUP BY
             funding.id,
             funding.product.imageUrl,
