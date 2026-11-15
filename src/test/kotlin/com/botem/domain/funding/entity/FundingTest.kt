@@ -30,6 +30,7 @@ class FundingTest {
         assertEquals(0, funding.extensionCount)
         assertEquals(null, funding.extendedAt)
         assertEquals(null, funding.resultOpenedAt)
+        assertEquals(null, funding.surpriseOpenedAt)
         assertEquals(null, funding.giftPreparedAt)
         assertEquals(null, funding.completedAt)
     }
@@ -133,6 +134,64 @@ class FundingTest {
         }
 
         assertEquals(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE, exception.errorCode)
+    }
+
+    @Test
+    fun `공개 시각이 지난 서프라이즈를 수신자가 열면 공개 상태로 전환한다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(funding, "status", FundingStatus.WAITING_REVEAL)
+
+        funding.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+
+        assertEquals(FundingStatus.REVEALED, funding.status)
+        assertEquals(OPENED_AT, funding.surpriseOpenedAt)
+
+        funding.revealSurprise(userId = 2L, openedAt = OPENED_AT.plusHours(1))
+        assertEquals(OPENED_AT, funding.surpriseOpenedAt)
+    }
+
+    @Test
+    fun `공개 전 서프라이즈 또는 다른 사용자의 열기를 거부한다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.plusMinutes(1),
+        )
+        setField(funding, "status", FundingStatus.WAITING_REVEAL)
+
+        val recipientException = assertFailsWith<BusinessException> {
+            funding.revealSurprise(userId = 3L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_ONLY, recipientException.errorCode)
+
+        val revealException = assertFailsWith<BusinessException> {
+            funding.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_AVAILABLE, revealException.errorCode)
+    }
+
+    @Test
+    fun `생일 펀딩이거나 공개 불가 상태인 서프라이즈는 열 수 없다`() {
+        val birthday = funding(deadline = OPENED_AT.minusDays(1))
+        val typeException = assertFailsWith<BusinessException> {
+            birthday.revealSurprise(userId = 1L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_FUNDING_REQUIRED, typeException.errorCode)
+
+        val cancelled = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(cancelled, "status", FundingStatus.CANCELLED)
+        val statusException = assertFailsWith<BusinessException> {
+            cancelled.revealSurprise(userId = 2L, openedAt = OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE, statusException.errorCode)
     }
 
     private fun funding(
