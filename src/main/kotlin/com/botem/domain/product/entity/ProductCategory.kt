@@ -6,7 +6,7 @@ enum class ProductCategory(
     EARPHONE_HEADPHONE("이어폰·헤드폰"),
     SMART_DEVICE_GAME("스마트기기·게임"),
     HAIR_BEAUTY_DEVICE("헤어·뷰티 기기"),
-    SKINCARE_MAKEUP("스킨케어·메이크업"),
+    SKINCARE("스킨케어"),
     PERFUME("향수"),
-    TUMBLER_LIVING("텀블러·리빙"),
+    LIVING_APPLIANCE("리빙·가전"),
 }
