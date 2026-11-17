@@ -191,7 +191,7 @@ interface WishControllerDocs {
               "data": null,
               "error": {
                 "code": "WISH_003",
-                "message": "펀딩 중인 위시는 삭제할 수 없습니다.",
+                "message": "진행 중인 펀딩에 사용 중인 위시입니다.",
                 "detail": null
               }
             }

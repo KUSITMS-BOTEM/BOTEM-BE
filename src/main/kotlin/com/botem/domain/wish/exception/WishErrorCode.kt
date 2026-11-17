@@ -10,5 +10,5 @@ enum class WishErrorCode(
 ) : ErrorCode {
     WISH_ALREADY_ADDED(HttpStatus.CONFLICT, "WISH_001", "이미 위시에 담은 상품입니다."),
     WISH_NOT_FOUND(HttpStatus.NOT_FOUND, "WISH_002", "위시를 찾을 수 없습니다."),
-    WISH_IN_FUNDING(HttpStatus.CONFLICT, "WISH_003", "펀딩 중인 위시는 삭제할 수 없습니다."),
+    WISH_IN_FUNDING(HttpStatus.CONFLICT, "WISH_003", "진행 중인 펀딩에 사용 중인 위시입니다."),
 }

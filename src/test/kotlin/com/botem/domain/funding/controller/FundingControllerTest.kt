@@ -1,6 +1,7 @@
 package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingResultService
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -24,6 +25,9 @@ class FundingControllerTest {
 
     @Autowired
     private lateinit var mockMvc: MockMvc
+
+    @MockitoBean
+    private lateinit var fundingCreationService: FundingCreationService
 
     @MockitoBean
     private lateinit var fundingResultService: FundingResultService
