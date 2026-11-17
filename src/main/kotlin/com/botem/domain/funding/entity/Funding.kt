@@ -3,6 +3,7 @@ package com.botem.domain.funding.entity
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.entity.BaseEntity
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
 import jakarta.persistence.Column
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
@@ -194,6 +195,86 @@ class Funding(
     }
 
     companion object {
+        private const val MAX_TITLE_LENGTH = 20
+        private const val MAX_TARGET_AMOUNT = 10_000_000L
+        private const val MAX_STORY_LENGTH = 300
+        private const val MAX_PROMISE_LENGTH = 300
+
+        fun createBirthday(
+            ownerId: Long,
+            title: String,
+            targetAmount: Long,
+            deadline: LocalDateTime,
+            story: String,
+            promise: String?,
+            product: FundingProductSnapshot,
+            payoutAccount: FundingPayoutAccountSnapshot,
+            now: LocalDateTime,
+        ): Funding {
+            val normalizedTitle = title.normalizeRequired("펀딩 제목")
+            val normalizedStory = story.normalizeRequired("펀딩 사연")
+            val normalizedPromise = promise.normalizeOptional()
+
+            validateLength(normalizedTitle, MAX_TITLE_LENGTH, "펀딩 제목")
+            validateLength(normalizedStory, MAX_STORY_LENGTH, "펀딩 사연")
+            normalizedPromise?.let { validateLength(it, MAX_PROMISE_LENGTH, "공약") }
+            validateTargetAmount(targetAmount)
+            validateDeadline(deadline, now)
+
+            return Funding(
+                ownerId = ownerId,
+                recipientId = null,
+                type = FundingType.BIRTHDAY,
+                title = normalizedTitle,
+                targetAmount = targetAmount,
+                deadline = deadline,
+                revealAt = null,
+                story = normalizedStory,
+                promise = normalizedPromise,
+                product = product,
+                payoutAccount = payoutAccount,
+            )
+        }
+
+        private fun String.normalizeRequired(fieldName: String): String =
+            normalizeOptional()
+                ?: throw BusinessException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "${fieldName}은(는) 필수입니다.",
+                )
+
+        private fun String?.normalizeOptional(): String? =
+            this
+                ?.trim { it.isWhitespace() || Character.isSpaceChar(it) }
+                ?.takeIf(String::isNotEmpty)
+
+        private fun validateLength(value: String, maxLength: Int, fieldName: String) {
+            if (value.length > maxLength) {
+                throw BusinessException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "${fieldName}은(는) ${maxLength}자 이하여야 합니다.",
+                )
+            }
+        }
+
+        private fun validateTargetAmount(targetAmount: Long) {
+            if (targetAmount !in 1..MAX_TARGET_AMOUNT) {
+                throw BusinessException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "목표 금액은 1원 이상 1,000만 원 이하여야 합니다.",
+                )
+            }
+        }
+
+        private fun validateDeadline(deadline: LocalDateTime, now: LocalDateTime) {
+            if (!deadline.toLocalDate().isAfter(now.toLocalDate())) {
+                throw BusinessException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "마감일은 내일부터 선택할 수 있습니다.",
+                )
+            }
+        }
+
         private val RESULT_OPENABLE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
