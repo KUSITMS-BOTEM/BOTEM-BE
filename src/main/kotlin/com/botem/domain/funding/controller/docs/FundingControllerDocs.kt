@@ -2,6 +2,7 @@ package com.botem.domain.funding.controller.docs
 
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
+import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -82,6 +83,38 @@ interface FundingControllerDocs {
         @Parameter(hidden = true) userId: Long,
         request: CreateBirthdayFundingRequest,
     ): ApiResponse<CreateFundingResponse>
+
+    @Operation(
+        summary = "참여자용 펀딩 상세 조회",
+        description = """
+            공유 링크로 펀딩 정보와 진행 상태를 조회합니다. 로그인하지 않아도 조회할 수 있습니다.
+            금액은 노출하지 않고, 확정 달성률(입금 확인 완료)과 확인 대기 달성률만 반환합니다.
+            참여자 목록은 취소된 참여를 제외하고 첫 참여 순서대로 반환합니다. 로그인 참여자는 한 번만,
+            비로그인 참여는 각각 한 명으로 집계하며 메시지만 남긴 참여자도 포함합니다.
+            order는 참여 순서(1부터)이며 역할 배지 문구는 이 값으로 결정합니다.
+            displayStatus는 IN_PROGRESS(진행 중), TARGET_REACHED(목표 금액 달성), CLOSED(마감),
+            GIFT_PREPARING(선물 준비 중), COMPLETED(인증 완료) 중 하나입니다.
+            목표 금액 달성 후에는 canContributeAmount가 false, 마감 후에는 canParticipate도 false입니다.
+            remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
+            ownerPreview는 로그인한 개설자 본인이 조회한 경우 true입니다. 취소된 펀딩은 404를 반환합니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [Content(examples = [ExampleObject(value = DETAIL_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음 또는 취소된 펀딩",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+    )
+    fun getFundingDetail(
+        @Parameter(hidden = true) userId: Long?,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+    ): ApiResponse<FundingDetailResponse>
 
     @Operation(
         summary = "마감된 펀딩 결과 조회",
@@ -280,6 +313,38 @@ interface FundingControllerDocs {
                 "message": "진행 중인 펀딩은 최대 5개까지 개설할 수 있습니다.",
                 "detail": null
               }
+            }
+        """
+        private const val DETAIL_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "type": "BIRTHDAY",
+                "title": "생일에 에어팟 받고 싶어요",
+                "product": {
+                  "name": "에어팟 프로 3",
+                  "imageUrl": "https://image.example.com/product.jpg",
+                  "price": 300000,
+                  "url": "https://www.coupang.com/vp/products/1"
+                },
+                "story": "올해 생일에는 오래 사용한 이어폰을 바꾸고 싶어요.",
+                "promise": "선물을 받으면 인증 사진을 올릴게요.",
+                "deadline": "2026-11-30T23:59:59",
+                "remainingDays": 12,
+                "confirmedPercentage": 40,
+                "pendingPercentage": 10,
+                "participantCount": 2,
+                "participants": [
+                  { "order": 1, "name": "지유", "profileImageUrl": "https://image.example.com/profile.jpg" },
+                  { "order": 2, "name": "익명 친구", "profileImageUrl": null }
+                ],
+                "displayStatus": "IN_PROGRESS",
+                "canContributeAmount": true,
+                "canParticipate": true,
+                "ownerPreview": false
+              },
+              "error": null
             }
         """
         private const val RESULT_EXAMPLE = """

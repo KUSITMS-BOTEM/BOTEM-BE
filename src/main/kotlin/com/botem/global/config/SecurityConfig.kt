@@ -8,6 +8,7 @@ import com.botem.global.property.AdminProperties
 import com.botem.global.security.AdminApiKeyFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
@@ -35,6 +36,7 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
+                it.requestMatchers(HttpMethod.GET, "/api/fundings/{fundingId}").permitAll()
                 it.requestMatchers(AdminApiKeyFilter.ADMIN_URI_PATTERN).hasRole("ADMIN")
                 it.anyRequest().authenticated()
             }
