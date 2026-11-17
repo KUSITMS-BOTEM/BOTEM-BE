@@ -66,4 +66,9 @@ enum class FundingErrorCode(
         "FUNDING_018",
         "서프라이즈를 연 후 감사 카드를 보낼 수 있습니다.",
     ),
+    ACTIVE_FUNDING_LIMIT_EXCEEDED(
+        HttpStatus.CONFLICT,
+        "FUNDING_019",
+        "진행 중인 펀딩은 최대 5개까지 개설할 수 있습니다.",
+    ),
 }

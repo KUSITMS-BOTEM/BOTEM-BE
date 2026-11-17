@@ -40,6 +40,39 @@ interface FundingRepository : JpaRepository<Funding, Long> {
 
     @Query(
         """
+        SELECT COUNT(funding)
+        FROM Funding funding
+        WHERE funding.ownerId = :ownerId
+          AND (
+            (
+              funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+              AND funding.status IN (
+                com.botem.domain.funding.entity.FundingStatus.FUNDING,
+                com.botem.domain.funding.entity.FundingStatus.CLOSED
+              )
+              AND funding.deadline > :now
+            )
+            OR
+            (
+              funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
+              AND funding.status IN (
+                com.botem.domain.funding.entity.FundingStatus.FUNDING,
+                com.botem.domain.funding.entity.FundingStatus.CLOSED,
+                com.botem.domain.funding.entity.FundingStatus.GIFT_PREPARING,
+                com.botem.domain.funding.entity.FundingStatus.WAITING_REVEAL
+              )
+              AND funding.revealAt > :now
+            )
+          )
+        """,
+    )
+    fun countActiveFundings(
+        @Param("ownerId") ownerId: Long,
+        @Param("now") now: LocalDateTime,
+    ): Long
+
+    @Query(
+        """
         SELECT new com.botem.domain.funding.repository.projection.RevealedSurpriseCardProjection(
             funding.id,
             funding.product.imageUrl,

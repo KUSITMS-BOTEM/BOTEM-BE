@@ -11,6 +11,9 @@ spring:
 wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}
 
+funding-share:
+  base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/fundings}
+
 payout-account:
   encryption:
     key: ${PAYOUT_ACCOUNT_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
