@@ -9,9 +9,11 @@ import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.wish.entity.Wish
+import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
 import org.junit.jupiter.api.Test
@@ -95,6 +97,19 @@ class FundingCreationServiceTest {
     }
 
     @Test
+    fun `잠금으로 조회한 사용자가 탈퇴 상태이면 개설을 거부한다`() {
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(UserStatus.WITHDRAWN))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.createBirthdayFunding(USER_ID, request())
+        }
+
+        assertEquals(AuthErrorCode.WITHDRAWN_USER, exception.errorCode)
+        verify(fundingRepository, never()).countActiveFundings(USER_ID, NOW)
+        verify(fundingRepository, never()).save(any(Funding::class.java))
+    }
+
+    @Test
     fun `진행 중 펀딩이 5개이면 개설을 거부한다`() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user())
         given(fundingRepository.countActiveFundings(USER_ID, NOW)).willReturn(5L)
@@ -119,7 +134,13 @@ class FundingCreationServiceTest {
             promise = "인증할게요",
         )
 
-    private fun user(): User = User(1234L, "지유", null)
+    private fun user(status: UserStatus = UserStatus.ACTIVE): User =
+        User(
+            kakaoId = 1234L,
+            nickname = "지유",
+            profileImageUrl = null,
+            status = status,
+        )
 
     private fun wish(): Wish =
         Wish(

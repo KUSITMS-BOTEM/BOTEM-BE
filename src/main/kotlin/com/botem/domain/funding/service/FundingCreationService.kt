@@ -7,8 +7,10 @@ import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
 import org.springframework.stereotype.Service
@@ -66,8 +68,11 @@ class FundingCreationService(
     }
 
     private fun lockUser(userId: Long) {
-        userRepository.findByIdForUpdate(userId)
+        val user = userRepository.findByIdForUpdate(userId)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
+        if (user.status != UserStatus.ACTIVE) {
+            throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
+        }
     }
 
     private fun validateActiveFundingCount(userId: Long, now: LocalDateTime) {
