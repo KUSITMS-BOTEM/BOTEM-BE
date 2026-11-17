@@ -66,10 +66,9 @@ class WishService(
         toResponses(userId, listOf(findOwnWish(userId, wishId))).single()
 
     // 펀딩이 끝난 뒤에는 삭제해도 펀딩의 상품 스냅샷이 남아 있어 source_wish_id만 비워짐
-    // TODO: 확인 후 삭제라 펀딩 개설과 동시에 일어나면 위시 연결이 끊긴 펀딩이 생길 수 있음. 펀딩 개설 API에서 위시를 비관적 락으로 조회해 막을 것
     @Transactional
     fun deleteWish(userId: Long, wishId: Long) {
-        val wish = findOwnWish(userId, wishId)
+        val wish = findOwnWishForUpdate(userId, wishId)
         if (fundingRepository.existsByOwnerIdAndProductSourceWishIdAndStatusNotIn(userId, wishId, ENDED_FUNDING_STATUSES)) {
             throw BusinessException(WishErrorCode.WISH_IN_FUNDING)
         }
@@ -102,6 +101,10 @@ class WishService(
     // 다른 회원의 위시는 존재 여부를 드러내지 않도록 없는 위시와 같은 오류로 응답
     private fun findOwnWish(userId: Long, wishId: Long): Wish =
         wishRepository.findByIdAndUserId(wishId, userId)
+            ?: throw BusinessException(WishErrorCode.WISH_NOT_FOUND)
+
+    private fun findOwnWishForUpdate(userId: Long, wishId: Long): Wish =
+        wishRepository.findByIdAndUserIdForUpdate(wishId, userId)
             ?: throw BusinessException(WishErrorCode.WISH_NOT_FOUND)
 
     private fun validatePageRequest(page: Int, size: Int) {
