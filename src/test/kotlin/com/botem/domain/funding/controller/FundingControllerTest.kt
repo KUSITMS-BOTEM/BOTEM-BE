@@ -1,6 +1,10 @@
 package com.botem.domain.funding.controller
 
+import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingResultService
 import org.junit.jupiter.api.Test
@@ -18,6 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @WebMvcTest(controllers = [FundingController::class])
@@ -31,6 +36,71 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var fundingResultService: FundingResultService
+
+    @Test
+    fun `로그인 사용자가 일반 펀딩을 개설한다`() {
+        val request = CreateBirthdayFundingRequest(
+            wishId = 2L,
+            payoutAccountId = null,
+            title = "생일 선물 펀딩",
+            targetAmount = 100_000L,
+            deadline = LocalDate.of(2026, 11, 30),
+            story = "새 헤드폰이 필요해요",
+            promise = null,
+        )
+        given(fundingCreationService.createBirthdayFunding(USER_ID, request)).willReturn(
+            CreateFundingResponse(FUNDING_ID, FundingType.BIRTHDAY, FundingStatus.FUNDING, "https://botem.me/fundings/12"),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "wishId": 2,
+                      "title": "생일 선물 펀딩",
+                      "targetAmount": 100000,
+                      "deadline": "2026-11-30",
+                      "story": "새 헤드폰이 필요해요"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
+            .andExpect(jsonPath("$.data.type").value("BIRTHDAY"))
+            .andExpect(jsonPath("$.data.status").value("FUNDING"))
+            .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/fundings/12"))
+
+        verify(fundingCreationService).createBirthdayFunding(USER_ID, request)
+    }
+
+    @Test
+    fun `일반 펀딩 개설 요청의 필수 값이 올바르지 않으면 400을 반환한다`() {
+        mockMvc.perform(
+            post("/api/fundings")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "wishId": 0,
+                      "title": " ",
+                      "targetAmount": 10000001,
+                      "deadline": "2026-11-30",
+                      "story": " "
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(fundingCreationService)
+    }
 
     @Test
     fun `로그인한 개설자가 펀딩 결과를 조회한다`() {

@@ -3,12 +3,87 @@ package com.botem.domain.funding.entity
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class FundingTest {
+
+    @Test
+    fun `일반 펀딩 생성 시 문자열을 정규화하고 생일 펀딩 규칙을 적용한다`() {
+        val funding = Funding.createBirthday(
+            ownerId = 1L,
+            title = "  생일 선물 펀딩  ",
+            targetAmount = 100_000L,
+            deadline = OPENED_AT.plusDays(1),
+            story = "  새 헤드폰이 필요해요  ",
+            promise = "　 ",
+            product = product(),
+            payoutAccount = payoutAccount(),
+            now = OPENED_AT,
+        )
+
+        assertEquals(FundingType.BIRTHDAY, funding.type)
+        assertEquals(null, funding.recipientId)
+        assertEquals(null, funding.revealAt)
+        assertEquals("생일 선물 펀딩", funding.title)
+        assertEquals("새 헤드폰이 필요해요", funding.story)
+        assertEquals(null, funding.promise)
+    }
+
+    @Test
+    fun `일반 펀딩 제목과 사연은 공백일 수 없다`() {
+        val titleException = assertFailsWith<BusinessException> {
+            createBirthday(title = "　 ")
+        }
+        val storyException = assertFailsWith<BusinessException> {
+            createBirthday(story = "\u00A0")
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, titleException.errorCode)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, storyException.errorCode)
+    }
+
+    @Test
+    fun `일반 펀딩 입력 문자열은 최대 길이를 넘을 수 없다`() {
+        val titleException = assertFailsWith<BusinessException> {
+            createBirthday(title = "가".repeat(21))
+        }
+        val storyException = assertFailsWith<BusinessException> {
+            createBirthday(story = "가".repeat(301))
+        }
+        val promiseException = assertFailsWith<BusinessException> {
+            createBirthday(promise = "가".repeat(301))
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, titleException.errorCode)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, storyException.errorCode)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, promiseException.errorCode)
+    }
+
+    @Test
+    fun `일반 펀딩 목표 금액은 1원 이상 1천만 원 이하여야 한다`() {
+        val minimumException = assertFailsWith<BusinessException> {
+            createBirthday(targetAmount = 0L)
+        }
+        val maximumException = assertFailsWith<BusinessException> {
+            createBirthday(targetAmount = 10_000_001L)
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, minimumException.errorCode)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, maximumException.errorCode)
+    }
+
+    @Test
+    fun `일반 펀딩 마감일은 내일부터 선택할 수 있다`() {
+        val exception = assertFailsWith<BusinessException> {
+            createBirthday(deadline = OPENED_AT.plusHours(1))
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+    }
 
     @Test
     fun `새 펀딩은 전달받은 정보와 초기 상태를 가진다`() {
@@ -294,19 +369,44 @@ class FundingTest {
             revealAt = revealAt,
             story = null,
             promise = null,
-            product = FundingProductSnapshot(
-                sourceWishId = 1L,
-                name = "무선 헤드폰",
-                imageUrl = "https://image.example.com/product.jpg",
-                price = 100_000L,
-                url = "https://shop.example.com/product",
-            ),
-            payoutAccount = FundingPayoutAccountSnapshot(
-                sourcePayoutAccountId = 1L,
-                bank = Bank.KAKAO_BANK,
-                encryptedAccountNumber = "encrypted-account-number",
-                accountHolder = "지유",
-            ),
+            product = product(),
+            payoutAccount = payoutAccount(),
+        )
+
+    private fun createBirthday(
+        title: String = "생일 선물 펀딩",
+        targetAmount: Long = 100_000L,
+        deadline: LocalDateTime = OPENED_AT.plusDays(1),
+        story: String = "새 헤드폰이 필요해요",
+        promise: String? = null,
+    ): Funding =
+        Funding.createBirthday(
+            ownerId = 1L,
+            title = title,
+            targetAmount = targetAmount,
+            deadline = deadline,
+            story = story,
+            promise = promise,
+            product = product(),
+            payoutAccount = payoutAccount(),
+            now = OPENED_AT,
+        )
+
+    private fun product(): FundingProductSnapshot =
+        FundingProductSnapshot(
+            sourceWishId = 1L,
+            name = "무선 헤드폰",
+            imageUrl = "https://image.example.com/product.jpg",
+            price = 100_000L,
+            url = "https://shop.example.com/product",
+        )
+
+    private fun payoutAccount(): FundingPayoutAccountSnapshot =
+        FundingPayoutAccountSnapshot(
+            sourcePayoutAccountId = 1L,
+            bank = Bank.KAKAO_BANK,
+            encryptedAccountNumber = "encrypted-account-number",
+            accountHolder = "지유",
         )
 
     private fun setField(target: Any, fieldName: String, value: Any?) {
