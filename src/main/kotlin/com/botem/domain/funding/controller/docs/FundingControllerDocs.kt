@@ -4,6 +4,7 @@ import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.global.exception.ErrorCode
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -97,6 +98,7 @@ interface FundingControllerDocs {
             목표 금액 달성 후에는 canContributeAmount가 false, 마감 후에는 canParticipate도 false입니다.
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
             ownerPreview는 로그인한 개설자 본인이 조회한 경우 true입니다. 취소된 펀딩은 404를 반환합니다.
+            Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
         """,
     )
     @ApiResponses(
@@ -106,6 +108,11 @@ interface FundingControllerDocs {
             content = [Content(examples = [ExampleObject(value = DETAIL_EXAMPLE)])],
         ),
         SwaggerApiResponse(
+            responseCode = "401",
+            description = "보낸 토큰이 만료되었거나 유효하지 않음",
+            content = [Content(examples = [ExampleObject(value = EXPIRED_TOKEN_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
             responseCode = "404",
             description = "펀딩 없음 또는 취소된 펀딩",
             content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
@@ -113,6 +120,7 @@ interface FundingControllerDocs {
     )
     fun getFundingDetail(
         @Parameter(hidden = true) userId: Long?,
+        @Parameter(hidden = true) tokenErrorCode: ErrorCode?,
         @Parameter(description = "펀딩 ID") fundingId: Long,
     ): ApiResponse<FundingDetailResponse>
 
@@ -345,6 +353,17 @@ interface FundingControllerDocs {
                 "ownerPreview": false
               },
               "error": null
+            }
+        """
+        private const val EXPIRED_TOKEN_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "AUTH_003",
+                "message": "만료된 토큰입니다.",
+                "detail": null
+              }
             }
         """
         private const val RESULT_EXAMPLE = """
