@@ -2,10 +2,15 @@ package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
+import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
+import com.botem.domain.funding.dto.response.FundingDetailProductResponse
+import com.botem.domain.funding.dto.response.FundingDetailResponse
+import com.botem.domain.funding.dto.response.FundingDisplayStatus
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
+import com.botem.domain.funding.service.FundingDetailService
 import com.botem.domain.funding.service.FundingResultService
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -36,6 +41,23 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var fundingResultService: FundingResultService
+
+    @MockitoBean
+    private lateinit var fundingDetailService: FundingDetailService
+
+    @Test
+    fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
+        given(fundingDetailService.getDetail(USER_ID, FUNDING_ID)).willReturn(detailResponse(ownerPreview = true))
+
+        mockMvc.perform(
+            get("/api/fundings/{fundingId}", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
+            .andExpect(jsonPath("$.data.displayStatus").value("IN_PROGRESS"))
+            .andExpect(jsonPath("$.data.ownerPreview").value(true))
+    }
 
     @Test
     fun `로그인 사용자가 일반 펀딩을 개설한다`() {
@@ -146,6 +168,31 @@ class FundingControllerTest {
 
         verifyNoInteractions(fundingResultService)
     }
+
+    private fun detailResponse(ownerPreview: Boolean): FundingDetailResponse =
+        FundingDetailResponse(
+            fundingId = FUNDING_ID,
+            type = FundingType.BIRTHDAY,
+            title = "생일 선물 펀딩",
+            product = FundingDetailProductResponse(
+                name = "무선 헤드폰",
+                imageUrl = "https://image.example.com/product.jpg",
+                price = 100_000L,
+                url = "https://shop.example.com/product",
+            ),
+            story = "새 헤드폰이 필요해요",
+            promise = null,
+            deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
+            remainingDays = 3L,
+            confirmedPercentage = 40,
+            pendingPercentage = 10,
+            participantCount = 1,
+            participants = listOf(FundingDetailParticipantResponse(order = 1, name = "지유", profileImageUrl = null)),
+            displayStatus = FundingDisplayStatus.IN_PROGRESS,
+            canContributeAmount = true,
+            canParticipate = true,
+            ownerPreview = ownerPreview,
+        )
 
     private fun resultResponse(resultOpenedAt: LocalDateTime?): FundingResultResponse =
         FundingResultResponse(
