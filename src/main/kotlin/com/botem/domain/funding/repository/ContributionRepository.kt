@@ -10,7 +10,7 @@ import org.springframework.data.repository.query.Param
 
 interface ContributionRepository : JpaRepository<Contribution, Long> {
 
-    fun findAllByFundingIdOrderByCreatedAtAsc(fundingId: Long): List<Contribution>
+    fun findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId: Long): List<Contribution>
 
     fun existsByFundingIdAndStatus(
         fundingId: Long,
