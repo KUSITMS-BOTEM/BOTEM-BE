@@ -1,6 +1,8 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.funding.dto.response.FundingDetailGiftVerificationResponse
+import com.botem.domain.funding.dto.response.FundingDetailThankCardResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
@@ -9,9 +11,13 @@ import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.GiftVerification
+import com.botem.domain.funding.entity.SurpriseThankCard
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.GiftVerificationRepository
+import com.botem.domain.funding.repository.SurpriseThankCardRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
@@ -19,6 +25,9 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyIterable
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -35,10 +44,14 @@ class FundingDetailServiceTest {
     private val fundingRepository = mock(FundingRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
+    private val giftVerificationRepository = mock(GiftVerificationRepository::class.java)
+    private val surpriseThankCardRepository = mock(SurpriseThankCardRepository::class.java)
     private val service = FundingDetailService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         userRepository = userRepository,
+        giftVerificationRepository = giftVerificationRepository,
+        surpriseThankCardRepository = surpriseThankCardRepository,
         clock = Clock.fixed(Instant.parse("2026-11-14T15:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -143,12 +156,68 @@ class FundingDetailServiceTest {
         assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
     }
 
+    @Test
+    fun `선물 인증을 마친 펀딩은 인증 사진과 감사 메시지를 반환한다`() {
+        givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.COMPLETED))
+        givenContributions()
+        val giftVerification = GiftVerification(fundingId = FUNDING_ID).also {
+            it.complete(
+                imageUrl = "https://image.example.com/gift.jpg",
+                thankYouMessage = "고마워!",
+                purchasedThroughBotemLink = true,
+                completedAt = NOW,
+                replacementProductName = "다른 헤드폰",
+            )
+        }
+        given(giftVerificationRepository.findByFundingId(FUNDING_ID)).willReturn(giftVerification)
+
+        val result = service.getDetail(null, FUNDING_ID)
+
+        assertEquals(
+            FundingDetailGiftVerificationResponse(
+                imageUrl = "https://image.example.com/gift.jpg",
+                thankYouMessage = "고마워!",
+                completedAt = NOW,
+            ),
+            result.giftVerification,
+        )
+    }
+
+    @Test
+    fun `인증 전 펀딩은 선물 인증을 조회하지 않고 null을 반환한다`() {
+        givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.GIFT_PREPARING))
+        givenContributions()
+
+        val result = service.getDetail(null, FUNDING_ID)
+
+        assertNull(result.giftVerification)
+        verifyNoInteractions(giftVerificationRepository)
+    }
+
+    @Test
+    fun `서프라이즈 받는 사람이 보낸 감사 카드를 반환하고 생일 펀딩은 조회하지 않는다`() {
+        givenContributions()
+        given(surpriseThankCardRepository.findByFundingId(FUNDING_ID)).willReturn(
+            SurpriseThankCard(fundingId = FUNDING_ID, senderUserId = PARTICIPANT_ID, message = "다들 고마워", sentAt = NOW),
+        )
+
+        givenFunding(funding(type = FundingType.SURPRISE, deadline = NOW.minusDays(1), status = FundingStatus.REVEALED))
+        assertEquals(
+            FundingDetailThankCardResponse(message = "다들 고마워", sentAt = NOW),
+            service.getDetail(null, FUNDING_ID).thankCard,
+        )
+
+        givenFunding(funding())
+        assertNull(service.getDetail(null, FUNDING_ID).thankCard)
+        verify(surpriseThankCardRepository, times(1)).findByFundingId(FUNDING_ID)
+    }
+
     private fun givenFunding(funding: Funding) {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
     }
 
     private fun givenContributions(vararg contributions: Contribution) {
-        given(contributionRepository.findAllByFundingIdOrderByCreatedAtAsc(FUNDING_ID))
+        given(contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(FUNDING_ID))
             .willReturn(contributions.toList())
         given(userRepository.findAllById(anyIterable())).willReturn(emptyList())
     }
@@ -156,15 +225,16 @@ class FundingDetailServiceTest {
     private fun funding(
         deadline: LocalDateTime = NOW.plusDays(3),
         status: FundingStatus = FundingStatus.FUNDING,
+        type: FundingType = FundingType.BIRTHDAY,
     ): Funding =
         Funding(
             ownerId = OWNER_ID,
-            recipientId = null,
-            type = FundingType.BIRTHDAY,
+            recipientId = if (type == FundingType.SURPRISE) PARTICIPANT_ID else null,
+            type = type,
             title = "생일 선물 펀딩",
             targetAmount = 100_000L,
             deadline = deadline,
-            revealAt = null,
+            revealAt = if (type == FundingType.SURPRISE) deadline.plusDays(1) else null,
             story = "새 헤드폰이 필요해요",
             promise = null,
             product = FundingProductSnapshot(

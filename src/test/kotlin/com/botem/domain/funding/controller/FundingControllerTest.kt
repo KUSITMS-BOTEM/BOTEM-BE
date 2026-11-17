@@ -192,6 +192,8 @@ class FundingControllerTest {
             canContributeAmount = true,
             canParticipate = true,
             ownerPreview = ownerPreview,
+            giftVerification = null,
+            thankCard = null,
         )
 
     private fun resultResponse(resultOpenedAt: LocalDateTime?): FundingResultResponse =

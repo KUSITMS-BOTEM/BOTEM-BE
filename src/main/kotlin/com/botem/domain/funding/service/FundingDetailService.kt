@@ -1,16 +1,22 @@
 package com.botem.domain.funding.service
 
+import com.botem.domain.funding.dto.response.FundingDetailGiftVerificationResponse
 import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
 import com.botem.domain.funding.dto.response.FundingDetailProductResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
+import com.botem.domain.funding.dto.response.FundingDetailThankCardResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.GiftVerificationStatus
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.GiftVerificationRepository
+import com.botem.domain.funding.repository.SurpriseThankCardRepository
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
@@ -26,6 +32,8 @@ class FundingDetailService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
     private val userRepository: UserRepository,
+    private val giftVerificationRepository: GiftVerificationRepository,
+    private val surpriseThankCardRepository: SurpriseThankCardRepository,
     private val clock: Clock,
 ) {
 
@@ -36,7 +44,7 @@ class FundingDetailService(
             .filter { it.status != FundingStatus.CANCELLED }
             .orElseThrow { BusinessException(FundingErrorCode.FUNDING_NOT_FOUND) }
 
-        val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAsc(fundingId)
+        val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId)
             .filter { it.status != ContributionStatus.CANCELLED }
         val confirmedAmount = contributions.sumAmount(ContributionStatus.CONFIRMED)
         val pendingAmount = contributions.sumAmount(ContributionStatus.PENDING_CONFIRMATION)
@@ -67,7 +75,29 @@ class FundingDetailService(
             canParticipate = displayStatus == FundingDisplayStatus.IN_PROGRESS ||
                 displayStatus == FundingDisplayStatus.TARGET_REACHED,
             ownerPreview = viewerId != null && viewerId == funding.ownerId,
+            giftVerification = findCompletedGiftVerification(funding),
+            thankCard = findThankCard(funding),
         )
+    }
+
+    // 인증을 마친 펀딩만 COMPLETED이므로 그 외 상태에서는 조회하지 않는다
+    private fun findCompletedGiftVerification(funding: Funding): FundingDetailGiftVerificationResponse? {
+        if (funding.status != FundingStatus.COMPLETED) {
+            return null
+        }
+
+        return giftVerificationRepository.findByFundingId(funding.id)
+            ?.takeIf { it.status == GiftVerificationStatus.COMPLETED }
+            ?.let(FundingDetailGiftVerificationResponse::from)
+    }
+
+    private fun findThankCard(funding: Funding): FundingDetailThankCardResponse? {
+        if (funding.type != FundingType.SURPRISE) {
+            return null
+        }
+
+        return surpriseThankCardRepository.findByFundingId(funding.id)
+            ?.let(FundingDetailThankCardResponse::from)
     }
 
     // 로그인 참여자는 사용자 기준으로 첫 참여만 남기고, 비로그인 참여는 각각 한 명으로 센다

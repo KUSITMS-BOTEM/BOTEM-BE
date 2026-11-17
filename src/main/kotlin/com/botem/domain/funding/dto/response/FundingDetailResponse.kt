@@ -2,6 +2,8 @@ package com.botem.domain.funding.dto.response
 
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.GiftVerification
+import com.botem.domain.funding.entity.SurpriseThankCard
 import java.time.LocalDateTime
 
 // 공유 링크로 보는 펀딩 상세. 금액은 다른 참여자에게 노출하지 않도록 달성률만 반환한다
@@ -22,7 +24,38 @@ data class FundingDetailResponse(
     val canContributeAmount: Boolean,
     val canParticipate: Boolean,
     val ownerPreview: Boolean,
+    val giftVerification: FundingDetailGiftVerificationResponse?,
+    val thankCard: FundingDetailThankCardResponse?,
 )
+
+// 구매 경로와 대체 상품명은 공개하지 않는다
+data class FundingDetailGiftVerificationResponse(
+    val imageUrl: String?,
+    val thankYouMessage: String?,
+    val completedAt: LocalDateTime?,
+) {
+    companion object {
+        fun from(giftVerification: GiftVerification): FundingDetailGiftVerificationResponse =
+            FundingDetailGiftVerificationResponse(
+                imageUrl = giftVerification.imageUrl,
+                thankYouMessage = giftVerification.thankYouMessage,
+                completedAt = giftVerification.completedAt,
+            )
+    }
+}
+
+data class FundingDetailThankCardResponse(
+    val message: String,
+    val sentAt: LocalDateTime,
+) {
+    companion object {
+        fun from(thankCard: SurpriseThankCard): FundingDetailThankCardResponse =
+            FundingDetailThankCardResponse(
+                message = thankCard.message,
+                sentAt = thankCard.sentAt,
+            )
+    }
+}
 
 data class FundingDetailProductResponse(
     val name: String,
