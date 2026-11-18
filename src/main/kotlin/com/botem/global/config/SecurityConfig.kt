@@ -37,6 +37,11 @@ class SecurityConfig(
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/fundings/{fundingId:\\d+}").permitAll()
+                it.requestMatchers(HttpMethod.POST, "/api/fundings/{fundingId:\\d+}/contributions").permitAll()
+                it.requestMatchers(
+                    HttpMethod.POST,
+                    "/api/fundings/{fundingId:\\d+}/contributions/{contributionId:\\d+}/transfer-sent",
+                ).permitAll()
                 it.requestMatchers(AdminApiKeyFilter.ADMIN_URI_PATTERN).hasRole("ADMIN")
                 it.anyRequest().authenticated()
             }
