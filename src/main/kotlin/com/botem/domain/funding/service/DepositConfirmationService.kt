@@ -26,6 +26,7 @@ class DepositConfirmationService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
     private val userRepository: UserRepository,
+    private val fundingContributionCloser: FundingContributionCloser,
     private val clock: Clock,
 ) {
 
@@ -58,9 +59,10 @@ class DepositConfirmationService(
         val contribution = lockContribution(fundingId, contributionId)
 
         // 확정 금액이 목표를 넘더라도 이미 송금된 참여이므로 막지 않는다
-        contribution.confirm(LocalDateTime.now(clock))
+        val now = LocalDateTime.now(clock)
+        contribution.confirm(now)
 
-        return ContributionDecisionResponse(contribution.id, contribution.status, progressOf(funding))
+        return ContributionDecisionResponse(contribution.id, contribution.status, progressAfterConfirm(funding, now))
     }
 
     @Transactional
@@ -85,7 +87,7 @@ class DepositConfirmationService(
         )
         pendingContributions.forEach { it.confirm(now) }
 
-        return ConfirmAllContributionsResponse(pendingContributions.size, progressOf(funding))
+        return ConfirmAllContributionsResponse(pendingContributions.size, progressAfterConfirm(funding, now))
     }
 
     // 펀딩을 잠가 같은 펀딩의 확인·미입금·전체 확인 요청과 새 보태기를 직렬화한다
@@ -119,7 +121,18 @@ class DepositConfirmationService(
             ContributionStatus.PENDING_CONFIRMATION,
         )
 
-    // 변경 내용은 집계 쿼리 전에 자동 flush되어 반영된다
+    // 확정 금액이 목표에 닿으면 보태기를 자동 마감한다 (FUND-PG-006(2), 10/24 확정)
+    private fun progressAfterConfirm(funding: Funding, now: LocalDateTime): FundingProgressResponse {
+        val progress = progressOf(funding)
+        if (progress.targetReached) {
+            fundingContributionCloser.close(funding, now)
+        }
+
+        return progress
+    }
+
+    // 변경 내용은 집계 쿼리 전에 자동 flush되어 반영된다.
+    // 송금 전 기록의 메시지 전용 전환은 확정·대기 금액에 영향을 주지 않으므로 마감 전후 진행률이 같다
     private fun progressOf(funding: Funding): FundingProgressResponse {
         val summary = contributionRepository.summarizeByFundingIds(listOf(funding.id)).firstOrNull()
             ?: FundingContributionSummary.empty(funding.id)

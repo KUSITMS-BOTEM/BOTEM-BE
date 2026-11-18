@@ -13,6 +13,9 @@ data class FundingResultResponse(
     val achievementPercentage: Int,
     val targetReached: Boolean,
     val participantCount: Long,
+    val messageCount: Long,
+    val pendingContributionCount: Long,
+    val pendingCleanupRequired: Boolean,
     val resultOpenedAt: LocalDateTime?,
 ) {
     companion object {
@@ -20,6 +23,7 @@ data class FundingResultResponse(
             funding: Funding,
             summary: FundingContributionSummary,
             achievementPercentage: Int,
+            messageCount: Long,
         ): FundingResultResponse =
             FundingResultResponse(
                 fundingId = funding.id,
@@ -30,6 +34,9 @@ data class FundingResultResponse(
                 achievementPercentage = achievementPercentage,
                 targetReached = summary.confirmedAmount >= funding.targetAmount,
                 participantCount = summary.participantCount,
+                messageCount = messageCount,
+                pendingContributionCount = summary.pendingCount,
+                pendingCleanupRequired = funding.resultOpenedAt == null && summary.pendingCount > 0,
                 resultOpenedAt = funding.resultOpenedAt,
             )
     }

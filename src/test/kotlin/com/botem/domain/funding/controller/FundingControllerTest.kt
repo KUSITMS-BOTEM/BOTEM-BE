@@ -153,7 +153,7 @@ class FundingControllerTest {
 
     @Test
     fun `로그인한 개설자가 펀딩 결과를 팡 연다`() {
-        given(fundingResultService.openResult(USER_ID, FUNDING_ID)).willReturn(resultResponse(OPENED_AT))
+        given(fundingResultService.openResult(USER_ID, FUNDING_ID, false)).willReturn(resultResponse(OPENED_AT))
 
         mockMvc.perform(
             post("/api/fundings/{fundingId}/result/open", FUNDING_ID)
@@ -165,7 +165,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
             .andExpect(jsonPath("$.data.resultOpenedAt").value("2026-11-15T00:00:00"))
 
-        verify(fundingResultService).openResult(USER_ID, FUNDING_ID)
+        verify(fundingResultService).openResult(USER_ID, FUNDING_ID, false)
     }
 
     @Test
@@ -268,6 +268,9 @@ class FundingControllerTest {
             achievementPercentage = 80,
             targetReached = false,
             participantCount = 4L,
+            messageCount = 3L,
+            pendingContributionCount = 0L,
+            pendingCleanupRequired = false,
             resultOpenedAt = resultOpenedAt,
         )
 

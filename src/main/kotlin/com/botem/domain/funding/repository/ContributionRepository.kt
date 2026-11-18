@@ -7,8 +7,10 @@ import com.botem.domain.funding.repository.projection.FundingParticipantPreviewP
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.LocalDateTime
 
 interface ContributionRepository : JpaRepository<Contribution, Long> {
 
@@ -62,6 +64,24 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         @Param("fundingId") fundingId: Long,
         @Param("status") status: ContributionStatus,
     ): Long
+
+    // 보태기가 마감되면 송금 전 기록은 금액을 빼고 메시지 전용으로 바꾼다.
+    // 행마다 현재 값을 다시 읽어 갱신하므로, 그사이 '보냈어요'로 바뀐 기록은 건드리지 않는다
+    @Modifying(flushAutomatically = true)
+    @Query(
+        """
+        UPDATE Contribution contribution
+        SET contribution.status = com.botem.domain.funding.entity.ContributionStatus.MESSAGE_ONLY,
+            contribution.amount = 0,
+            contribution.updatedAt = :now
+        WHERE contribution.fundingId = :fundingId
+          AND contribution.status = com.botem.domain.funding.entity.ContributionStatus.AWAITING_TRANSFER
+        """,
+    )
+    fun convertAwaitingTransfersToMessageOnly(
+        @Param("fundingId") fundingId: Long,
+        @Param("now") now: LocalDateTime,
+    ): Int
 
     fun existsByFundingIdAndStatus(
         fundingId: Long,

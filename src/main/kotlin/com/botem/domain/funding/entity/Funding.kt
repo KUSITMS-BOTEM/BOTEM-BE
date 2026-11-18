@@ -112,6 +112,13 @@ class Funding(
     var completedAt: LocalDateTime? = null
         protected set
 
+    // 보태기 마감(마감일 경과 또는 확정 금액 목표 도달). 메시지는 마감일 전까지 계속 받는다
+    fun closeContributions() {
+        if (status == FundingStatus.FUNDING) {
+            status = FundingStatus.CLOSED
+        }
+    }
+
     fun openResult(openedAt: LocalDateTime) {
         if (resultOpenedAt != null) {
             return
