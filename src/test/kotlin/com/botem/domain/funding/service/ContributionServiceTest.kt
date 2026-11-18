@@ -195,6 +195,19 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `조기 마감한 일반 펀딩은 금액을 막고 메시지만 허용한다`() {
+        givenFunding(confirmedAmount = 0L, earlyClosedAt = NOW.minusMinutes(1))
+        givenSaveReturnsArgument()
+
+        assertErrorCode(FundingErrorCode.FUNDING_CLOSED) {
+            service.contribute(null, FUNDING_ID, request())
+        }
+        val response = service.leaveMessage(null, FUNDING_ID, messageRequest())
+
+        assertEquals(ContributionStatus.MESSAGE_ONLY, response.status)
+    }
+
+    @Test
     fun `같은 요청 키로 다시 요청하면 새로 만들지 않고 기존 참여를 반환한다`() {
         givenFunding(confirmedAmount = TARGET_AMOUNT)
         val existing = contribution(participantUserId = null)
@@ -418,6 +431,7 @@ class ContributionServiceTest {
         confirmedAmount: Long,
         deadline: LocalDateTime = NOW.plusDays(3),
         surpriseRecipientId: Long? = null,
+        earlyClosedAt: LocalDateTime? = null,
     ) {
         val funding = Funding(
             ownerId = OTHER_USER_ID,
@@ -436,7 +450,18 @@ class ContributionServiceTest {
                 encryptedAccountNumber = cipher.encrypt(ACCOUNT_NUMBER),
                 accountHolder = "김지유",
             ),
-        )
+        ).also { funding ->
+            earlyClosedAt?.let {
+                funding.javaClass.getDeclaredField("earlyClosedAt").apply {
+                    isAccessible = true
+                    set(funding, it)
+                }
+                funding.javaClass.getDeclaredField("status").apply {
+                    isAccessible = true
+                    set(funding, com.botem.domain.funding.entity.FundingStatus.CLOSED)
+                }
+            }
+        }
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
         given(contributionRepository.sumAmountByFundingIdAndStatus(funding.id, ContributionStatus.CONFIRMED))
             .willReturn(confirmedAmount)

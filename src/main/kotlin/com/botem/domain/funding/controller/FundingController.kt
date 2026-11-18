@@ -2,16 +2,21 @@ package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.controller.docs.FundingControllerDocs
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.ChangeFundingProductRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
+import com.botem.domain.funding.dto.response.FundingEarlyCloseResponse
 import com.botem.domain.funding.dto.response.FundingExtensionResponse
+import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
+import com.botem.domain.funding.service.FundingEarlyCloseService
 import com.botem.domain.funding.service.FundingExtensionService
+import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.global.exception.BusinessException
@@ -23,6 +28,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestAttribute
 import org.springframework.web.bind.annotation.RequestBody
@@ -39,6 +45,8 @@ class FundingController(
     private val fundingDetailService: FundingDetailService,
     private val ownerFundingDetailService: OwnerFundingDetailService,
     private val fundingExtensionService: FundingExtensionService,
+    private val fundingEarlyCloseService: FundingEarlyCloseService,
+    private val fundingProductChangeService: FundingProductChangeService,
 ) : FundingControllerDocs {
 
     @PostMapping
@@ -77,6 +85,21 @@ class FundingController(
         @PathVariable fundingId: Long,
     ): ApiResponse<OwnerFundingDetailResponse> =
         ApiResponse.success(ownerFundingDetailService.getManagementDetail(userId, fundingId))
+
+    @PostMapping("/{fundingId}/close")
+    override fun closeFundingEarly(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+    ): ApiResponse<FundingEarlyCloseResponse> =
+        ApiResponse.success(fundingEarlyCloseService.close(userId, fundingId))
+
+    @PatchMapping("/{fundingId}/product")
+    override fun changeFundingProduct(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+        @Valid @RequestBody request: ChangeFundingProductRequest,
+    ): ApiResponse<FundingProductChangeResponse> =
+        ApiResponse.success(fundingProductChangeService.change(userId, fundingId, request.wishId))
 
     @PostMapping("/{fundingId}/extension")
     override fun extendFunding(

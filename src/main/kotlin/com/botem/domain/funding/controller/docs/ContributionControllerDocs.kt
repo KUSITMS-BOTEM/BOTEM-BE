@@ -259,7 +259,7 @@ interface ContributionControllerDocs {
               "success": false,
               "data": null,
               "error": {
-                "code": "FUNDING_044",
+                "code": "FUNDING_046",
                 "message": "아직 공개되지 않은 서프라이즈입니다.",
                 "detail": null
               }

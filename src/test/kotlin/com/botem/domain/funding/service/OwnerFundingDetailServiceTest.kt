@@ -171,6 +171,44 @@ class OwnerFundingDetailServiceTest {
         assertEquals(NOW.plusDays(1), surprise.revealAt)
     }
 
+    @Test
+    fun `조기 마감 후에는 관리 동작과 기간 연장을 허용하지 않는다`() {
+        givenFunding(funding(deadline = NOW, earlyClosedAt = NOW.minusDays(1)))
+        givenContributions()
+
+        val response = service.getManagementDetail(OWNER_ID, FUNDING_ID)
+
+        assertEquals(NOW.minusDays(1), response.earlyClosedAt)
+        assertEquals(FundingManagementState.CLOSED, response.managementState)
+        assertFalse(response.actions.canCloseEarly)
+        assertFalse(response.actions.canChangeProduct)
+        assertFalse(response.actions.canExtend)
+    }
+
+    @Test
+    fun `원래 마감 전이어도 조기 마감한 펀딩은 관리 동작을 허용하지 않는다`() {
+        givenFunding(funding(deadline = NOW.plusDays(1), earlyClosedAt = NOW.minusHours(1)))
+        givenContributions()
+
+        val response = service.getManagementDetail(OWNER_ID, FUNDING_ID)
+
+        assertEquals(FundingManagementState.CLOSED, response.managementState)
+        assertFalse(response.actions.canCloseEarly)
+        assertFalse(response.actions.canChangeProduct)
+        assertFalse(response.actions.canExtend)
+    }
+
+    @Test
+    fun `상품 변경 여부와 마지막 변경 시각을 반환한다`() {
+        givenFunding(funding(productChangedAt = NOW.minusHours(1)))
+        givenContributions()
+
+        val response = service.getManagementDetail(OWNER_ID, FUNDING_ID)
+
+        assertTrue(response.productChanged)
+        assertEquals(NOW.minusHours(1), response.productChangedAt)
+    }
+
     private fun givenFunding(funding: Funding) {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
     }
@@ -185,6 +223,8 @@ class OwnerFundingDetailServiceTest {
         status: FundingStatus = FundingStatus.FUNDING,
         type: FundingType = FundingType.BIRTHDAY,
         extensionCount: Int = 0,
+        earlyClosedAt: LocalDateTime? = null,
+        productChangedAt: LocalDateTime? = null,
     ): Funding =
         Funding(
             ownerId = OWNER_ID,
@@ -213,6 +253,8 @@ class OwnerFundingDetailServiceTest {
             setField(funding, Funding::class.java, "id", FUNDING_ID)
             setField(funding, Funding::class.java, "status", status)
             setField(funding, Funding::class.java, "extensionCount", extensionCount)
+            earlyClosedAt?.let { setField(funding, Funding::class.java, "earlyClosedAt", it) }
+            productChangedAt?.let { setField(funding, Funding::class.java, "productChangedAt", it) }
         }
 
     private fun contribution(

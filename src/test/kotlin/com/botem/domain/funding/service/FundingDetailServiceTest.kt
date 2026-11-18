@@ -118,10 +118,39 @@ class FundingDetailServiceTest {
     }
 
     @Test
+    fun `조기 마감한 일반 펀딩은 금액을 막고 기존 마감일까지 메시지는 허용한다`() {
+        givenFunding(funding(earlyClosedAt = NOW.minusMinutes(1)))
+        givenContributions()
+
+        val result = service.getDetail(null, FUNDING_ID)
+
+        assertEquals(FundingDisplayStatus.CLOSED, result.displayStatus)
+        assertFalse(result.canContributeAmount)
+        assertTrue(result.canParticipate)
+    }
+
+    @Test
+    fun `상품 변경 여부와 마지막 변경 시각을 반환한다`() {
+        givenFunding(funding(productChangedAt = NOW.minusHours(1)))
+        givenContributions()
+
+        val result = service.getDetail(null, FUNDING_ID)
+
+        assertTrue(result.productChanged)
+        assertEquals(NOW.minusHours(1), result.productChangedAt)
+    }
+
+    @Test
     fun `결과를 연 뒤에는 선물 준비 중, 인증을 마치면 인증 완료 상태다`() {
         givenContributions()
 
-        givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.GIFT_PREPARING))
+        givenFunding(
+            funding(
+                deadline = NOW.minusDays(1),
+                status = FundingStatus.GIFT_PREPARING,
+                earlyClosedAt = NOW.minusDays(2),
+            ),
+        )
         assertEquals(FundingDisplayStatus.GIFT_PREPARING, service.getDetail(null, FUNDING_ID).displayStatus)
 
         givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.COMPLETED))
@@ -248,6 +277,8 @@ class FundingDetailServiceTest {
         deadline: LocalDateTime = NOW.plusDays(3),
         status: FundingStatus = FundingStatus.FUNDING,
         type: FundingType = FundingType.BIRTHDAY,
+        earlyClosedAt: LocalDateTime? = null,
+        productChangedAt: LocalDateTime? = null,
     ): Funding =
         Funding(
             ownerId = OWNER_ID,
@@ -275,6 +306,8 @@ class FundingDetailServiceTest {
         ).also { funding ->
             setField(funding, "id", FUNDING_ID)
             setField(funding, "status", status)
+            earlyClosedAt?.let { setField(funding, "earlyClosedAt", it) }
+            productChangedAt?.let { setField(funding, "productChangedAt", it) }
         }
 
     private fun contribution(

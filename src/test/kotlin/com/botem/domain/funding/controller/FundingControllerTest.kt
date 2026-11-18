@@ -6,16 +6,20 @@ import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
 import com.botem.domain.funding.dto.response.FundingDetailProductResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
+import com.botem.domain.funding.dto.response.FundingEarlyCloseResponse
 import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingManagementActionsResponse
 import com.botem.domain.funding.dto.response.FundingManagementState
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
+import com.botem.domain.funding.service.FundingEarlyCloseService
 import com.botem.domain.funding.service.FundingExtensionService
+import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import org.junit.jupiter.api.Test
@@ -30,6 +34,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -56,6 +61,12 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var fundingExtensionService: FundingExtensionService
+
+    @MockitoBean
+    private lateinit var fundingEarlyCloseService: FundingEarlyCloseService
+
+    @MockitoBean
+    private lateinit var fundingProductChangeService: FundingProductChangeService
 
     @Test
     fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
@@ -188,6 +199,8 @@ class FundingControllerTest {
                     price = 100_000L,
                     url = "https://shop.example.com/product",
                 ),
+                productChanged = false,
+                productChangedAt = null,
                 targetAmount = 100_000L,
                 deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
                 revealAt = null,
@@ -197,6 +210,7 @@ class FundingControllerTest {
                 pendingContributionCount = 1,
                 targetReached = false,
                 extended = false,
+                earlyClosedAt = null,
                 participantCount = 0,
                 participants = emptyList(),
                 messageCount = 0L,
@@ -250,6 +264,77 @@ class FundingControllerTest {
     }
 
     @Test
+    fun `로그인한 개설자가 펀딩을 조기 마감한다`() {
+        given(fundingEarlyCloseService.close(USER_ID, FUNDING_ID)).willReturn(
+            FundingEarlyCloseResponse(
+                fundingId = FUNDING_ID,
+                type = FundingType.BIRTHDAY,
+                status = FundingStatus.CLOSED,
+                deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
+                revealAt = null,
+                earlyClosedAt = LocalDateTime.of(2026, 11, 18, 12, 0),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/close", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf()),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.status").value("CLOSED"))
+            .andExpect(jsonPath("$.data.earlyClosedAt").value("2026-11-18T12:00:00"))
+
+        verify(fundingEarlyCloseService).close(USER_ID, FUNDING_ID)
+    }
+
+    @Test
+    fun `로그인한 개설자가 펀딩 상품을 변경한다`() {
+        val product = FundingDetailProductResponse(
+            name = "새 헤드폰",
+            imageUrl = "https://image.example.com/new-product.jpg",
+            price = 120_000L,
+            url = "https://shop.example.com/new-product",
+        )
+        given(fundingProductChangeService.change(USER_ID, FUNDING_ID, 7L)).willReturn(
+            FundingProductChangeResponse(
+                fundingId = FUNDING_ID,
+                product = product,
+                productChangedAt = LocalDateTime.of(2026, 11, 18, 12, 0),
+            ),
+        )
+
+        mockMvc.perform(
+            patch("/api/fundings/{fundingId}/product", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content("""{ "wishId": 7 }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.product.name").value("새 헤드폰"))
+            .andExpect(jsonPath("$.data.productChangedAt").value("2026-11-18T12:00:00"))
+
+        verify(fundingProductChangeService).change(USER_ID, FUNDING_ID, 7L)
+    }
+
+    @Test
+    fun `상품 변경 위시 ID가 양수가 아니면 400을 반환한다`() {
+        mockMvc.perform(
+            patch("/api/fundings/{fundingId}/product", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content("""{ "wishId": 0 }"""),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+            .andExpect(jsonPath("$.error.detail").value("wishId: 0보다 커야 합니다"))
+
+        verifyNoInteractions(fundingProductChangeService)
+    }
+
+    @Test
     fun `인증 없이 펀딩 관리 상세를 조회하면 401을 반환한다`() {
         mockMvc.perform(get("/api/fundings/{fundingId}/management", FUNDING_ID))
             .andExpect(status().isUnauthorized)
@@ -276,6 +361,8 @@ class FundingControllerTest {
                 price = 100_000L,
                 url = "https://shop.example.com/product",
             ),
+            productChanged = false,
+            productChangedAt = null,
             story = "새 헤드폰이 필요해요",
             promise = null,
             deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
