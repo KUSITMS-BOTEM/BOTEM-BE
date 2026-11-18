@@ -109,14 +109,25 @@ class Contribution(
         }
     }
 
+    // 확인 대기만 확정한다. 이미 확정된 참여는 그대로 두어 같은 요청을 다시 보내도 결과가 같다
     fun confirm(confirmedAt: LocalDateTime) {
-        status = ContributionStatus.CONFIRMED
-        this.confirmedAt = confirmedAt
+        when (status) {
+            ContributionStatus.PENDING_CONFIRMATION -> {
+                status = ContributionStatus.CONFIRMED
+                this.confirmedAt = confirmedAt
+            }
+            ContributionStatus.CONFIRMED -> Unit
+            else -> throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_PENDING)
+        }
     }
 
+    // 확인 대기만 미입금 처리한다. 이미 미입금 처리된 참여는 그대로 둔다
     fun reject() {
-        status = ContributionStatus.REJECTED
-        confirmedAt = null
+        when (status) {
+            ContributionStatus.PENDING_CONFIRMATION -> status = ContributionStatus.REJECTED
+            ContributionStatus.REJECTED -> Unit
+            else -> throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_PENDING)
+        }
     }
 
     fun cancel() {

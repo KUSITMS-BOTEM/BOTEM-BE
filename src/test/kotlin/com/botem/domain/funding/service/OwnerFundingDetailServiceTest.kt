@@ -232,6 +232,7 @@ class OwnerFundingDetailServiceTest {
             guestPasswordHash = null,
         ).also { contribution ->
             if (confirmed) {
+                contribution.markTransferSent()
                 contribution.confirm(NOW)
             }
             setField(contribution, Contribution::class.java, "id", id)
