@@ -6,14 +6,13 @@ import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
+import com.botem.domain.funding.service.progressPercentage
 import com.botem.domain.home.dto.response.HomeFundingCardResponse
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeFundingParticipantPreviewResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.Clock
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -98,8 +97,8 @@ class HomeFundingService(
             participantCount = summary.participantCount,
             participantPreviews = participantPreviews,
             remainingDays = remainingDays,
-            confirmedPercentage = percentage(summary.confirmedAmount, funding.targetAmount),
-            pendingPercentage = percentage(summary.pendingAmount, funding.targetAmount),
+            confirmedPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
+            pendingPercentage = progressPercentage(summary.pendingAmount, funding.targetAmount),
             pendingContributionCount = summary.pendingCount,
         )
     }
@@ -157,22 +156,8 @@ class HomeFundingService(
             FundingType.SURPRISE -> requireNotNull(funding.revealAt)
         }
 
-    private fun percentage(amount: Long, targetAmount: Long): Int {
-        if (amount <= 0L || targetAmount <= 0L) {
-            return 0
-        }
-
-        return BigDecimal.valueOf(amount)
-            .multiply(ONE_HUNDRED)
-            .divide(BigDecimal.valueOf(targetAmount), 0, RoundingMode.DOWN)
-            .min(MAX_INT)
-            .toInt()
-    }
-
     companion object {
         private const val MAX_ACTIVE_FUNDING_COUNT = 5
-        private val ONE_HUNDRED = BigDecimal.valueOf(100L)
-        private val MAX_INT = BigDecimal.valueOf(Int.MAX_VALUE.toLong())
         private val HOME_CANDIDATE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,

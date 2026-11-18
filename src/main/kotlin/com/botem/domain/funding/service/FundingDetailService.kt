@@ -21,8 +21,6 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.Clock
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -66,8 +64,8 @@ class FundingDetailService(
             } else {
                 null
             },
-            confirmedPercentage = percentage(confirmedAmount, funding.targetAmount),
-            pendingPercentage = percentage(pendingAmount, funding.targetAmount),
+            confirmedPercentage = progressPercentage(confirmedAmount, funding.targetAmount),
+            pendingPercentage = progressPercentage(pendingAmount, funding.targetAmount),
             participantCount = participants.size,
             participants = participants,
             displayStatus = displayStatus,
@@ -135,21 +133,4 @@ class FundingDetailService(
 
     private fun List<Contribution>.sumAmount(status: ContributionStatus): Long =
         filter { it.status == status }.sumOf(Contribution::amount)
-
-    private fun percentage(amount: Long, targetAmount: Long): Int {
-        if (amount <= 0L || targetAmount <= 0L) {
-            return 0
-        }
-
-        return BigDecimal.valueOf(amount)
-            .multiply(ONE_HUNDRED)
-            .divide(BigDecimal.valueOf(targetAmount), 0, RoundingMode.DOWN)
-            .min(MAX_INT)
-            .toInt()
-    }
-
-    companion object {
-        private val ONE_HUNDRED = BigDecimal.valueOf(100L)
-        private val MAX_INT = BigDecimal.valueOf(Int.MAX_VALUE.toLong())
-    }
 }
