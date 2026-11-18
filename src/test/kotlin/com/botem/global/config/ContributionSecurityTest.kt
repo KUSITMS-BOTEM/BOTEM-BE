@@ -29,6 +29,29 @@ class ContributionSecurityTest {
     }
 
     @Test
+    fun `로그인하지 않아도 메시지로 보태기 API에 접근할 수 있다`() {
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/message-only", MISSING_ID)
+                .contentType("application/json")
+                .content(CONTRIBUTE_BODY),
+        )
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("FUNDING_002"))
+    }
+
+    @Test
+    fun `유효하지 않은 토큰으로 메시지를 보태면 401로 응답한다`() {
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/message-only", MISSING_ID)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
+                .contentType("application/json")
+                .content("{}"),
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("AUTH_002"))
+    }
+
+    @Test
     fun `로그인하지 않아도 송금 완료 표시 API에 접근할 수 있다`() {
         mockMvc.perform(
             post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", MISSING_ID, MISSING_ID)

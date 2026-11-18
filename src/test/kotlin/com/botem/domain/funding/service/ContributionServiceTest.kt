@@ -3,6 +3,7 @@ package com.botem.domain.funding.service
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.dto.request.CreateContributionRequest
+import com.botem.domain.funding.dto.request.CreateMessageContributionRequest
 import com.botem.domain.funding.dto.request.MarkTransferSentRequest
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
@@ -187,6 +188,100 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `비회원이 메시지로 보태면 0원 메시지 전용으로 저장하고 롤링페이퍼를 만든다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+
+        val response = service.leaveMessage(null, FUNDING_ID, messageRequest())
+
+        val contribution = captureSavedContribution()
+        assertEquals(0L, contribution.amount)
+        assertEquals(ContributionStatus.MESSAGE_ONLY, contribution.status)
+        assertEquals("민지", contribution.participantName)
+        assertTrue(BCryptPasswordEncoder().matches("1234", contribution.guestPasswordHash))
+        assertEquals(ContributionStatus.MESSAGE_ONLY, response.status)
+
+        val messageCaptor = ArgumentCaptor.forClass(RollingPaperMessage::class.java)
+        verify(rollingPaperMessageRepository).save(messageCaptor.capture())
+        assertEquals("다 모였네! 축하해", messageCaptor.value.content)
+    }
+
+    @Test
+    fun `로그인 회원이 이름을 생략하고 메시지로 보태면 닉네임을 사용한다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+        given(userRepository.findById(USER_ID))
+            .willReturn(Optional.of(User(kakaoId = 1L, nickname = "지유친구", profileImageUrl = null)))
+
+        service.leaveMessage(USER_ID, FUNDING_ID, messageRequest(participantName = null, guestPassword = null))
+
+        val contribution = captureSavedContribution()
+        assertEquals("지유친구", contribution.participantName)
+        assertNull(contribution.guestPasswordHash)
+    }
+
+    @Test
+    fun `목표 금액을 달성한 뒤에도 마감 전이면 메시지로 보탤 수 있다`() {
+        givenFunding(confirmedAmount = TARGET_AMOUNT + 5_000L)
+        givenSaveReturnsArgument()
+
+        val response = service.leaveMessage(null, FUNDING_ID, messageRequest())
+
+        assertEquals(ContributionStatus.MESSAGE_ONLY, response.status)
+    }
+
+    @Test
+    fun `마감된 펀딩에는 메시지로 보탤 수 없다`() {
+        givenFunding(confirmedAmount = 0L, deadline = NOW)
+
+        assertErrorCode(FundingErrorCode.FUNDING_CLOSED) {
+            service.leaveMessage(null, FUNDING_ID, messageRequest())
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
+    fun `메시지로 보탤 때도 비회원 이름과 비밀번호, 메시지가 필수다`() {
+        givenFunding(confirmedAmount = 0L)
+
+        assertInvalidInput { service.leaveMessage(null, FUNDING_ID, messageRequest(participantName = " ")) }
+        assertInvalidInput { service.leaveMessage(null, FUNDING_ID, messageRequest(guestPassword = null)) }
+        assertInvalidInput { service.leaveMessage(null, FUNDING_ID, messageRequest(message = "\u3000")) }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
+    fun `같은 요청 키로 다시 메시지를 보내면 기존 참여를 반환한다`() {
+        givenFunding(confirmedAmount = 0L)
+        val existing = Contribution(
+            fundingId = FUNDING_ID,
+            participantUserId = null,
+            participantName = "민지",
+            amount = 0L,
+            status = ContributionStatus.MESSAGE_ONLY,
+            guestPasswordHash = null,
+            requestKey = REQUEST_KEY,
+        )
+        given(contributionRepository.findByFundingIdAndRequestKey(FUNDING_ID, REQUEST_KEY)).willReturn(existing)
+
+        val response = service.leaveMessage(null, FUNDING_ID, messageRequest())
+
+        assertEquals(ContributionStatus.MESSAGE_ONLY, response.status)
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
+    fun `금액 보태기에 쓴 요청 키로 메시지를 보내면 거절한다`() {
+        givenFunding(confirmedAmount = 0L)
+        given(contributionRepository.findByFundingIdAndRequestKey(FUNDING_ID, REQUEST_KEY))
+            .willReturn(contribution(participantUserId = null))
+
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_REQUEST_KEY_CONFLICT) {
+            service.leaveMessage(null, FUNDING_ID, messageRequest())
+        }
+    }
+
+    @Test
     fun `비회원이 맞는 비밀번호로 송금 완료를 표시하면 확인 대기로 바뀐다`() {
         val contribution = givenContribution(participantUserId = null)
 
@@ -364,6 +459,18 @@ class ContributionServiceTest {
         amount = amount,
         message = message,
         paperTemplateCode = paperTemplateCode,
+        guestPassword = guestPassword,
+    )
+
+    private fun messageRequest(
+        participantName: String? = "민지",
+        message: String = "다 모였네! 축하해",
+        guestPassword: String? = "1234",
+    ) = CreateMessageContributionRequest(
+        requestKey = REQUEST_KEY,
+        participantName = participantName,
+        message = message,
+        paperTemplateCode = "BLUE_DOT_GRID",
         guestPassword = guestPassword,
     )
 
