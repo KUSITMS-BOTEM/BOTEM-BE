@@ -100,8 +100,11 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         WHERE funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
           AND funding.recipientId = :recipientId
           AND funding.revealAt <= :now
-          AND funding.status <> com.botem.domain.funding.entity.FundingStatus.COMPLETED
-          AND funding.status <> com.botem.domain.funding.entity.FundingStatus.CANCELLED
+          AND funding.status IN (
+            com.botem.domain.funding.entity.FundingStatus.WAITING_REVEAL,
+            com.botem.domain.funding.entity.FundingStatus.REVEALED,
+            com.botem.domain.funding.entity.FundingStatus.WAITING_GIFT_VERIFICATION
+          )
           AND NOT EXISTS (
               SELECT thankCard.id
               FROM SurpriseThankCard thankCard

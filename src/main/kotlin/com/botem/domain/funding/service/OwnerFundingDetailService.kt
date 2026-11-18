@@ -77,6 +77,7 @@ class OwnerFundingDetailService(
             targetReached = targetReached,
             extended = funding.extensionCount > 0,
             earlyClosedAt = funding.earlyClosedAt,
+            giftPreparedAt = funding.giftPreparedAt,
             participantCount = participantCount,
             participants = participants,
             messageCount = rollingPaperMessageRepository.countByFundingId(fundingId),
