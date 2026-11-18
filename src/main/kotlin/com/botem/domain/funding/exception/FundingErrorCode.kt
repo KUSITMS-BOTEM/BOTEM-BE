@@ -136,4 +136,29 @@ enum class FundingErrorCode(
         "FUNDING_036",
         "이미 사용 중인 참여자 이름으로 변경할 수 없습니다.",
     ),
+    FUNDING_EXTENSION_BEFORE_DEADLINE(
+        HttpStatus.CONFLICT,
+        "FUNDING_037",
+        "펀딩이 마감된 후 기간을 연장할 수 있습니다.",
+    ),
+    FUNDING_EXTENSION_NOT_AVAILABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_038",
+        "현재 상태에서는 펀딩 기간을 연장할 수 없습니다.",
+    ),
+    FUNDING_EXTENSION_LIMIT_EXCEEDED(
+        HttpStatus.CONFLICT,
+        "FUNDING_039",
+        "펀딩 기간은 한 번만 연장할 수 있습니다.",
+    ),
+    FUNDING_EXTENSION_DEADLINE_INVALID(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_040",
+        "새 마감일은 현재 시각과 기존 마감일 이후여야 합니다.",
+    ),
+    FUNDING_EXTENSION_PERIOD_EXCEEDED(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_041",
+        "펀딩 기간은 최대 14일까지 연장할 수 있습니다.",
+    ),
 }

@@ -119,6 +119,39 @@ class Funding(
         }
     }
 
+    fun extendDeadline(
+        newDeadline: LocalDateTime,
+        extendedAt: LocalDateTime,
+        confirmedAmount: Long,
+    ) {
+        if (type != FundingType.BIRTHDAY) {
+            throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
+        }
+        if (deadline.isAfter(extendedAt)) {
+            throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_BEFORE_DEADLINE)
+        }
+        if (extensionCount >= MAX_EXTENSION_COUNT) {
+            throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_LIMIT_EXCEEDED)
+        }
+        if (status !in EXTENDABLE_STATUSES || (status == FundingStatus.GIFT_PREPARING) != (resultOpenedAt != null)) {
+            throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE)
+        }
+        if (confirmedAmount >= targetAmount) {
+            throw BusinessException(FundingErrorCode.FUNDING_TARGET_REACHED)
+        }
+        if (!newDeadline.isAfter(extendedAt) || !newDeadline.isAfter(deadline)) {
+            throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_DEADLINE_INVALID)
+        }
+        if (newDeadline.toLocalDate().isAfter(extendedAt.toLocalDate().plusDays(MAX_EXTENSION_DAYS))) {
+            throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_PERIOD_EXCEEDED)
+        }
+
+        deadline = newDeadline
+        extensionCount += 1
+        this.extendedAt = extendedAt
+        status = FundingStatus.FUNDING
+    }
+
     fun openResult(openedAt: LocalDateTime) {
         if (resultOpenedAt != null) {
             return
@@ -206,6 +239,8 @@ class Funding(
         private const val MAX_TARGET_AMOUNT = 10_000_000L
         private const val MAX_STORY_LENGTH = 300
         private const val MAX_PROMISE_LENGTH = 300
+        private const val MAX_EXTENSION_COUNT = 1
+        private const val MAX_EXTENSION_DAYS = 14L
 
         fun createBirthday(
             ownerId: Long,
@@ -285,6 +320,11 @@ class Funding(
         private val RESULT_OPENABLE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
+        )
+        private val EXTENDABLE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
+            FundingStatus.GIFT_PREPARING,
         )
         private val SURPRISE_REVEAL_VIEWABLE_STATUSES = setOf(
             FundingStatus.WAITING_REVEAL,
