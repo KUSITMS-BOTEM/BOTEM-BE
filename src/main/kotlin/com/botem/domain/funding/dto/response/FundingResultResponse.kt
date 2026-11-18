@@ -2,7 +2,6 @@ package com.botem.domain.funding.dto.response
 
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
-import com.botem.domain.funding.service.progressPercentage
 import java.time.LocalDateTime
 
 data class FundingResultResponse(
@@ -23,6 +22,7 @@ data class FundingResultResponse(
         fun from(
             funding: Funding,
             summary: FundingContributionSummary,
+            achievementPercentage: Int,
             messageCount: Long,
         ): FundingResultResponse =
             FundingResultResponse(
@@ -31,7 +31,7 @@ data class FundingResultResponse(
                 productImageUrl = funding.product.imageUrl,
                 targetAmount = funding.targetAmount,
                 confirmedAmount = summary.confirmedAmount,
-                achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
+                achievementPercentage = achievementPercentage,
                 targetReached = summary.confirmedAmount >= funding.targetAmount,
                 participantCount = summary.participantCount,
                 messageCount = messageCount,

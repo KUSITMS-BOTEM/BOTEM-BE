@@ -16,6 +16,8 @@ interface FundingRepository : JpaRepository<Funding, Long> {
     @Query("SELECT funding FROM Funding funding WHERE funding.id = :fundingId")
     fun findByIdForUpdate(@Param("fundingId") fundingId: Long): Funding?
 
+    fun existsByIdAndResultOpenedAtIsNotNull(id: Long): Boolean
+
     fun existsByOwnerIdAndStatusNotIn(
         ownerId: Long,
         statuses: Collection<FundingStatus>,

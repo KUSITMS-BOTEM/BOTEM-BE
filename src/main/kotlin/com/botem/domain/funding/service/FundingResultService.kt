@@ -29,9 +29,18 @@ class FundingResultService(
     @Transactional
     fun getResult(userId: Long, fundingId: Long): FundingResultResponse {
         val now = LocalDateTime.now(clock)
-        val funding = lockResultAccessibleFunding(userId, fundingId, now)
 
-        return resultOf(funding)
+        // 이미 연 결과는 더 바뀌지 않으므로 잠그지 않는다.
+        // 엔티티를 먼저 읽고 다시 잠가 읽으면 영속성 컨텍스트의 이전 상태가 반환되므로 exists로 분기한다
+        if (fundingRepository.existsByIdAndResultOpenedAtIsNotNull(fundingId)) {
+            val funding = fundingRepository.findById(fundingId)
+                .orElseThrow { BusinessException(FundingErrorCode.FUNDING_NOT_FOUND) }
+            validateResultAccess(funding, userId, now)
+
+            return resultOf(funding)
+        }
+
+        return resultOf(lockResultAccessibleFunding(userId, fundingId, now))
     }
 
     // 확인 대기는 자동으로 확정하지 않는다. 개설자가 모두 처리하거나, 결과에서 제외하겠다고 선택해야 연다.
@@ -63,12 +72,16 @@ class FundingResultService(
         return funding
     }
 
-    private fun resultOf(funding: Funding): FundingResultResponse =
-        FundingResultResponse.from(
+    private fun resultOf(funding: Funding): FundingResultResponse {
+        val summary = summaryOf(funding)
+
+        return FundingResultResponse.from(
             funding = funding,
-            summary = summaryOf(funding),
+            summary = summary,
+            achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messageCount = rollingPaperMessageRepository.countByFundingId(funding.id),
         )
+    }
 
     private fun summaryOf(funding: Funding): FundingContributionSummary =
         contributionRepository.summarizeByFundingIds(listOf(funding.id)).singleOrNull()
