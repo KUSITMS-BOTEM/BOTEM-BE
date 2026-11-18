@@ -2,9 +2,11 @@ package com.botem.domain.funding.service
 
 import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.dto.request.CreateContributionRequest
+import com.botem.domain.funding.dto.request.CreateMessageContributionRequest
 import com.botem.domain.funding.dto.request.MarkTransferSentRequest
 import com.botem.domain.funding.dto.response.ContributionPayoutAccountResponse
 import com.botem.domain.funding.dto.response.ContributionResponse
+import com.botem.domain.funding.dto.response.MessageContributionResponse
 import com.botem.domain.funding.dto.response.TransferSentResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
@@ -39,21 +41,14 @@ class ContributionService(
 
     @Transactional
     fun contribute(userId: Long?, fundingId: Long, request: CreateContributionRequest): ContributionResponse {
-        // 해시 계산과 입력 정규화는 펀딩 락을 잡기 전에 끝내 락 점유 시간을 줄인다.
-        // DB 조회는 락 이후에 해야 MySQL REPEATABLE READ 스냅샷이 앞선 요청의 커밋을 본다
-        val message = request.message.normalizeOptional()
-            ?: throw invalidInput("축하 메시지는 필수입니다.")
-        val paperTemplateCode = request.paperTemplateCode.normalizeOptional()
-            ?: throw invalidInput("편지지를 선택해야 합니다.")
-        if (userId == null && request.participantName.normalizeOptional() == null) {
-            throw invalidInput("참여자 이름은 필수입니다.")
-        }
-        val guestPasswordHash = if (userId == null) hashGuestPassword(request.guestPassword) else null
-
-        // 펀딩 단위로 잠가 남은 금액 검증과 요청 키 중복 확인을 직렬화한다
-        val funding = fundingRepository.findByIdForUpdate(fundingId)
-            ?.takeIf { it.status != FundingStatus.CANCELLED }
-            ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
+        val input = prepareParticipantInput(
+            userId = userId,
+            participantName = request.participantName,
+            message = request.message,
+            paperTemplateCode = request.paperTemplateCode,
+            guestPassword = request.guestPassword,
+        )
+        val funding = lockFunding(fundingId)
 
         contributionRepository.findByFundingIdAndRequestKey(fundingId, request.requestKey)?.let { existing ->
             if (existing.participantUserId != userId || existing.amount != request.amount) {
@@ -63,28 +58,52 @@ class ContributionService(
         }
 
         validateContributable(funding, request.amount)
-        val participantName = resolveParticipantName(userId, request.participantName)
-
-        val contribution = contributionRepository.save(
-            Contribution(
-                fundingId = fundingId,
-                participantUserId = userId,
-                participantName = participantName,
-                amount = request.amount,
-                status = ContributionStatus.AWAITING_TRANSFER,
-                guestPasswordHash = guestPasswordHash,
-                requestKey = request.requestKey,
-            ),
-        )
-        rollingPaperMessageRepository.save(
-            RollingPaperMessage(
-                contributionId = contribution.id,
-                content = message,
-                paperTemplateCode = paperTemplateCode,
-            ),
+        val contribution = saveWithMessage(
+            userId = userId,
+            fundingId = fundingId,
+            requestKey = request.requestKey,
+            amount = request.amount,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            input = input,
         )
 
         return ContributionResponse.of(contribution, payoutAccountOf(funding))
+    }
+
+    // 금액 없이 메시지만 남기는 참여. 달성률에는 반영하지 않고 목표 달성 후에도 마감 전까지 받는다
+    @Transactional
+    fun leaveMessage(
+        userId: Long?,
+        fundingId: Long,
+        request: CreateMessageContributionRequest,
+    ): MessageContributionResponse {
+        val input = prepareParticipantInput(
+            userId = userId,
+            participantName = request.participantName,
+            message = request.message,
+            paperTemplateCode = request.paperTemplateCode,
+            guestPassword = request.guestPassword,
+        )
+        val funding = lockFunding(fundingId)
+
+        contributionRepository.findByFundingIdAndRequestKey(fundingId, request.requestKey)?.let { existing ->
+            if (existing.participantUserId != userId || existing.status != ContributionStatus.MESSAGE_ONLY) {
+                throw BusinessException(FundingErrorCode.CONTRIBUTION_REQUEST_KEY_CONFLICT)
+            }
+            return MessageContributionResponse.from(existing)
+        }
+
+        validateOpen(funding)
+        val contribution = saveWithMessage(
+            userId = userId,
+            fundingId = fundingId,
+            requestKey = request.requestKey,
+            amount = 0L,
+            status = ContributionStatus.MESSAGE_ONLY,
+            input = input,
+        )
+
+        return MessageContributionResponse.from(contribution)
     }
 
     // 비밀번호 실패 횟수는 예외를 던져도 남아야 하므로 BusinessException에는 롤백하지 않는다
@@ -128,12 +147,77 @@ class ContributionService(
         contribution.resetGuestPasswordFailures()
     }
 
-    // 상세 조회의 canContributeAmount와 같은 기준(마감 전 + 확정 금액 기준 미달성)으로 막는다
-    private fun validateContributable(funding: Funding, amount: Long) {
-        val now = LocalDateTime.now(clock)
-        if (funding.status !in CONTRIBUTABLE_STATUSES || !funding.deadline.isAfter(now)) {
+    // 해시 계산과 입력 정규화는 펀딩 락을 잡기 전에 끝내 락 점유 시간을 줄인다.
+    // DB 조회는 락 이후에 해야 MySQL REPEATABLE READ 스냅샷이 앞선 요청의 커밋을 보므로 이름 결정은 저장 시점에 한다
+    private fun prepareParticipantInput(
+        userId: Long?,
+        participantName: String?,
+        message: String,
+        paperTemplateCode: String,
+        guestPassword: String?,
+    ): ParticipantInput {
+        val normalizedMessage = message.normalizeOptional()
+            ?: throw invalidInput("축하 메시지는 필수입니다.")
+        val normalizedPaperTemplateCode = paperTemplateCode.normalizeOptional()
+            ?: throw invalidInput("편지지를 선택해야 합니다.")
+        if (userId == null && participantName.normalizeOptional() == null) {
+            throw invalidInput("참여자 이름은 필수입니다.")
+        }
+
+        return ParticipantInput(
+            participantName = participantName,
+            message = normalizedMessage,
+            paperTemplateCode = normalizedPaperTemplateCode,
+            guestPasswordHash = if (userId == null) hashGuestPassword(guestPassword) else null,
+        )
+    }
+
+    // 펀딩 단위로 잠가 남은 금액 검증과 요청 키 중복 확인을 직렬화한다
+    private fun lockFunding(fundingId: Long): Funding =
+        fundingRepository.findByIdForUpdate(fundingId)
+            ?.takeIf { it.status != FundingStatus.CANCELLED }
+            ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
+
+    private fun saveWithMessage(
+        userId: Long?,
+        fundingId: Long,
+        requestKey: String,
+        amount: Long,
+        status: ContributionStatus,
+        input: ParticipantInput,
+    ): Contribution {
+        val contribution = contributionRepository.save(
+            Contribution(
+                fundingId = fundingId,
+                participantUserId = userId,
+                participantName = resolveParticipantName(userId, input.participantName),
+                amount = amount,
+                status = status,
+                guestPasswordHash = input.guestPasswordHash,
+                requestKey = requestKey,
+            ),
+        )
+        rollingPaperMessageRepository.save(
+            RollingPaperMessage(
+                contributionId = contribution.id,
+                content = input.message,
+                paperTemplateCode = input.paperTemplateCode,
+            ),
+        )
+
+        return contribution
+    }
+
+    // 상세 조회의 canParticipate와 같은 기준(마감 전)으로 막는다
+    private fun validateOpen(funding: Funding) {
+        if (funding.status !in CONTRIBUTABLE_STATUSES || !funding.deadline.isAfter(LocalDateTime.now(clock))) {
             throw BusinessException(FundingErrorCode.FUNDING_CLOSED)
         }
+    }
+
+    // 상세 조회의 canContributeAmount와 같은 기준(마감 전 + 확정 금액 기준 미달성)으로 막는다
+    private fun validateContributable(funding: Funding, amount: Long) {
+        validateOpen(funding)
 
         val confirmedAmount = contributionRepository.sumAmountByFundingIdAndStatus(
             funding.id,
@@ -183,6 +267,13 @@ class ContributionService(
         this?.trim { it.isWhitespace() || Character.isSpaceChar(it) }?.takeIf(String::isNotEmpty)
 
     private fun invalidInput(detail: String) = BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, detail)
+
+    private class ParticipantInput(
+        val participantName: String?,
+        val message: String,
+        val paperTemplateCode: String,
+        val guestPasswordHash: String?,
+    )
 
     companion object {
         private val GUEST_PASSWORD_REGEX = Regex("\\d{4}")

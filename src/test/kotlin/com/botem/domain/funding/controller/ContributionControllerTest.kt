@@ -2,9 +2,11 @@ package com.botem.domain.funding.controller
 
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.request.CreateContributionRequest
+import com.botem.domain.funding.dto.request.CreateMessageContributionRequest
 import com.botem.domain.funding.dto.request.MarkTransferSentRequest
 import com.botem.domain.funding.dto.response.ContributionPayoutAccountResponse
 import com.botem.domain.funding.dto.response.ContributionResponse
+import com.botem.domain.funding.dto.response.MessageContributionResponse
 import com.botem.domain.funding.dto.response.TransferSentResponse
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.service.ContributionService
@@ -103,6 +105,48 @@ class ContributionControllerTest {
                 .with(csrf())
                 .contentType("application/json")
                 .content(body().replace("\"amount\": 10000", "\"amount\": 10000.9")),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+
+        verifyNoInteractions(contributionService)
+    }
+
+    @Test
+    fun `메시지로 보태면 201과 메시지 전용 상태를 반환한다`() {
+        val request = CreateMessageContributionRequest(
+            requestKey = REQUEST_KEY,
+            message = "생일 축하해!",
+            paperTemplateCode = "BLUE_DOT_GRID",
+        )
+        given(contributionService.leaveMessage(USER_ID, FUNDING_ID, request)).willReturn(
+            MessageContributionResponse(CONTRIBUTION_ID, "지유친구", ContributionStatus.MESSAGE_ONLY),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/message-only", FUNDING_ID)
+                .with(loggedIn())
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """{"requestKey": "$REQUEST_KEY", "message": "생일 축하해!", "paperTemplateCode": "BLUE_DOT_GRID"}""",
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.data.contributionId").value(CONTRIBUTION_ID))
+            .andExpect(jsonPath("$.data.status").value("MESSAGE_ONLY"))
+    }
+
+    @Test
+    fun `메시지로 보탤 때 메시지가 460자를 넘으면 400을 반환한다`() {
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/message-only", FUNDING_ID)
+                .with(loggedIn())
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """{"requestKey": "$REQUEST_KEY", "message": "${"가".repeat(461)}", "paperTemplateCode": "BLUE_DOT_GRID"}""",
+                ),
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error.code").value("COMMON_001"))

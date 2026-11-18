@@ -1,8 +1,10 @@
 package com.botem.domain.funding.controller.docs
 
 import com.botem.domain.funding.dto.request.CreateContributionRequest
+import com.botem.domain.funding.dto.request.CreateMessageContributionRequest
 import com.botem.domain.funding.dto.request.MarkTransferSentRequest
 import com.botem.domain.funding.dto.response.ContributionResponse
+import com.botem.domain.funding.dto.response.MessageContributionResponse
 import com.botem.domain.funding.dto.response.TransferSentResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -90,6 +92,62 @@ interface ContributionControllerDocs {
         @Parameter(description = "펀딩 ID") fundingId: Long,
         request: CreateContributionRequest,
     ): ApiResponse<ContributionResponse>
+
+    @Operation(
+        summary = "메시지로 보태기",
+        description = """
+            금액 없이 축하 메시지만 남깁니다. 참여는 MESSAGE_ONLY 상태, 금액 0원으로 저장되며 롤링페이퍼 메시지를 함께 만듭니다.
+            메시지만 남긴 참여는 전체 참여 인원과 메시지 개수에는 포함되지만 확정·대기 달성률에는 반영되지 않고,
+            입금 확인 대상에서도 제외됩니다.
+            목표 금액을 달성해 금액 보태기가 닫힌 뒤에도 마감 전까지는 남길 수 있고, 마감된 펀딩에는 FUNDING_020을 반환합니다.
+            requestKey, participantName, message, paperTemplateCode, guestPassword 규칙은 금액 보태기와 같습니다.
+            같은 키로 다시 요청하면 기존 참여를 반환하고, 다른 참여자의 키이거나 금액 보태기에 쓴 키면 FUNDING_027을 반환합니다.
+            Authorization 헤더 없이 호출하면 비로그인으로 처리하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
+        """,
+    )
+    @RequestBody(
+        required = true,
+        content = [Content(examples = [ExampleObject(value = MESSAGE_ONLY_REQUEST_EXAMPLE)])],
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "201",
+            description = "메시지 참여 생성 성공 또는 같은 requestKey의 기존 참여",
+            content = [Content(examples = [ExampleObject(value = MESSAGE_ONLY_RESPONSE_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "입력 오류",
+            content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "보낸 토큰이 만료되었거나 유효하지 않음"),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음 또는 취소된 펀딩",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "마감된 펀딩 또는 이미 사용된 requestKey",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_020", summary = "마감된 펀딩", value = FUNDING_CLOSED_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_027",
+                            summary = "이미 사용된 요청 키",
+                            value = REQUEST_KEY_CONFLICT_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    fun leaveMessage(
+        @Parameter(hidden = true) userId: Long?,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+        request: CreateMessageContributionRequest,
+    ): ApiResponse<MessageContributionResponse>
 
     @Operation(
         summary = "송금 완료 표시",
@@ -208,6 +266,26 @@ interface ContributionControllerDocs {
                   "accountNumber": "100012345678",
                   "accountHolder": "김지유"
                 }
+              },
+              "error": null
+            }
+        """
+        private const val MESSAGE_ONLY_REQUEST_EXAMPLE = """
+            {
+              "requestKey": "3c2b1a09-8f7e-4d6c-5b4a-39281706f5e4",
+              "participantName": "지유 친구 민지",
+              "message": "이미 다 모였네! 생일 축하해",
+              "paperTemplateCode": "BLUE_DOT_GRID",
+              "guestPassword": "1234"
+            }
+        """
+        private const val MESSAGE_ONLY_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "contributionId": 32,
+                "participantName": "지유 친구 민지",
+                "status": "MESSAGE_ONLY"
               },
               "error": null
             }

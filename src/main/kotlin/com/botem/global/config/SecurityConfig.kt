@@ -71,6 +71,7 @@ class SecurityConfig(
     companion object {
         private val GUEST_ALLOWED_POST_URIS = arrayOf(
             "/api/fundings/{fundingId:\\d+}/contributions",
+            "/api/fundings/{fundingId:\\d+}/contributions/message-only",
             "/api/fundings/{fundingId:\\d+}/contributions/{contributionId:\\d+}/transfer-sent",
         )
 
