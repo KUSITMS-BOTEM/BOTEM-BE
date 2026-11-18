@@ -4,7 +4,6 @@ import com.botem.domain.funding.dto.request.CreateContributionRequest
 import com.botem.domain.funding.dto.request.MarkTransferSentRequest
 import com.botem.domain.funding.dto.response.ContributionResponse
 import com.botem.domain.funding.dto.response.TransferSentResponse
-import com.botem.global.exception.ErrorCode
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -88,7 +87,6 @@ interface ContributionControllerDocs {
     )
     fun contribute(
         @Parameter(hidden = true) userId: Long?,
-        @Parameter(hidden = true) tokenErrorCode: ErrorCode?,
         @Parameter(description = "펀딩 ID") fundingId: Long,
         request: CreateContributionRequest,
     ): ApiResponse<ContributionResponse>
@@ -99,7 +97,9 @@ interface ContributionControllerDocs {
             참여자가 '보냈어요'를 누르면 참여를 PENDING_CONFIRMATION(입금 확인 대기)으로 바꿉니다.
             서버는 실제 송금 여부를 확인하지 않으며, 최종 확정은 개설자의 입금 확인으로 결정됩니다.
             로그인 참여는 참여한 회원 본인만, 비로그인 참여는 참여 시 입력한 guestPassword가 일치해야 변경할 수 있습니다.
-            비로그인 참여의 비밀번호를 5회 연속 틀리면 10분 동안 FUNDING_029(429)를 반환하며, 성공하면 실패 횟수를 초기화합니다.
+            guestPassword 형식(숫자 4자리)이 틀리면 400(COMMON_001), 형식은 맞지만 저장된 비밀번호와 다르면 403(FUNDING_025)을 반환합니다.
+            비로그인 참여의 비밀번호를 5회 연속 틀리면 잠깁니다. 다섯 번째 실패 응답은 403(FUNDING_025)이고,
+            그 뒤 10분 동안은 비밀번호와 관계없이 429(FUNDING_029)를 반환합니다. 성공하면 실패 횟수를 초기화합니다.
             이미 송금 완료로 표시했거나 확인이 끝난 참여는 상태를 바꾸지 않고 현재 상태를 반환합니다.
             송금 전에 보태기가 마감되어 메시지 전용으로 바뀐 참여는 FUNDING_028을 반환합니다.
             마감 후에도 송금 완료 표시는 가능합니다.
@@ -115,10 +115,15 @@ interface ContributionControllerDocs {
             description = "송금 완료 표시 성공",
             content = [Content(examples = [ExampleObject(value = TRANSFER_SENT_RESPONSE_EXAMPLE)])],
         ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "guestPassword 형식 오류(숫자 4자리 아님)",
+            content = [Content(examples = [ExampleObject(value = INVALID_PASSWORD_FORMAT_EXAMPLE)])],
+        ),
         SwaggerApiResponse(responseCode = "401", description = "보낸 토큰이 만료되었거나 유효하지 않음"),
         SwaggerApiResponse(
             responseCode = "403",
-            description = "참여자 본인이 아니거나 비밀번호 불일치",
+            description = "참여자 본인이 아니거나 비밀번호 불일치(잠금이 걸리는 다섯 번째 실패 포함)",
             content = [
                 Content(
                     examples = [
@@ -159,13 +164,12 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "429",
-            description = "비밀번호 연속 실패로 잠김",
+            description = "비밀번호 연속 실패로 잠긴 동안의 요청",
             content = [Content(examples = [ExampleObject(value = PASSWORD_LOCKED_EXAMPLE)])],
         ),
     )
     fun markTransferSent(
         @Parameter(hidden = true) userId: Long?,
-        @Parameter(hidden = true) tokenErrorCode: ErrorCode?,
         @Parameter(description = "펀딩 ID") fundingId: Long,
         @Parameter(description = "참여 ID") contributionId: Long,
         request: MarkTransferSentRequest,
@@ -231,6 +235,17 @@ interface ContributionControllerDocs {
                 "code": "COMMON_001",
                 "message": "입력값이 올바르지 않습니다.",
                 "detail": "비회원 비밀번호는 숫자 4자리여야 합니다."
+              }
+            }
+        """
+        private const val INVALID_PASSWORD_FORMAT_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_001",
+                "message": "입력값이 올바르지 않습니다.",
+                "detail": "guestPassword: 숫자 4자리여야 합니다"
               }
             }
         """
