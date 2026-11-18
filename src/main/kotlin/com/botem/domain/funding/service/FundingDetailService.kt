@@ -41,6 +41,10 @@ class FundingDetailService(
         val funding = fundingRepository.findById(fundingId)
             .filter { it.status != FundingStatus.CANCELLED }
             .orElseThrow { BusinessException(FundingErrorCode.FUNDING_NOT_FOUND) }
+        // 받는 사람이 로그인 상태로 공개 전 링크를 열면 상품·주최자·참여자 정보를 내려주지 않는다
+        if (funding.isHiddenFromRecipient(viewerId, now)) {
+            throw BusinessException(FundingErrorCode.SURPRISE_NOT_REVEALED)
+        }
 
         val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId)
             .filter { it.status != ContributionStatus.CANCELLED }

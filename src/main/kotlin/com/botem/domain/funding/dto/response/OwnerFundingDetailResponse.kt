@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 data class OwnerFundingDetailResponse(
     val fundingId: Long,
     val type: FundingType,
-    val title: String,
+    val title: String?,
     val story: String?,
     val promise: String?,
     val product: FundingDetailProductResponse,

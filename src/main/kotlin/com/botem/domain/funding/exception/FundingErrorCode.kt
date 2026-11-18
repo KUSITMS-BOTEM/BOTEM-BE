@@ -161,4 +161,15 @@ enum class FundingErrorCode(
         "FUNDING_041",
         "펀딩 기간은 최대 14일까지 연장할 수 있습니다.",
     ),
+    SURPRISE_SELF_RECIPIENT_NOT_ALLOWED(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_042",
+        "자기 자신에게는 서프라이즈 펀딩을 열 수 없습니다.",
+    ),
+    SURPRISE_FUNDING_ALREADY_EXISTS(
+        HttpStatus.CONFLICT,
+        "FUNDING_043",
+        "이미 이 친구를 위한 서프라이즈 펀딩이 진행 중입니다.",
+    ),
+    SURPRISE_NOT_REVEALED(HttpStatus.FORBIDDEN, "FUNDING_044", "아직 공개되지 않은 서프라이즈입니다."),
 }

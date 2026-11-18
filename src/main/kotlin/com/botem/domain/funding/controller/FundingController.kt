@@ -2,6 +2,7 @@ package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.controller.docs.FundingControllerDocs
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
@@ -47,6 +48,14 @@ class FundingController(
         @Valid @RequestBody request: CreateBirthdayFundingRequest,
     ): ApiResponse<CreateFundingResponse> =
         ApiResponse.success(fundingCreationService.createBirthdayFunding(userId, request))
+
+    @PostMapping("/surprise")
+    @ResponseStatus(HttpStatus.CREATED)
+    override fun createSurpriseFunding(
+        @AuthenticationPrincipal userId: Long,
+        @Valid @RequestBody request: CreateSurpriseFundingRequest,
+    ): ApiResponse<CreateFundingResponse> =
+        ApiResponse.success(fundingCreationService.createSurpriseFunding(userId, request))
 
     // 비로그인도 허용하지만, 토큰을 보냈는데 유효하지 않으면 재발급할 수 있도록 401로 응답한다
     @GetMapping("/{fundingId}")

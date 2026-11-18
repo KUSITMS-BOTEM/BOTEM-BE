@@ -1,15 +1,21 @@
 package com.botem.domain.funding.service
 
+import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.wish.entity.Wish
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
@@ -47,19 +53,54 @@ class FundingCreationService(
             deadline = request.deadline.atTime(LocalTime.MAX).truncatedTo(ChronoUnit.MICROS),
             story = request.story,
             promise = request.promise,
-            product = FundingProductSnapshot(
-                sourceWishId = wish.id,
-                name = wish.productName,
-                imageUrl = wish.productImageUrl,
-                price = wish.price,
-                url = wish.productUrl,
-            ),
-            payoutAccount = FundingPayoutAccountSnapshot(
-                sourcePayoutAccountId = payoutAccount.id,
-                bank = payoutAccount.bank,
-                encryptedAccountNumber = payoutAccount.encryptedAccountNumber,
-                accountHolder = payoutAccount.accountHolder,
-            ),
+            product = wish.toSnapshot(),
+            payoutAccount = payoutAccount.toSnapshot(),
+            now = now,
+        )
+        val savedFunding = fundingRepository.save(funding)
+
+        return CreateFundingResponse.from(savedFunding, createShareUrl(savedFunding.id))
+    }
+
+    @Transactional
+    fun createSurpriseFunding(
+        userId: Long,
+        request: CreateSurpriseFundingRequest,
+    ): CreateFundingResponse {
+        if (userId == request.recipientId) {
+            throw BusinessException(FundingErrorCode.SURPRISE_SELF_RECIPIENT_NOT_ALLOWED)
+        }
+        // 서로에게 동시에 서프라이즈를 여는 요청의 교착을 막기 위해 ID 순서로 잠근다
+        val lockedUsers = listOf(userId, request.recipientId).sorted()
+            .associateWith { userRepository.findByIdForUpdate(it) }
+        validateActiveUser(lockedUsers[userId])
+        if (lockedUsers[request.recipientId]?.status != UserStatus.ACTIVE) {
+            throw BusinessException(UserErrorCode.USER_NOT_FOUND)
+        }
+
+        val now = LocalDateTime.now(clock)
+        validateActiveFundingCount(userId, now)
+        if (fundingRepository.existsByRecipientIdAndTypeAndStatusNotIn(
+                request.recipientId,
+                FundingType.SURPRISE,
+                ENDED_FUNDING_STATUSES,
+            )
+        ) {
+            throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_ALREADY_EXISTS)
+        }
+
+        val wish = resourceResolver.resolveWish(request.recipientId, request.wishId)
+        val payoutAccount = resourceResolver.resolvePayoutAccount(userId, request.payoutAccountId)
+        val funding = Funding.createSurprise(
+            ownerId = userId,
+            recipientId = request.recipientId,
+            targetAmount = request.targetAmount,
+            deadline = request.deadline.atTime(LocalTime.MAX).truncatedTo(ChronoUnit.MICROS),
+            revealAt = request.revealAt.truncatedTo(ChronoUnit.MICROS),
+            showOnRecipientProfile = request.showOnRecipientProfile,
+            notifyRecipientFriends = request.notifyRecipientFriends,
+            product = wish.toSnapshot(),
+            payoutAccount = payoutAccount.toSnapshot(),
             now = now,
         )
         val savedFunding = fundingRepository.save(funding)
@@ -68,12 +109,34 @@ class FundingCreationService(
     }
 
     private fun lockUser(userId: Long) {
-        val user = userRepository.findByIdForUpdate(userId)
-            ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
+        validateActiveUser(userRepository.findByIdForUpdate(userId))
+    }
+
+    private fun validateActiveUser(user: User?) {
+        if (user == null) {
+            throw BusinessException(UserErrorCode.USER_NOT_FOUND)
+        }
         if (user.status != UserStatus.ACTIVE) {
             throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
         }
     }
+
+    private fun Wish.toSnapshot(): FundingProductSnapshot =
+        FundingProductSnapshot(
+            sourceWishId = id,
+            name = productName,
+            imageUrl = productImageUrl,
+            price = price,
+            url = productUrl,
+        )
+
+    private fun PayoutAccount.toSnapshot(): FundingPayoutAccountSnapshot =
+        FundingPayoutAccountSnapshot(
+            sourcePayoutAccountId = id,
+            bank = bank,
+            encryptedAccountNumber = encryptedAccountNumber,
+            accountHolder = accountHolder,
+        )
 
     private fun validateActiveFundingCount(userId: Long, now: LocalDateTime) {
         if (fundingRepository.countActiveFundings(userId, now) >= MAX_ACTIVE_FUNDING_COUNT) {
@@ -86,5 +149,9 @@ class FundingCreationService(
 
     companion object {
         private const val MAX_ACTIVE_FUNDING_COUNT = 5
+        private val ENDED_FUNDING_STATUSES = setOf(
+            FundingStatus.COMPLETED,
+            FundingStatus.CANCELLED,
+        )
     }
 }
