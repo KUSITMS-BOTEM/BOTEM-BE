@@ -269,7 +269,12 @@ class FundingDetailServiceTest {
             amount = amount,
             status = status,
             guestPasswordHash = null,
-        ).also { if (confirmed) it.confirm(NOW) }
+        ).also {
+            if (confirmed) {
+                it.markTransferSent()
+                it.confirm(NOW)
+            }
+        }
 
     private fun user(id: Long, profileImageUrl: String?): User =
         User(kakaoId = id, nickname = "친구", profileImageUrl = profileImageUrl)

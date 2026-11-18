@@ -101,4 +101,14 @@ enum class FundingErrorCode(
         "FUNDING_029",
         "비밀번호를 여러 번 틀렸어요. 10분 후 다시 시도해 주세요.",
     ),
+    CONTRIBUTION_NOT_PENDING(
+        HttpStatus.CONFLICT,
+        "FUNDING_030",
+        "입금 확인 대기 중인 참여만 처리할 수 있습니다.",
+    ),
+    FUNDING_RESULT_ALREADY_OPENED(
+        HttpStatus.CONFLICT,
+        "FUNDING_031",
+        "결과를 연 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
+    ),
 }

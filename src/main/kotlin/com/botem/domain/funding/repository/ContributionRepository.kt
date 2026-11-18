@@ -14,6 +14,11 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
 
     fun findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId: Long): List<Contribution>
 
+    fun findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
+        fundingId: Long,
+        status: ContributionStatus,
+    ): List<Contribution>
+
     fun findByFundingIdAndRequestKey(fundingId: Long, requestKey: String): Contribution?
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

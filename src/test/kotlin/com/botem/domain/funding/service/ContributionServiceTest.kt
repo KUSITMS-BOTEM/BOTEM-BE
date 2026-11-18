@@ -383,6 +383,7 @@ class ContributionServiceTest {
     @Test
     fun `거절된 참여는 송금 완료로 표시할 수 없다`() {
         val contribution = givenContribution(participantUserId = USER_ID)
+        contribution.markTransferSent()
         contribution.reject()
 
         assertErrorCode(FundingErrorCode.CONTRIBUTION_TRANSFER_NOT_MARKABLE) {
