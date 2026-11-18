@@ -2,6 +2,7 @@ package com.botem.domain.funding.dto.response
 
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
+import com.botem.domain.funding.service.progressPercentage
 import java.time.LocalDateTime
 
 data class FundingResultResponse(
@@ -13,13 +14,16 @@ data class FundingResultResponse(
     val achievementPercentage: Int,
     val targetReached: Boolean,
     val participantCount: Long,
+    val messageCount: Long,
+    val pendingContributionCount: Long,
+    val pendingCleanupRequired: Boolean,
     val resultOpenedAt: LocalDateTime?,
 ) {
     companion object {
         fun from(
             funding: Funding,
             summary: FundingContributionSummary,
-            achievementPercentage: Int,
+            messageCount: Long,
         ): FundingResultResponse =
             FundingResultResponse(
                 fundingId = funding.id,
@@ -27,9 +31,12 @@ data class FundingResultResponse(
                 productImageUrl = funding.product.imageUrl,
                 targetAmount = funding.targetAmount,
                 confirmedAmount = summary.confirmedAmount,
-                achievementPercentage = achievementPercentage,
+                achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
                 targetReached = summary.confirmedAmount >= funding.targetAmount,
                 participantCount = summary.participantCount,
+                messageCount = messageCount,
+                pendingContributionCount = summary.pendingCount,
+                pendingCleanupRequired = funding.resultOpenedAt == null && summary.pendingCount > 0,
                 resultOpenedAt = funding.resultOpenedAt,
             )
     }
