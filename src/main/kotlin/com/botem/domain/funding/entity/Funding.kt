@@ -100,6 +100,12 @@ class Funding(
     var extendedAt: LocalDateTime? = null
         protected set
 
+    var earlyClosedAt: LocalDateTime? = null
+        protected set
+
+    var productChangedAt: LocalDateTime? = null
+        protected set
+
     var resultOpenedAt: LocalDateTime? = null
         protected set
 
@@ -117,6 +123,44 @@ class Funding(
         if (status == FundingStatus.FUNDING) {
             status = FundingStatus.CLOSED
         }
+    }
+
+    fun closeEarly(closedAt: LocalDateTime) {
+        if (earlyClosedAt != null) {
+            return
+        }
+        if (!deadline.isAfter(closedAt) || status !in EARLY_CLOSEABLE_STATUSES) {
+            throw BusinessException(FundingErrorCode.FUNDING_EARLY_CLOSE_NOT_AVAILABLE)
+        }
+
+        earlyClosedAt = closedAt
+        status = when (type) {
+            FundingType.BIRTHDAY -> FundingStatus.CLOSED
+            FundingType.SURPRISE -> FundingStatus.WAITING_REVEAL
+        }
+    }
+
+    fun changeProduct(
+        newProduct: FundingProductSnapshot,
+        changedAt: LocalDateTime,
+    ): FundingProductChangeHistory? {
+        if (!deadline.isAfter(changedAt) || status !in PRODUCT_CHANGEABLE_STATUSES || earlyClosedAt != null) {
+            throw BusinessException(FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE)
+        }
+        if (product.sourceWishId != null && product.sourceWishId == newProduct.sourceWishId) {
+            return null
+        }
+
+        val history = FundingProductChangeHistory.record(
+            fundingId = id,
+            previousProduct = product,
+            changedProduct = newProduct,
+            changedAt = changedAt,
+        )
+        product = newProduct
+        productChangedAt = changedAt
+
+        return history
     }
 
     fun extendDeadline(
@@ -328,6 +372,14 @@ class Funding(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
             FundingStatus.GIFT_PREPARING,
+        )
+        private val EARLY_CLOSEABLE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
+        )
+        private val PRODUCT_CHANGEABLE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
         )
         private val SURPRISE_REVEAL_VIEWABLE_STATUSES = setOf(
             FundingStatus.WAITING_REVEAL,
