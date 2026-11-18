@@ -6,12 +6,16 @@ import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
 import com.botem.domain.funding.dto.response.FundingDetailProductResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
+import com.botem.domain.funding.dto.response.FundingManagementActionsResponse
+import com.botem.domain.funding.dto.response.FundingManagementState
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
 import com.botem.domain.funding.service.FundingResultService
+import com.botem.domain.funding.service.OwnerFundingDetailService
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
@@ -44,6 +48,9 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var fundingDetailService: FundingDetailService
+
+    @MockitoBean
+    private lateinit var ownerFundingDetailService: OwnerFundingDetailService
 
     @Test
     fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
@@ -159,6 +166,61 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.resultOpenedAt").value("2026-11-15T00:00:00"))
 
         verify(fundingResultService).openResult(USER_ID, FUNDING_ID)
+    }
+
+    @Test
+    fun `로그인한 개설자가 펀딩 관리 상세를 조회한다`() {
+        given(ownerFundingDetailService.getManagementDetail(USER_ID, FUNDING_ID)).willReturn(
+            OwnerFundingDetailResponse(
+                fundingId = FUNDING_ID,
+                type = FundingType.BIRTHDAY,
+                title = "생일 선물 펀딩",
+                story = "새 헤드폰이 필요해요",
+                promise = null,
+                product = FundingDetailProductResponse(
+                    name = "무선 헤드폰",
+                    imageUrl = "https://image.example.com/product.jpg",
+                    price = 100_000L,
+                    url = "https://shop.example.com/product",
+                ),
+                targetAmount = 100_000L,
+                deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
+                revealAt = null,
+                remainingDays = 3L,
+                confirmedPercentage = 40,
+                pendingPercentage = 10,
+                pendingContributionCount = 1,
+                targetReached = false,
+                extended = false,
+                participantCount = 0,
+                participants = emptyList(),
+                messageCount = 0L,
+                managementState = FundingManagementState.NO_PARTICIPANTS,
+                actions = FundingManagementActionsResponse(
+                    canCloseEarly = true,
+                    canExtend = false,
+                    canChangeProduct = true,
+                    canReissueShareCard = true,
+                ),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/fundings/{fundingId}/management", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.managementState").value("NO_PARTICIPANTS"))
+            .andExpect(jsonPath("$.data.pendingContributionCount").value(1))
+            .andExpect(jsonPath("$.data.actions.canCloseEarly").value(true))
+    }
+
+    @Test
+    fun `인증 없이 펀딩 관리 상세를 조회하면 401을 반환한다`() {
+        mockMvc.perform(get("/api/fundings/{fundingId}/management", FUNDING_ID))
+            .andExpect(status().isUnauthorized)
+
+        verifyNoInteractions(ownerFundingDetailService)
     }
 
     @Test
