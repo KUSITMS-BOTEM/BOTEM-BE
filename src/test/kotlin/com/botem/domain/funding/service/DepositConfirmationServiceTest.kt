@@ -136,7 +136,7 @@ class DepositConfirmationServiceTest {
             contribution(id = 32L, status = ContributionStatus.PENDING_CONFIRMATION),
         )
         given(
-            contributionRepository.findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
+            contributionRepository.findAllByFundingIdAndStatusForUpdate(
                 FUNDING_ID,
                 ContributionStatus.PENDING_CONFIRMATION,
             ),

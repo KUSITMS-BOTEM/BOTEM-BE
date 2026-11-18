@@ -78,7 +78,11 @@ class DepositConfirmationService(
         val funding = lockChangeableFunding(userId, fundingId)
         val now = LocalDateTime.now(clock)
 
-        val pendingContributions = findPendingContributions(fundingId)
+        // 참여 행도 잠가 같은 행의 비회원 비밀번호 실패 기록을 조회 당시 값으로 덮어쓰지 않게 한다
+        val pendingContributions = contributionRepository.findAllByFundingIdAndStatusForUpdate(
+            fundingId,
+            ContributionStatus.PENDING_CONFIRMATION,
+        )
         pendingContributions.forEach { it.confirm(now) }
 
         return ConfirmAllContributionsResponse(pendingContributions.size, progressOf(funding))

@@ -19,6 +19,21 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         status: ContributionStatus,
     ): List<Contribution>
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT contribution
+        FROM Contribution contribution
+        WHERE contribution.fundingId = :fundingId
+          AND contribution.status = :status
+        ORDER BY contribution.createdAt ASC, contribution.id ASC
+        """,
+    )
+    fun findAllByFundingIdAndStatusForUpdate(
+        @Param("fundingId") fundingId: Long,
+        @Param("status") status: ContributionStatus,
+    ): List<Contribution>
+
     fun findByFundingIdAndRequestKey(fundingId: Long, requestKey: String): Contribution?
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
