@@ -11,6 +11,7 @@ import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
@@ -26,7 +27,9 @@ class FundingResultService(
     private val clock: Clock,
 ) {
 
-    @Transactional
+    // REPEATABLE READ면 exists 조회 시점 스냅샷이 고정돼 잠금 대기 중 커밋된 확정·공개를 집계가 못 보므로,
+    // READ COMMITTED로 잠금 이후 집계가 최신 커밋 값을 읽게 한다
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     fun getResult(userId: Long, fundingId: Long): FundingResultResponse {
         val now = LocalDateTime.now(clock)
 
@@ -44,8 +47,10 @@ class FundingResultService(
     }
 
     // 확인 대기는 자동으로 확정하지 않는다. 개설자가 모두 처리하거나, 결과에서 제외하겠다고 선택해야 연다.
-    // 제외된 확인 대기는 상태를 그대로 두어 참여자에게는 '확인 중'으로 보이고 결과 금액에는 반영되지 않는다
-    @Transactional
+    // 제외된 확인 대기는 상태를 그대로 두어 참여자에게는 '확인 중'으로 보이고 결과 금액에는 반영되지 않는다.
+    // 확인 대기로 공개를 거부해도 앞서 수행한 보태기 마감은 남아야 하므로 BusinessException에는 롤백하지 않는다
+    // (그 외 BusinessException은 모두 상태 변경 전 검증에서 발생한다)
+    @Transactional(noRollbackFor = [BusinessException::class])
     fun openResult(userId: Long, fundingId: Long, excludePendingContributions: Boolean): FundingResultResponse {
         val now = LocalDateTime.now(clock)
         val funding = lockResultAccessibleFunding(userId, fundingId, now)

@@ -175,7 +175,8 @@ interface FundingControllerDocs {
             결과를 열기 전에 처음 조회하면 보태기를 마감하고, 아직 송금 전인 참여는 금액을 빼고 메시지 전용으로 바꿉니다.
             확정 금액은 입금 확인이 완료된 참여만 합산하고, 참여자 수는 취소된 참여를 제외합니다.
             messageCount가 0보다 크면 금액이 0원이어도 롤링페이퍼를 공개하고, participantCount가 0이면 참여자 0명 화면을 보여줍니다.
-            pendingCleanupRequired가 true면 팡을 열기 전에 확인 대기(pendingContributionCount건)를 정리해야 합니다.
+            pendingCleanupRequired가 true면 기본 팡 열기 요청 전에 확인 대기(pendingContributionCount건)를 정리해야 합니다.
+            정리하지 않고 열려면 excludePendingContributions=true로 요청해 확인 대기를 결과에서 제외합니다.
             이 API는 결과 열람 상태를 변경하지 않으며, resultOpenedAt이 null이면 아직 팡을 열지 않은 상태입니다.
         """,
     )
