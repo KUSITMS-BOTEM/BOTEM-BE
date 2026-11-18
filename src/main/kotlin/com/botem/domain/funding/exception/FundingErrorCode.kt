@@ -74,7 +74,7 @@ enum class FundingErrorCode(
     FUNDING_CLOSED(HttpStatus.CONFLICT, "FUNDING_020", "마감된 펀딩에는 참여할 수 없습니다."),
     FUNDING_TARGET_REACHED(HttpStatus.CONFLICT, "FUNDING_021", "목표 금액을 이미 달성한 펀딩입니다."),
     CONTRIBUTION_AMOUNT_EXCEEDS_REMAINING(
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.CONFLICT,
         "FUNDING_022",
         "보탤 금액은 남은 목표 금액 이하여야 합니다.",
     ),
@@ -94,6 +94,11 @@ enum class FundingErrorCode(
     CONTRIBUTION_REQUEST_KEY_CONFLICT(
         HttpStatus.CONFLICT,
         "FUNDING_027",
-        "이미 다른 참여자가 사용한 요청 키입니다.",
+        "이미 다른 요청에 사용된 요청 키입니다.",
+    ),
+    CONTRIBUTION_PASSWORD_LOCKED(
+        HttpStatus.TOO_MANY_REQUESTS,
+        "FUNDING_029",
+        "비밀번호를 여러 번 틀렸어요. 10분 후 다시 시도해 주세요.",
     ),
 }

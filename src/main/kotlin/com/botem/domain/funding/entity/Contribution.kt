@@ -13,6 +13,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import java.time.Duration
 import java.time.LocalDateTime
 
 @Entity
@@ -69,6 +70,30 @@ class Contribution(
     var confirmedAt: LocalDateTime? = null
         protected set
 
+    @Column(nullable = false)
+    var guestPasswordFailedCount: Int = 0
+        protected set
+
+    var guestPasswordLockedUntil: LocalDateTime? = null
+        protected set
+
+    fun isGuestPasswordLocked(now: LocalDateTime): Boolean =
+        guestPasswordLockedUntil?.isAfter(now) == true
+
+    // 4자리 비밀번호의 무작위 대입을 막기 위해 연속으로 틀리면 일정 시간 잠근다
+    fun recordGuestPasswordFailure(now: LocalDateTime) {
+        guestPasswordFailedCount += 1
+        if (guestPasswordFailedCount >= MAX_GUEST_PASSWORD_FAILURES) {
+            guestPasswordFailedCount = 0
+            guestPasswordLockedUntil = now.plus(GUEST_PASSWORD_LOCK_DURATION)
+        }
+    }
+
+    fun resetGuestPasswordFailures() {
+        guestPasswordFailedCount = 0
+        guestPasswordLockedUntil = null
+    }
+
     fun updateParticipantName(participantName: String) {
         this.participantName = participantName
     }
@@ -97,5 +122,11 @@ class Contribution(
     fun cancel() {
         status = ContributionStatus.CANCELLED
         confirmedAt = null
+    }
+
+    companion object {
+        // ponytail: 기획 미확정 값. 정책이 정해지면 이 두 값만 바꾼다
+        const val MAX_GUEST_PASSWORD_FAILURES = 5
+        val GUEST_PASSWORD_LOCK_DURATION: Duration = Duration.ofMinutes(10)
     }
 }

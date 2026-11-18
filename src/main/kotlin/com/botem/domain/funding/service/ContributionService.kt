@@ -39,32 +39,36 @@ class ContributionService(
 
     @Transactional
     fun contribute(userId: Long?, fundingId: Long, request: CreateContributionRequest): ContributionResponse {
+        // 해시 계산과 입력 정규화는 펀딩 락을 잡기 전에 끝내 락 점유 시간을 줄인다
+        val message = request.message.normalizeOptional()
+            ?: throw invalidInput("축하 메시지는 필수입니다.")
+        val paperTemplateCode = request.paperTemplateCode.normalizeOptional()
+            ?: throw invalidInput("편지지를 선택해야 합니다.")
+        val participantName = resolveParticipantName(userId, request.participantName)
+        val guestPasswordHash = if (userId == null) hashGuestPassword(request.guestPassword) else null
+
         // 펀딩 단위로 잠가 남은 금액 검증과 요청 키 중복 확인을 직렬화한다
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
 
         contributionRepository.findByFundingIdAndRequestKey(fundingId, request.requestKey)?.let { existing ->
-            if (existing.participantUserId != userId) {
+            if (existing.participantUserId != userId || existing.amount != request.amount) {
                 throw BusinessException(FundingErrorCode.CONTRIBUTION_REQUEST_KEY_CONFLICT)
             }
             return ContributionResponse.of(existing, payoutAccountOf(funding))
         }
 
         validateContributable(funding, request.amount)
-        val message = request.message.normalizeOptional()
-            ?: throw invalidInput("축하 메시지는 필수입니다.")
-        val paperTemplateCode = request.paperTemplateCode.normalizeOptional()
-            ?: throw invalidInput("편지지를 선택해야 합니다.")
 
         val contribution = contributionRepository.save(
             Contribution(
                 fundingId = fundingId,
                 participantUserId = userId,
-                participantName = resolveParticipantName(userId, request.participantName),
+                participantName = participantName,
                 amount = request.amount,
                 status = ContributionStatus.AWAITING_TRANSFER,
-                guestPasswordHash = if (userId == null) hashGuestPassword(request.guestPassword) else null,
+                guestPasswordHash = guestPasswordHash,
                 requestKey = request.requestKey,
             ),
         )
@@ -79,14 +83,16 @@ class ContributionService(
         return ContributionResponse.of(contribution, payoutAccountOf(funding))
     }
 
-    @Transactional
+    // 비밀번호 실패 횟수는 예외를 던져도 남아야 하므로 BusinessException에는 롤백하지 않는다
+    @Transactional(noRollbackFor = [BusinessException::class])
     fun markTransferSent(
         userId: Long?,
         fundingId: Long,
         contributionId: Long,
         request: MarkTransferSentRequest,
     ): TransferSentResponse {
-        val contribution = contributionRepository.findByIdAndFundingId(contributionId, fundingId)
+        // 실패 횟수가 동시 요청으로 유실되지 않도록 참여 행을 잠근다
+        val contribution = contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
 
         val participantUserId = contribution.participantUserId
@@ -95,16 +101,27 @@ class ContributionService(
                 throw BusinessException(FundingErrorCode.CONTRIBUTION_PARTICIPANT_ONLY)
             }
         } else {
-            val password = request.guestPassword
-            val hash = contribution.guestPasswordHash
-            if (password == null || hash == null || !passwordEncoder.matches(password, hash)) {
-                throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH)
-            }
+            verifyGuestPassword(contribution, request.guestPassword)
         }
 
         contribution.markTransferSent()
 
         return TransferSentResponse(contribution.id, contribution.status)
+    }
+
+    private fun verifyGuestPassword(contribution: Contribution, password: String?) {
+        val now = LocalDateTime.now(clock)
+        if (contribution.isGuestPasswordLocked(now)) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED)
+        }
+
+        val hash = contribution.guestPasswordHash
+        if (password == null || hash == null || !passwordEncoder.matches(password, hash)) {
+            contribution.recordGuestPasswordFailure(now)
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH)
+        }
+
+        contribution.resetGuestPasswordFailures()
     }
 
     // 상세 조회의 canContributeAmount와 같은 기준(마감 전 + 확정 금액 기준 미달성)으로 막는다

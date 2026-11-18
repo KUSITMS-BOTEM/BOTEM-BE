@@ -22,8 +22,8 @@ interface ContributionControllerDocs {
         summary = "펀딩에 금액 보태기",
         description = """
             로그인 또는 비로그인 사용자가 보탤 금액과 메시지를 등록합니다. 참여는 AWAITING_TRANSFER(송금 대기) 상태로 저장됩니다.
-            requestKey는 클라이언트가 생성한 고유 값(UUID 권장, 최대 64자)이며, 같은 펀딩에 같은 키로 다시 요청하면
-            새로 만들지 않고 기존 참여를 그대로 반환합니다.
+            requestKey는 클라이언트가 생성한 고유 값(UUID 권장, 최대 64자)이며, 같은 펀딩에 같은 키·같은 금액으로 다시 요청하면
+            새로 만들지 않고 기존 참여를 그대로 반환합니다. 같은 키로 금액이 다르거나 다른 참여자가 요청하면 FUNDING_027을 반환합니다.
             participantName은 비로그인 시 필수이고, 로그인 시 생략하면 회원 닉네임을 사용합니다.
             guestPassword는 비로그인 시 숫자 4자리로 필수이며 해시로 저장합니다. 로그인 시에는 저장하지 않습니다.
             message(축하 메시지, 최대 460자)와 paperTemplateCode(편지지)는 필수이며 롤링페이퍼로 함께 저장합니다.
@@ -54,19 +54,8 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "400",
-            description = "입력 오류 또는 남은 목표 금액 초과",
-            content = [
-                Content(
-                    examples = [
-                        ExampleObject(name = "COMMON_001", summary = "입력 오류", value = INVALID_INPUT_EXAMPLE),
-                        ExampleObject(
-                            name = "FUNDING_022",
-                            summary = "남은 목표 금액 초과",
-                            value = AMOUNT_EXCEEDS_REMAINING_EXAMPLE,
-                        ),
-                    ],
-                ),
-            ],
+            description = "입력 오류",
+            content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
         ),
         SwaggerApiResponse(responseCode = "401", description = "보낸 토큰이 만료되었거나 유효하지 않음"),
         SwaggerApiResponse(
@@ -76,15 +65,20 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감, 목표 달성 또는 다른 참여자의 requestKey",
+            description = "마감, 목표 달성, 남은 목표 금액 초과 또는 이미 사용된 requestKey",
             content = [
                 Content(
                     examples = [
                         ExampleObject(name = "FUNDING_020", summary = "마감된 펀딩", value = FUNDING_CLOSED_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_022",
+                            summary = "남은 목표 금액 초과",
+                            value = AMOUNT_EXCEEDS_REMAINING_EXAMPLE,
+                        ),
                         ExampleObject(name = "FUNDING_021", summary = "목표 달성", value = TARGET_REACHED_EXAMPLE),
                         ExampleObject(
                             name = "FUNDING_027",
-                            summary = "다른 참여자의 요청 키",
+                            summary = "이미 사용된 요청 키",
                             value = REQUEST_KEY_CONFLICT_EXAMPLE,
                         ),
                     ],
@@ -105,6 +99,7 @@ interface ContributionControllerDocs {
             참여자가 '보냈어요'를 누르면 참여를 PENDING_CONFIRMATION(입금 확인 대기)으로 바꿉니다.
             서버는 실제 송금 여부를 확인하지 않으며, 최종 확정은 개설자의 입금 확인으로 결정됩니다.
             로그인 참여는 참여한 회원 본인만, 비로그인 참여는 참여 시 입력한 guestPassword가 일치해야 변경할 수 있습니다.
+            비로그인 참여의 비밀번호를 5회 연속 틀리면 10분 동안 FUNDING_029(429)를 반환하며, 성공하면 실패 횟수를 초기화합니다.
             이미 송금 완료로 표시했거나 확인이 끝난 참여는 상태를 바꾸지 않고 현재 상태를 반환합니다.
             송금 전에 보태기가 마감되어 메시지 전용으로 바뀐 참여는 FUNDING_028을 반환합니다.
             마감 후에도 송금 완료 표시는 가능합니다.
@@ -161,6 +156,11 @@ interface ContributionControllerDocs {
                     ],
                 ),
             ],
+        ),
+        SwaggerApiResponse(
+            responseCode = "429",
+            description = "비밀번호 연속 실패로 잠김",
+            content = [Content(examples = [ExampleObject(value = PASSWORD_LOCKED_EXAMPLE)])],
         ),
     )
     fun markTransferSent(
@@ -284,7 +284,7 @@ interface ContributionControllerDocs {
               "data": null,
               "error": {
                 "code": "FUNDING_027",
-                "message": "이미 다른 참여자가 사용한 요청 키입니다.",
+                "message": "이미 다른 요청에 사용된 요청 키입니다.",
                 "detail": null
               }
             }
@@ -307,6 +307,17 @@ interface ContributionControllerDocs {
               "error": {
                 "code": "FUNDING_025",
                 "message": "비밀번호가 일치하지 않습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val PASSWORD_LOCKED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_029",
+                "message": "비밀번호를 여러 번 틀렸어요. 10분 후 다시 시도해 주세요.",
                 "detail": null
               }
             }
