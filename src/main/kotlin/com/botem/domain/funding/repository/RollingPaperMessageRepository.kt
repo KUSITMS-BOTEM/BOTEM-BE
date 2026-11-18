@@ -30,4 +30,15 @@ interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Lon
         """,
     )
     fun findAllByFundingId(@Param("fundingId") fundingId: Long): List<RollingPaperMessageProjection>
+
+    @Query(
+        """
+        SELECT COUNT(message)
+        FROM RollingPaperMessage message
+        JOIN Contribution contribution ON contribution.id = message.contributionId
+        WHERE contribution.fundingId = :fundingId
+          AND contribution.status <> com.botem.domain.funding.entity.ContributionStatus.CANCELLED
+        """,
+    )
+    fun countByFundingId(@Param("fundingId") fundingId: Long): Long
 }
