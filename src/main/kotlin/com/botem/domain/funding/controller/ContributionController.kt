@@ -2,8 +2,10 @@ package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.controller.docs.ContributionControllerDocs
 import com.botem.domain.funding.dto.request.CreateContributionRequest
+import com.botem.domain.funding.dto.request.CreateMessageContributionRequest
 import com.botem.domain.funding.dto.request.MarkTransferSentRequest
 import com.botem.domain.funding.dto.response.ContributionResponse
+import com.botem.domain.funding.dto.response.MessageContributionResponse
 import com.botem.domain.funding.dto.response.TransferSentResponse
 import com.botem.domain.funding.service.ContributionService
 import com.botem.global.response.ApiResponse
@@ -32,6 +34,15 @@ class ContributionController(
         @Valid @RequestBody request: CreateContributionRequest,
     ): ApiResponse<ContributionResponse> =
         ApiResponse.success(contributionService.contribute(userId, fundingId, request))
+
+    @PostMapping("/message-only")
+    @ResponseStatus(HttpStatus.CREATED)
+    override fun leaveMessage(
+        @AuthenticationPrincipal userId: Long?,
+        @PathVariable fundingId: Long,
+        @Valid @RequestBody request: CreateMessageContributionRequest,
+    ): ApiResponse<MessageContributionResponse> =
+        ApiResponse.success(contributionService.leaveMessage(userId, fundingId, request))
 
     @PostMapping("/{contributionId}/transfer-sent")
     override fun markTransferSent(
