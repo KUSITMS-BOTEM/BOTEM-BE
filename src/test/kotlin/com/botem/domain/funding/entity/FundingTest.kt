@@ -360,7 +360,7 @@ class FundingTest {
         setField(funding, "status", FundingStatus.CLOSED)
         val newDeadline = OPENED_AT.plusDays(14)
 
-        funding.extendDeadline(newDeadline, OPENED_AT, confirmedAmount = 80_000L)
+        funding.extendDeadline(newDeadline, OPENED_AT, OPENED_AT, confirmedAmount = 80_000L)
 
         assertEquals(newDeadline, funding.deadline)
         assertEquals(1, funding.extensionCount)
@@ -373,7 +373,12 @@ class FundingTest {
         val funding = funding(deadline = OPENED_AT.minusDays(1))
         funding.openResult(OPENED_AT)
 
-        funding.extendDeadline(OPENED_AT.plusDays(7), OPENED_AT.plusHours(1), confirmedAmount = 80_000L)
+        funding.extendDeadline(
+            OPENED_AT.plusDays(7),
+            requestedAt = OPENED_AT,
+            extendedAt = OPENED_AT.plusHours(1),
+            confirmedAmount = 80_000L,
+        )
 
         assertEquals(null, funding.resultOpenedAt)
         assertEquals(FundingStatus.FUNDING, funding.status)
@@ -387,13 +392,13 @@ class FundingTest {
             revealAt = OPENED_AT.plusDays(1),
         )
         val typeException = assertFailsWith<BusinessException> {
-            surprise.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, confirmedAmount = 0L)
+            surprise.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
         }
         assertEquals(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED, typeException.errorCode)
 
         val ongoing = funding(deadline = OPENED_AT.plusMinutes(1))
         val deadlineException = assertFailsWith<BusinessException> {
-            ongoing.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, confirmedAmount = 0L)
+            ongoing.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
         }
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_BEFORE_DEADLINE, deadlineException.errorCode)
     }
@@ -403,14 +408,14 @@ class FundingTest {
         val alreadyExtended = funding(deadline = OPENED_AT.minusDays(1))
         setField(alreadyExtended, "extensionCount", 1)
         val countException = assertFailsWith<BusinessException> {
-            alreadyExtended.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, confirmedAmount = 0L)
+            alreadyExtended.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
         }
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_LIMIT_EXCEEDED, countException.errorCode)
 
         val cancelled = funding(deadline = OPENED_AT.minusDays(1))
         setField(cancelled, "status", FundingStatus.CANCELLED)
         val statusException = assertFailsWith<BusinessException> {
-            cancelled.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, confirmedAmount = 0L)
+            cancelled.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
         }
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE, statusException.errorCode)
     }
@@ -419,19 +424,19 @@ class FundingTest {
     fun `목표 금액을 달성했거나 새 마감일 범위를 벗어나면 연장할 수 없다`() {
         val targetReached = funding(deadline = OPENED_AT.minusDays(1))
         val amountException = assertFailsWith<BusinessException> {
-            targetReached.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, confirmedAmount = 100_000L)
+            targetReached.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 100_000L)
         }
         assertEquals(FundingErrorCode.FUNDING_TARGET_REACHED, amountException.errorCode)
 
         val invalidDeadline = funding(deadline = OPENED_AT.minusDays(1))
         val deadlineException = assertFailsWith<BusinessException> {
-            invalidDeadline.extendDeadline(OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+            invalidDeadline.extendDeadline(OPENED_AT, OPENED_AT, OPENED_AT, confirmedAmount = 0L)
         }
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_DEADLINE_INVALID, deadlineException.errorCode)
 
         val tooLong = funding(deadline = OPENED_AT.minusDays(1))
         val periodException = assertFailsWith<BusinessException> {
-            tooLong.extendDeadline(OPENED_AT.plusDays(15), OPENED_AT, confirmedAmount = 0L)
+            tooLong.extendDeadline(OPENED_AT.plusDays(15), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
         }
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_PERIOD_EXCEEDED, periodException.errorCode)
     }

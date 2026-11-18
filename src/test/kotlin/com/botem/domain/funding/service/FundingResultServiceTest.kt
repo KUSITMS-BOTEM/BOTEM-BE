@@ -22,7 +22,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -205,17 +204,16 @@ class FundingResultServiceTest {
     }
 
     @Test
-    fun `이미 연 결과는 펀딩을 잠그지 않고 조회한다`() {
+    fun `이미 연 결과도 연장과 일관된 상태를 읽도록 펀딩을 잠그고 조회한다`() {
         val funding = funding().also { it.openResult(NOW.minusHours(1)) }
-        given(fundingRepository.existsByIdAndResultOpenedAtIsNotNull(FUNDING_ID)).willReturn(true)
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
             .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 3L)))
 
         val result = service.getResult(USER_ID, FUNDING_ID)
 
         assertEquals(NOW.minusHours(1), result.resultOpenedAt)
-        verify(fundingRepository, never()).findByIdForUpdate(FUNDING_ID)
+        verify(fundingRepository).findByIdForUpdate(FUNDING_ID)
         verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
     }
 

@@ -176,8 +176,10 @@ interface FundingControllerDocs {
             마감된 일반 생일 펀딩의 마감일을 한 번 연장합니다. 펀딩 개설자 본인만 요청할 수 있습니다.
             새 마감일은 요청한 날짜의 마지막 시각으로 저장되며, 요청일로부터 최대 14일까지 선택할 수 있습니다.
             목표 금액에 도달하지 않은 펀딩만 연장할 수 있고 기존 참여 내역과 확정 금액은 유지됩니다.
+            기존 마감일까지 송금 완료하지 않은 보탬은 메시지만 남기고, 연장 이후 새 보탬으로 다시 참여할 수 있습니다.
             결과를 이미 열었다면 공개된 롤링페이퍼를 유지한 채 다시 진행 상태로 전환합니다.
             연장 기간에는 추가 보태기와 메시지 작성이 가능하지만, 확정 금액이 목표에 도달하면 금액 보태기는 종료됩니다.
+            비회원은 기존 참여와 같은 이름으로 새 참여를 만들 수 없으며 기존 참여는 발급받은 접근 토큰으로 관리합니다.
         """,
     )
     @RequestBody(
@@ -192,10 +194,15 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "400",
-            description = "생일 펀딩이 아니거나 새 마감일이 잘못됨",
+            description = "생일 펀딩이 아니거나 날짜 형식 또는 새 마감일이 잘못됨",
             content = [
                 Content(
                     examples = [
+                        ExampleObject(
+                            name = "COMMON_001",
+                            summary = "날짜 형식 오류",
+                            value = FUNDING_EXTENSION_DATE_FORMAT_INVALID_EXAMPLE,
+                        ),
                         ExampleObject(
                             name = "FUNDING_004",
                             summary = "생일 펀딩이 아님",
@@ -228,10 +235,15 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감 전, 연장할 수 없는 상태, 연장 횟수 초과 또는 목표 금액 달성",
+            description = "마감 전, 연장할 수 없는 상태, 연장 횟수 초과, 목표 금액 달성 또는 진행 중 펀딩 개수 초과",
             content = [
                 Content(
                     examples = [
+                        ExampleObject(
+                            name = "FUNDING_019",
+                            summary = "진행 중 펀딩 5개",
+                            value = ACTIVE_FUNDING_LIMIT_EXCEEDED_EXAMPLE,
+                        ),
                         ExampleObject(
                             name = "FUNDING_021",
                             summary = "목표 금액 달성",
@@ -273,6 +285,7 @@ interface FundingControllerDocs {
             pendingCleanupRequired가 true면 기본 팡 열기 요청 전에 확인 대기(pendingContributionCount건)를 정리해야 합니다.
             정리하지 않고 열려면 excludePendingContributions=true로 요청해 확인 대기를 결과에서 제외합니다.
             이 API는 결과 열람 상태를 변경하지 않으며, resultOpenedAt이 null이면 아직 팡을 열지 않은 상태입니다.
+            기간을 연장하면 기존 결과 열람 상태가 초기화되며, 새 마감일 전에는 결과를 조회할 수 없습니다.
         """,
     )
     @ApiResponses(
@@ -327,6 +340,7 @@ interface FundingControllerDocs {
             excludePendingContributions=true로 요청하면 남은 확인 대기를 결과 금액에서 제외하고 엽니다.
             제외된 참여는 상태를 그대로 유지해 참여자에게는 '확인 중'으로 보입니다.
             이미 결과를 연 펀딩에 다시 요청하면 상태를 변경하지 않고 기존 결과를 반환합니다.
+            단, 기간을 연장한 펀딩은 기존 결과 열람 상태가 초기화되므로 새 마감일 이후 다시 열어야 합니다.
         """,
     )
     @ApiResponses(
@@ -594,6 +608,17 @@ interface FundingControllerDocs {
                 "extendedAt": "2026-11-18T14:30:00"
               },
               "error": null
+            }
+        """
+        private const val FUNDING_EXTENSION_DATE_FORMAT_INVALID_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_001",
+                "message": "입력값이 올바르지 않습니다.",
+                "detail": "newDeadline: 올바르지 않은 값입니다"
+              }
             }
         """
         private const val RESULT_EXAMPLE = """

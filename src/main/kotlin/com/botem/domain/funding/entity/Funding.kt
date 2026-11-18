@@ -121,6 +121,7 @@ class Funding(
 
     fun extendDeadline(
         newDeadline: LocalDateTime,
+        requestedAt: LocalDateTime,
         extendedAt: LocalDateTime,
         confirmedAmount: Long,
     ) {
@@ -142,7 +143,7 @@ class Funding(
         if (!newDeadline.isAfter(extendedAt) || !newDeadline.isAfter(deadline)) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_DEADLINE_INVALID)
         }
-        if (newDeadline.toLocalDate().isAfter(extendedAt.toLocalDate().plusDays(MAX_EXTENSION_DAYS))) {
+        if (newDeadline.toLocalDate().isAfter(requestedAt.toLocalDate().plusDays(MAX_EXTENSION_DAYS))) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_PERIOD_EXCEEDED)
         }
 

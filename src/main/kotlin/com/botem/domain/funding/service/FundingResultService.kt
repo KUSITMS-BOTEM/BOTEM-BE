@@ -30,21 +30,8 @@ class FundingResultService(
     // REPEATABLE READ면 exists 조회 시점 스냅샷이 고정돼 잠금 대기 중 커밋된 확정·공개를 집계가 못 보므로,
     // READ COMMITTED로 잠금 이후 집계가 최신 커밋 값을 읽게 한다
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    fun getResult(userId: Long, fundingId: Long): FundingResultResponse {
-        val now = LocalDateTime.now(clock)
-
-        // 이미 연 결과는 더 바뀌지 않으므로 잠그지 않는다.
-        // 엔티티를 먼저 읽고 다시 잠가 읽으면 영속성 컨텍스트의 이전 상태가 반환되므로 exists로 분기한다
-        if (fundingRepository.existsByIdAndResultOpenedAtIsNotNull(fundingId)) {
-            val funding = fundingRepository.findById(fundingId)
-                .orElseThrow { BusinessException(FundingErrorCode.FUNDING_NOT_FOUND) }
-            validateResultAccess(funding, userId, now)
-
-            return resultOf(funding)
-        }
-
-        return resultOf(lockResultAccessibleFunding(userId, fundingId, now))
-    }
+    fun getResult(userId: Long, fundingId: Long): FundingResultResponse =
+        resultOf(lockResultAccessibleFunding(userId, fundingId, LocalDateTime.now(clock)))
 
     // 확인 대기는 자동으로 확정하지 않는다. 개설자가 모두 처리하거나, 결과에서 제외하겠다고 선택해야 연다.
     // 제외된 확인 대기는 상태를 그대로 두어 참여자에게는 '확인 중'으로 보이고 결과 금액에는 반영되지 않는다.
