@@ -34,3 +34,27 @@ data class GuestContributionResponse(
             )
     }
 }
+
+data class UpdatedGuestContributionResponse(
+    val contributionId: Long,
+    val participantName: String,
+    val amount: Long,
+    val status: ContributionStatus,
+    val message: String?,
+    val paperTemplateCode: String,
+) {
+    companion object {
+        fun of(
+            contribution: Contribution,
+            rollingPaperMessage: RollingPaperMessage,
+        ): UpdatedGuestContributionResponse =
+            UpdatedGuestContributionResponse(
+                contributionId = contribution.id,
+                participantName = contribution.participantName,
+                amount = contribution.amount,
+                status = contribution.status,
+                message = rollingPaperMessage.content,
+                paperTemplateCode = rollingPaperMessage.paperTemplateCode,
+            )
+    }
+}

@@ -1,7 +1,9 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.funding.dto.request.AccessGuestContributionRequest
+import com.botem.domain.funding.dto.request.UpdateGuestContributionRequest
 import com.botem.domain.funding.dto.response.GuestContributionResponse
+import com.botem.domain.funding.dto.response.UpdatedGuestContributionResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.FundingStatus
@@ -69,6 +71,74 @@ class GuestContributionService(
         )
     }
 
+    @Transactional
+    fun update(
+        fundingId: Long,
+        accessToken: String,
+        request: UpdateGuestContributionRequest,
+    ): UpdatedGuestContributionResponse {
+        val contribution = authenticateAndLock(fundingId, accessToken)
+        val participantName = normalizeParticipantName(request.participantName)
+        val message = normalizeRequired(request.message, "축하 메시지는 필수입니다.", MAX_MESSAGE_LENGTH)
+        val paperTemplateCode = normalizeRequired(
+            request.paperTemplateCode,
+            "편지지를 선택해야 합니다.",
+            MAX_PAPER_TEMPLATE_CODE_LENGTH,
+        )
+
+        if (participantName != contribution.participantName) {
+            validateParticipantNameAvailable(fundingId, contribution.id, participantName)
+        }
+        contribution.updateParticipantName(participantName)
+        val rollingPaperMessage = rollingPaperMessageRepository.findByContributionId(contribution.id)
+            ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
+        rollingPaperMessage.updateTextContent(message, paperTemplateCode)
+
+        return UpdatedGuestContributionResponse.of(contribution, rollingPaperMessage)
+    }
+
+    @Transactional
+    fun cancel(fundingId: Long, accessToken: String) {
+        val contribution = authenticateAndLock(fundingId, accessToken)
+        if (contribution.status !in CANCELLABLE_STATUSES) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_CANCELLABLE)
+        }
+        contribution.cancel()
+    }
+
+    private fun authenticateAndLock(fundingId: Long, accessToken: String): Contribution {
+        val principal = accessTokenProvider.parse(accessToken)
+        if (principal.fundingId != fundingId) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
+        }
+
+        val contribution = contributionRepository.findByIdAndFundingIdForUpdate(
+            principal.contributionId,
+            fundingId,
+        ) ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
+        if (contribution.participantUserId != null || contribution.status == ContributionStatus.CANCELLED) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
+        }
+        return contribution
+    }
+
+    private fun validateParticipantNameAvailable(
+        fundingId: Long,
+        contributionId: Long,
+        participantName: String,
+    ) {
+        val duplicated = contributionRepository
+            .findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(
+                fundingId,
+                participantName,
+                ContributionStatus.CANCELLED,
+            )
+            .any { it.id != contributionId }
+        if (duplicated) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_NAME_DUPLICATED)
+        }
+    }
+
     private fun lockFunding(fundingId: Long) {
         fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
@@ -119,8 +189,23 @@ class GuestContributionService(
         }
     }
 
+    private fun normalizeRequired(value: String, detail: String, maxLength: Int): String {
+        val normalized = value.trim { it.isWhitespace() || Character.isSpaceChar(it) }
+        if (normalized.isEmpty() || normalized.length > maxLength) {
+            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, detail)
+        }
+        return normalized
+    }
+
     companion object {
         private const val MAX_PARTICIPANT_NAME_LENGTH = 50
+        private const val MAX_MESSAGE_LENGTH = 460
+        private const val MAX_PAPER_TEMPLATE_CODE_LENGTH = 50
         private val GUEST_PASSWORD_REGEX = Regex("\\d{4}")
+        private val CANCELLABLE_STATUSES = setOf(
+            ContributionStatus.AWAITING_TRANSFER,
+            ContributionStatus.MESSAGE_ONLY,
+            ContributionStatus.REJECTED,
+        )
     }
 }

@@ -126,4 +126,14 @@ enum class FundingErrorCode(
         "FUNDING_034",
         "비회원 보탬 접근 토큰이 만료되었습니다.",
     ),
+    CONTRIBUTION_NOT_CANCELLABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_035",
+        "송금 확인 중이거나 확인된 보탬은 삭제할 수 없습니다.",
+    ),
+    CONTRIBUTION_GUEST_NAME_DUPLICATED(
+        HttpStatus.CONFLICT,
+        "FUNDING_036",
+        "이미 사용 중인 참여자 이름으로 변경할 수 없습니다.",
+    ),
 }
