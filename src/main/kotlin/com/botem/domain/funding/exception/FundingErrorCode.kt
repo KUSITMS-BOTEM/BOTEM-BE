@@ -109,7 +109,7 @@ enum class FundingErrorCode(
     FUNDING_RESULT_ALREADY_OPENED(
         HttpStatus.CONFLICT,
         "FUNDING_031",
-        "결과를 연 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
+        "결과를 확정한 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
     ),
     CONTRIBUTION_GUEST_IDENTITY_DUPLICATED(
         HttpStatus.CONFLICT,

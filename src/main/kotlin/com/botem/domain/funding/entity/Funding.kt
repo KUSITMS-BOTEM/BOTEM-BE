@@ -276,8 +276,15 @@ class Funding(
         }
     }
 
+    // 공개 시각이 지나도 주최자가 선물 준비를 완료하기 전까지는 받는 사람에게 숨긴다
     fun isHiddenFromRecipient(viewerId: Long?, now: LocalDateTime): Boolean =
-        type == FundingType.SURPRISE && viewerId == recipientId && revealAt?.isAfter(now) != false
+        type == FundingType.SURPRISE &&
+            viewerId == recipientId &&
+            (revealAt?.isAfter(now) != false || !isSurpriseGiftPrepared())
+
+    // 준비 완료 이전 데이터에는 giftPreparedAt이 없을 수 있어 상태로 판단한다
+    fun isSurpriseGiftPrepared(): Boolean =
+        type == FundingType.SURPRISE && status in SURPRISE_REVEAL_VIEWABLE_STATUSES
 
     fun validateSurpriseRevealAccess(userId: Long, now: LocalDateTime) {
         if (type != FundingType.SURPRISE) {
