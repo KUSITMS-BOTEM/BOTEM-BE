@@ -2,12 +2,15 @@ package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.controller.docs.FundingControllerDocs
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
+import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
+import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.global.exception.BusinessException
@@ -34,6 +37,7 @@ class FundingController(
     private val fundingResultService: FundingResultService,
     private val fundingDetailService: FundingDetailService,
     private val ownerFundingDetailService: OwnerFundingDetailService,
+    private val fundingExtensionService: FundingExtensionService,
 ) : FundingControllerDocs {
 
     @PostMapping
@@ -64,6 +68,20 @@ class FundingController(
         @PathVariable fundingId: Long,
     ): ApiResponse<OwnerFundingDetailResponse> =
         ApiResponse.success(ownerFundingDetailService.getManagementDetail(userId, fundingId))
+
+    @PostMapping("/{fundingId}/extension")
+    override fun extendFunding(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+        @Valid @RequestBody request: ExtendFundingRequest,
+    ): ApiResponse<FundingExtensionResponse> =
+        ApiResponse.success(
+            fundingExtensionService.extend(
+                userId = userId,
+                fundingId = fundingId,
+                newDeadline = request.newDeadlineAtEndOfDay(),
+            ),
+        )
 
     @GetMapping("/{fundingId}/result")
     override fun getFundingResult(

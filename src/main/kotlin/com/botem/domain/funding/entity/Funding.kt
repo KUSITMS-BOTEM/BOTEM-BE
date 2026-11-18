@@ -149,6 +149,8 @@ class Funding(
         deadline = newDeadline
         extensionCount += 1
         this.extendedAt = extendedAt
+        // 기존 롤링페이퍼는 삭제하지 않고, 연장 기간에 들어온 보탬을 다시 확인할 수 있도록 결과 확정 상태만 되돌린다
+        resultOpenedAt = null
         status = FundingStatus.FUNDING
     }
 
