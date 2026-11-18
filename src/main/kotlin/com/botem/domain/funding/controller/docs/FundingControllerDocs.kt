@@ -1,10 +1,13 @@
 package com.botem.domain.funding.controller.docs
 
+import com.botem.domain.funding.dto.request.ChangeFundingProductRequest
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
+import com.botem.domain.funding.dto.response.FundingEarlyCloseResponse
 import com.botem.domain.funding.dto.response.FundingExtensionResponse
+import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.global.exception.ErrorCode
@@ -99,6 +102,8 @@ interface FundingControllerDocs {
             displayStatus는 IN_PROGRESS(진행 중), TARGET_REACHED(목표 금액 달성), CLOSED(마감),
             GIFT_PREPARING(선물 준비 중), COMPLETED(인증 완료) 중 하나입니다.
             목표 금액 달성 후에는 canContributeAmount가 false, 마감 후에는 canParticipate도 false입니다.
+            조기 마감된 일반 펀딩은 canContributeAmount가 false지만 기존 마감일까지 canParticipate는 true입니다.
+            productChanged는 상품 변경 이력 존재 여부이며 productChangedAt은 마지막 상품 변경 시각입니다.
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
             ownerPreview는 로그인한 개설자 본인이 조회한 경우 true입니다. 취소된 펀딩은 404를 반환합니다.
             giftVerification은 선물 인증을 마친 경우(COMPLETED)에만 사진, 감사 메시지, 완료 시각을 반환하고 그 외에는 null입니다.
@@ -143,6 +148,7 @@ interface FundingControllerDocs {
             revealAt은 서프라이즈 펀딩의 공개 시각이며 생일 펀딩은 null입니다.
             managementState는 NO_PARTICIPANTS(참여자 0명), IN_PROGRESS(진행 중), TARGET_REACHED(확정 금액 100% 도달),
             CLOSED(마감) 중 하나이며, extended는 기간을 연장한 적이 있으면 true입니다.
+            productChanged와 productChangedAt으로 상품 변경 여부를, earlyClosedAt으로 조기 마감 여부를 확인할 수 있습니다.
             actions는 지금 가능한 관리 동작입니다. 조기 마감·상품 바꾸기·공유 카드 다시 받기는 마감 전 진행 중에만,
             기간 연장은 생일 펀딩이 마감 후 목표에 못 미쳤고 아직 연장한 적이 없을 때만 true입니다.
         """,
@@ -169,6 +175,108 @@ interface FundingControllerDocs {
         @Parameter(hidden = true) userId: Long,
         @Parameter(description = "펀딩 ID") fundingId: Long,
     ): ApiResponse<OwnerFundingDetailResponse>
+
+    @Operation(
+        summary = "펀딩 조기 마감",
+        description = """
+            진행 중인 펀딩을 개설자가 조기 마감합니다. 이미 조기 마감한 펀딩에 다시 요청하면 최초 결과를 반환합니다.
+            송금하지 않은 보탬은 금액을 제외하고 메시지만 유지하며, 이후 추가 금액 보태기는 차단됩니다.
+            일반 생일 펀딩은 기존 마감일까지 메시지만 추가로 받을 수 있습니다.
+            서프라이즈 펀딩은 메시지 참여도 종료하고 WAITING_REVEAL 상태가 되며 기존 공개 시각은 유지합니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조기 마감 성공 또는 기존 조기 마감 결과 반환",
+            content = [Content(examples = [ExampleObject(value = EARLY_CLOSE_RESPONSE_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "펀딩 개설자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음 또는 취소된 펀딩",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "조기 마감할 수 없는 상태",
+            content = [Content(examples = [ExampleObject(value = FUNDING_EARLY_CLOSE_NOT_AVAILABLE_EXAMPLE)])],
+        ),
+    )
+    fun closeFundingEarly(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+    ): ApiResponse<FundingEarlyCloseResponse>
+
+    @Operation(
+        summary = "펀딩 상품 변경",
+        description = """
+            진행 중인 펀딩의 상품을 개설자 본인의 다른 위시 상품으로 변경합니다.
+            목표 금액과 기존 참여 내역은 유지하고, 위시 원본은 수정하지 않으며 펀딩 상품 스냅샷만 교체합니다.
+            변경 전·후 상품 정보는 이력으로 저장합니다. 같은 위시로 반복 요청하면 이력을 추가하지 않고 현재 결과를 반환합니다.
+            다른 종료되지 않은 펀딩에서 사용 중인 위시는 선택할 수 없습니다.
+        """,
+    )
+    @RequestBody(
+        required = true,
+        content = [Content(examples = [ExampleObject(value = CHANGE_PRODUCT_REQUEST_EXAMPLE)])],
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "상품 변경 성공 또는 동일 요청 결과 반환",
+            content = [Content(examples = [ExampleObject(value = CHANGE_PRODUCT_RESPONSE_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "위시 ID 입력 오류",
+            content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "펀딩 개설자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩, 위시 없음 또는 취소된 펀딩",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_002", summary = "펀딩 없음", value = FUNDING_NOT_FOUND_EXAMPLE),
+                        ExampleObject(name = "WISH_002", summary = "위시 없음", value = WISH_NOT_FOUND_EXAMPLE),
+                    ],
+                ),
+            ],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "사용 중인 위시 또는 상품 변경 불가 상태",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "WISH_003", summary = "사용 중인 위시", value = WISH_IN_FUNDING_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_043",
+                            summary = "상품 변경 불가 상태",
+                            value = FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    fun changeFundingProduct(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+        request: ChangeFundingProductRequest,
+    ): ApiResponse<FundingProductChangeResponse>
 
     @Operation(
         summary = "펀딩 기간 연장",
@@ -497,6 +605,8 @@ interface FundingControllerDocs {
                   "price": 300000,
                   "url": "https://www.coupang.com/vp/products/1"
                 },
+                "productChanged": false,
+                "productChangedAt": null,
                 "story": "올해 생일에는 오래 사용한 이어폰을 바꾸고 싶어요.",
                 "promise": "선물을 받으면 인증 사진을 올릴게요.",
                 "deadline": "2026-11-30T23:59:59",
@@ -544,6 +654,8 @@ interface FundingControllerDocs {
                   "price": 459000,
                   "url": "https://shop.example.com/product"
                 },
+                "productChanged": false,
+                "productChangedAt": null,
                 "targetAmount": 459000,
                 "deadline": "2026-11-30T23:59:59.999999",
                 "revealAt": null,
@@ -553,6 +665,7 @@ interface FundingControllerDocs {
                 "pendingContributionCount": 2,
                 "targetReached": false,
                 "extended": false,
+                "earlyClosedAt": null,
                 "participantCount": 3,
                 "participants": [
                   {
@@ -588,6 +701,41 @@ interface FundingControllerDocs {
                   "canChangeProduct": true,
                   "canReissueShareCard": true
                 }
+              },
+              "error": null
+            }
+        """
+        private const val EARLY_CLOSE_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "type": "BIRTHDAY",
+                "status": "CLOSED",
+                "deadline": "2026-11-30T23:59:59.999999",
+                "revealAt": null,
+                "earlyClosedAt": "2026-11-18T15:30:00"
+              },
+              "error": null
+            }
+        """
+        private const val CHANGE_PRODUCT_REQUEST_EXAMPLE = """
+            {
+              "wishId": 7
+            }
+        """
+        private const val CHANGE_PRODUCT_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "product": {
+                  "name": "소니 WH-1000XM6",
+                  "imageUrl": "https://image.example.com/new-product.jpg",
+                  "price": 519000,
+                  "url": "https://shop.example.com/new-product"
+                },
+                "productChangedAt": "2026-11-18T15:40:00"
               },
               "error": null
             }
@@ -789,6 +937,28 @@ interface FundingControllerDocs {
               "error": {
                 "code": "FUNDING_041",
                 "message": "펀딩 기간은 최대 14일까지 연장할 수 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_EARLY_CLOSE_NOT_AVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_042",
+                "message": "현재 상태에서는 펀딩을 조기 마감할 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_043",
+                "message": "현재 상태에서는 펀딩 상품을 변경할 수 없습니다.",
                 "detail": null
               }
             }

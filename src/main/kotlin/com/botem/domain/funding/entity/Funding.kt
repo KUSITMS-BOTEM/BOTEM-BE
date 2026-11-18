@@ -178,7 +178,11 @@ class Funding(
         if (extensionCount >= MAX_EXTENSION_COUNT) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_LIMIT_EXCEEDED)
         }
-        if (status !in EXTENDABLE_STATUSES || (status == FundingStatus.GIFT_PREPARING) != (resultOpenedAt != null)) {
+        if (
+            earlyClosedAt != null ||
+            status !in EXTENDABLE_STATUSES ||
+            (status == FundingStatus.GIFT_PREPARING) != (resultOpenedAt != null)
+        ) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE)
         }
         if (confirmedAmount >= targetAmount) {
