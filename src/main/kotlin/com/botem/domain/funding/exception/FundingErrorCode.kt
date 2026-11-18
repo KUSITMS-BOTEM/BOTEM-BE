@@ -71,4 +71,29 @@ enum class FundingErrorCode(
         "FUNDING_019",
         "진행 중인 펀딩은 최대 5개까지 개설할 수 있습니다.",
     ),
+    FUNDING_CLOSED(HttpStatus.CONFLICT, "FUNDING_020", "마감된 펀딩에는 참여할 수 없습니다."),
+    FUNDING_TARGET_REACHED(HttpStatus.CONFLICT, "FUNDING_021", "목표 금액을 이미 달성한 펀딩입니다."),
+    CONTRIBUTION_AMOUNT_EXCEEDS_REMAINING(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_022",
+        "보탤 금액은 남은 목표 금액 이하여야 합니다.",
+    ),
+    CONTRIBUTION_NOT_FOUND(HttpStatus.NOT_FOUND, "FUNDING_023", "참여 내역을 찾을 수 없습니다."),
+    CONTRIBUTION_PARTICIPANT_ONLY(HttpStatus.FORBIDDEN, "FUNDING_024", "참여자 본인만 변경할 수 있습니다."),
+    CONTRIBUTION_PASSWORD_MISMATCH(HttpStatus.FORBIDDEN, "FUNDING_025", "비밀번호가 일치하지 않습니다."),
+    CONTRIBUTION_TRANSFER_NOT_MARKABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_026",
+        "현재 상태에서는 송금 완료로 표시할 수 없습니다.",
+    ),
+    CONTRIBUTION_CONVERTED_TO_MESSAGE_ONLY(
+        HttpStatus.CONFLICT,
+        "FUNDING_028",
+        "보태기가 마감돼서 메시지만 남았어요.",
+    ),
+    CONTRIBUTION_REQUEST_KEY_CONFLICT(
+        HttpStatus.CONFLICT,
+        "FUNDING_027",
+        "이미 다른 참여자가 사용한 요청 키입니다.",
+    ),
 }

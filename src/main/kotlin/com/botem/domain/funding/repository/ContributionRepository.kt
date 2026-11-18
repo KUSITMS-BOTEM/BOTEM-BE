@@ -12,6 +12,23 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
 
     fun findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId: Long): List<Contribution>
 
+    fun findByFundingIdAndRequestKey(fundingId: Long, requestKey: String): Contribution?
+
+    fun findByIdAndFundingId(id: Long, fundingId: Long): Contribution?
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(contribution.amount), 0)
+        FROM Contribution contribution
+        WHERE contribution.fundingId = :fundingId
+          AND contribution.status = :status
+        """,
+    )
+    fun sumAmountByFundingIdAndStatus(
+        @Param("fundingId") fundingId: Long,
+        @Param("status") status: ContributionStatus,
+    ): Long
+
     fun existsByFundingIdAndStatus(
         fundingId: Long,
         status: ContributionStatus,
