@@ -50,12 +50,15 @@ class FundingDetailService(
 
         val displayStatus = displayStatus(funding, confirmedAmount, now)
         val beforeDeadline = funding.deadline.isAfter(now)
+        val participationOpen = beforeDeadline && funding.status in PARTICIPATABLE_STATUSES
 
         return FundingDetailResponse(
             fundingId = funding.id,
             type = funding.type,
             title = funding.title,
             product = FundingDetailProductResponse.from(funding.product),
+            productChanged = funding.productChangedAt != null,
+            productChangedAt = funding.productChangedAt,
             story = funding.story,
             promise = funding.promise,
             deadline = funding.deadline,
@@ -69,9 +72,9 @@ class FundingDetailService(
             participantCount = participants.size,
             participants = participants,
             displayStatus = displayStatus,
-            canContributeAmount = displayStatus == FundingDisplayStatus.IN_PROGRESS,
-            canParticipate = displayStatus == FundingDisplayStatus.IN_PROGRESS ||
-                displayStatus == FundingDisplayStatus.TARGET_REACHED,
+            canContributeAmount = participationOpen && funding.earlyClosedAt == null &&
+                confirmedAmount < funding.targetAmount,
+            canParticipate = participationOpen,
             ownerPreview = viewerId != null && viewerId == funding.ownerId,
             giftVerification = findCompletedGiftVerification(funding),
             thankCard = findThankCard(funding),
@@ -121,9 +124,11 @@ class FundingDetailService(
         confirmedAmount: Long,
         now: LocalDateTime,
     ): FundingDisplayStatus =
-        when (funding.status) {
-            FundingStatus.COMPLETED -> FundingDisplayStatus.COMPLETED
-            FundingStatus.FUNDING, FundingStatus.CLOSED -> when {
+        when {
+            funding.status == FundingStatus.COMPLETED -> FundingDisplayStatus.COMPLETED
+            funding.earlyClosedAt != null && funding.status != FundingStatus.GIFT_PREPARING ->
+                FundingDisplayStatus.CLOSED
+            funding.status in PARTICIPATABLE_STATUSES -> when {
                 !funding.deadline.isAfter(now) -> FundingDisplayStatus.CLOSED
                 confirmedAmount >= funding.targetAmount -> FundingDisplayStatus.TARGET_REACHED
                 else -> FundingDisplayStatus.IN_PROGRESS
@@ -133,4 +138,8 @@ class FundingDetailService(
 
     private fun List<Contribution>.sumAmount(status: ContributionStatus): Long =
         filter { it.status == status }.sumOf(Contribution::amount)
+
+    companion object {
+        private val PARTICIPATABLE_STATUSES = setOf(FundingStatus.FUNDING, FundingStatus.CLOSED)
+    }
 }

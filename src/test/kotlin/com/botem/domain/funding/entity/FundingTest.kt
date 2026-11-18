@@ -441,6 +441,99 @@ class FundingTest {
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_PERIOD_EXCEEDED, periodException.errorCode)
     }
 
+    @Test
+    fun `일반 펀딩을 조기 마감하면 최초 마감 시각과 상태를 유지한다`() {
+        val funding = funding(deadline = OPENED_AT.plusDays(3))
+
+        funding.closeEarly(OPENED_AT)
+        funding.closeEarly(OPENED_AT.plusHours(1))
+
+        assertEquals(FundingStatus.CLOSED, funding.status)
+        assertEquals(OPENED_AT, funding.earlyClosedAt)
+        assertEquals(OPENED_AT.plusDays(3), funding.deadline)
+    }
+
+    @Test
+    fun `서프라이즈를 조기 마감하면 공개 시각을 유지하고 공개 대기 상태가 된다`() {
+        val revealAt = OPENED_AT.plusDays(5)
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.plusDays(3),
+            revealAt = revealAt,
+        )
+
+        funding.closeEarly(OPENED_AT)
+
+        assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
+        assertEquals(revealAt, funding.revealAt)
+    }
+
+    @Test
+    fun `마감됐거나 완료된 펀딩은 조기 마감할 수 없다`() {
+        val ended = funding(deadline = OPENED_AT)
+        val deadlineException = assertFailsWith<BusinessException> { ended.closeEarly(OPENED_AT) }
+        assertEquals(FundingErrorCode.FUNDING_EARLY_CLOSE_NOT_AVAILABLE, deadlineException.errorCode)
+
+        val completed = funding(deadline = OPENED_AT.plusDays(1))
+        setField(completed, "status", FundingStatus.COMPLETED)
+        val statusException = assertFailsWith<BusinessException> { completed.closeEarly(OPENED_AT) }
+        assertEquals(FundingErrorCode.FUNDING_EARLY_CLOSE_NOT_AVAILABLE, statusException.errorCode)
+    }
+
+    @Test
+    fun `상품을 변경하면 스냅샷을 교체하고 변경 전후 이력을 만든다`() {
+        val funding = funding(deadline = OPENED_AT.plusDays(3))
+        setField(funding, "id", 12L)
+        val changedProduct = FundingProductSnapshot(
+            sourceWishId = 2L,
+            name = "새 헤드폰",
+            imageUrl = "https://image.example.com/new.jpg",
+            price = 120_000L,
+            url = "https://shop.example.com/new",
+        )
+
+        val history = checkNotNull(funding.changeProduct(changedProduct, OPENED_AT))
+
+        assertEquals(changedProduct, funding.product)
+        assertEquals(OPENED_AT, funding.productChangedAt)
+        assertEquals(12L, history.fundingId)
+        assertEquals(1L, history.previousSourceWishId)
+        assertEquals("무선 헤드폰", history.previousProductName)
+        assertEquals("https://image.example.com/product.jpg", history.previousProductImageUrl)
+        assertEquals(100_000L, history.previousProductPrice)
+        assertEquals("https://shop.example.com/product", history.previousProductUrl)
+        assertEquals(2L, history.changedSourceWishId)
+        assertEquals("새 헤드폰", history.changedProductName)
+        assertEquals("https://image.example.com/new.jpg", history.changedProductImageUrl)
+        assertEquals(120_000L, history.changedProductPrice)
+        assertEquals("https://shop.example.com/new", history.changedProductUrl)
+        assertEquals(OPENED_AT, history.changedAt)
+        assertEquals(0L, history.id)
+    }
+
+    @Test
+    fun `조기 마감 후에는 상품 변경과 기간 연장을 거부한다`() {
+        val funding = funding(deadline = OPENED_AT.plusDays(3))
+        funding.closeEarly(OPENED_AT)
+        val changeException = assertFailsWith<BusinessException> {
+            funding.changeProduct(
+                FundingProductSnapshot(2L, "새 상품", "https://image.example.com/new.jpg", 1L, "https://shop.example.com/new"),
+                OPENED_AT.plusMinutes(1),
+            )
+        }
+        assertEquals(FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE, changeException.errorCode)
+
+        val extensionException = assertFailsWith<BusinessException> {
+            funding.extendDeadline(
+                OPENED_AT.plusDays(5),
+                requestedAt = OPENED_AT.plusDays(1),
+                extendedAt = OPENED_AT.plusDays(1),
+                confirmedAmount = 0L,
+            )
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE, extensionException.errorCode)
+    }
+
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,
         deadline: LocalDateTime,

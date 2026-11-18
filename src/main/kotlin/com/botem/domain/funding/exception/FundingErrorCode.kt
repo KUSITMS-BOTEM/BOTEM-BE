@@ -161,4 +161,14 @@ enum class FundingErrorCode(
         "FUNDING_041",
         "펀딩 기간은 최대 14일까지 연장할 수 있습니다.",
     ),
+    FUNDING_EARLY_CLOSE_NOT_AVAILABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_042",
+        "현재 상태에서는 펀딩을 조기 마감할 수 없습니다.",
+    ),
+    FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_043",
+        "현재 상태에서는 펀딩 상품을 변경할 수 없습니다.",
+    ),
 }

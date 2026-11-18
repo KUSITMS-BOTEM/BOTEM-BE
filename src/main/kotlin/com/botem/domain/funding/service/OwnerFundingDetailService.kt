@@ -48,7 +48,7 @@ class OwnerFundingDetailService(
         val participantCount = participants.maxOfOrNull(OwnerFundingParticipantResponse::order) ?: 0
 
         val beforeDeadline = funding.deadline.isAfter(now)
-        val inProgress = beforeDeadline && funding.status in IN_PROGRESS_STATUSES
+        val inProgress = beforeDeadline && funding.status in IN_PROGRESS_STATUSES && funding.earlyClosedAt == null
         val targetReached = confirmedAmount >= funding.targetAmount
 
         return OwnerFundingDetailResponse(
@@ -58,6 +58,8 @@ class OwnerFundingDetailService(
             story = funding.story,
             promise = funding.promise,
             product = FundingDetailProductResponse.from(funding.product),
+            productChanged = funding.productChangedAt != null,
+            productChangedAt = funding.productChangedAt,
             targetAmount = funding.targetAmount,
             deadline = funding.deadline,
             revealAt = funding.revealAt,
@@ -74,6 +76,7 @@ class OwnerFundingDetailService(
             pendingContributionCount = contributions.count { it.status == ContributionStatus.PENDING_CONFIRMATION },
             targetReached = targetReached,
             extended = funding.extensionCount > 0,
+            earlyClosedAt = funding.earlyClosedAt,
             participantCount = participantCount,
             participants = participants,
             messageCount = rollingPaperMessageRepository.countByFundingId(fundingId),
@@ -97,6 +100,7 @@ class OwnerFundingDetailService(
         funding.type == FundingType.BIRTHDAY &&
             !beforeDeadline &&
             !targetReached &&
+            funding.earlyClosedAt == null &&
             funding.extensionCount == 0 &&
             funding.status in EXTENDABLE_STATUSES
 

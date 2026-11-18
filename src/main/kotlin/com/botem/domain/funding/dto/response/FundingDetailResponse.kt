@@ -12,6 +12,8 @@ data class FundingDetailResponse(
     val type: FundingType,
     val title: String,
     val product: FundingDetailProductResponse,
+    val productChanged: Boolean,
+    val productChangedAt: LocalDateTime?,
     val story: String?,
     val promise: String?,
     val deadline: LocalDateTime,
