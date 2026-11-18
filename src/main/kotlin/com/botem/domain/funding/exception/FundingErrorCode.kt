@@ -111,4 +111,9 @@ enum class FundingErrorCode(
         "FUNDING_031",
         "결과를 연 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
     ),
+    CONTRIBUTION_GUEST_IDENTITY_DUPLICATED(
+        HttpStatus.CONFLICT,
+        "FUNDING_032",
+        "같은 이름과 비밀번호로 등록한 보탬이 이미 있습니다.",
+    ),
 }

@@ -58,6 +58,7 @@ class ContributionService(
         }
 
         validateContributable(funding, request.amount)
+        validateGuestIdentityAvailable(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -94,6 +95,7 @@ class ContributionService(
         }
 
         validateOpen(funding)
+        validateGuestIdentityAvailable(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -132,6 +134,24 @@ class ContributionService(
         return TransferSentResponse(contribution.id, contribution.status)
     }
 
+    private fun validateGuestIdentityAvailable(fundingId: Long, input: ParticipantInput) {
+        val participantName = input.participantName ?: return
+        val guestPassword = input.guestPassword ?: return
+        val duplicated = contributionRepository
+            .findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(
+                fundingId,
+                participantName,
+                ContributionStatus.CANCELLED,
+            )
+            .any { contribution ->
+                contribution.guestPasswordHash?.let { passwordEncoder.matches(guestPassword, it) } == true
+            }
+
+        if (duplicated) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_IDENTITY_DUPLICATED)
+        }
+    }
+
     private fun verifyGuestPassword(contribution: Contribution, password: String?) {
         val now = LocalDateTime.now(clock)
         if (contribution.isGuestPasswordLocked(now)) {
@@ -165,9 +185,10 @@ class ContributionService(
         }
 
         return ParticipantInput(
-            participantName = participantName,
+            participantName = participantName.normalizeOptional(),
             message = normalizedMessage,
             paperTemplateCode = normalizedPaperTemplateCode,
+            guestPassword = if (userId == null) guestPassword else null,
             guestPasswordHash = if (userId == null) hashGuestPassword(guestPassword) else null,
         )
     }
@@ -272,6 +293,7 @@ class ContributionService(
         val participantName: String?,
         val message: String,
         val paperTemplateCode: String,
+        val guestPassword: String?,
         val guestPasswordHash: String?,
     )
 
