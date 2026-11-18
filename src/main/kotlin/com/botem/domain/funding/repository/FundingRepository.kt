@@ -39,9 +39,10 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         statuses: Collection<FundingStatus>,
     ): Boolean
 
-    fun existsByRecipientIdAndTypeAndStatusNotIn(
+    fun existsByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
         recipientId: Long,
         type: FundingType,
+        now: LocalDateTime,
         statuses: Collection<FundingStatus>,
     ): Boolean
 

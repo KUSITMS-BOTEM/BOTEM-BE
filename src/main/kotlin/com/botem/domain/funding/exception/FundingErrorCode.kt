@@ -179,7 +179,7 @@ enum class FundingErrorCode(
     SURPRISE_FUNDING_ALREADY_EXISTS(
         HttpStatus.CONFLICT,
         "FUNDING_045",
-        "이미 이 친구를 위한 서프라이즈 펀딩이 진행 중입니다.",
+        "이미 이 친구를 위한 공개 전 서프라이즈 펀딩이 있습니다.",
     ),
     SURPRISE_NOT_REVEALED(HttpStatus.FORBIDDEN, "FUNDING_046", "아직 공개되지 않은 서프라이즈입니다."),
 }

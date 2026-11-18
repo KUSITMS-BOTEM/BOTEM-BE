@@ -97,10 +97,10 @@ interface FundingControllerDocs {
         description = """
             친구(recipientId)의 위시 상품으로 공개 시각이 정해진 서프라이즈 펀딩을 개설합니다. 제목과 사연은 받지 않습니다.
             상품은 받는 사람의 위시, 받을 계좌는 개설자 본인의 계좌를 스냅샷으로 저장하며 payoutAccountId를 생략하면 기본 계좌를 사용합니다.
-            마감일은 내일부터 선택할 수 있고 선택한 날짜의 마지막 시각으로 저장됩니다. revealAt은 마감 이후여야 합니다.
+            마감일은 내일부터 선택할 수 있고 선택한 날짜의 마지막 시각으로 저장됩니다. revealAt은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다.
             showOnRecipientProfile(위시 프로필에 몰래 알리기)과 notifyRecipientFriends(보탬 친구에게도 알리기)는 생략하면 true이며,
             받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
-            받는 사람 한 명당 진행 중인 서프라이즈는 하나만 열 수 있고, 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
+            받는 사람 한 명당 공개 전 서프라이즈는 하나만 열 수 있고(공개 시각이 지나면 새로 열 수 있음), 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
             서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크입니다.
         """,
     )
@@ -150,13 +150,13 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "진행 중인 서프라이즈 존재, 사용 중인 위시, 사용할 수 없는 계좌 또는 진행 중 펀딩 개수 초과",
+            description = "공개 전 서프라이즈 존재, 사용 중인 위시, 사용할 수 없는 계좌 또는 진행 중 펀딩 개수 초과",
             content = [
                 Content(
                     examples = [
                         ExampleObject(
                             name = "FUNDING_045",
-                            summary = "진행 중인 서프라이즈 존재",
+                            summary = "공개 전 서프라이즈 존재",
                             value = SURPRISE_FUNDING_ALREADY_EXISTS_EXAMPLE,
                         ),
                         ExampleObject(name = "WISH_003", summary = "사용 중인 위시", value = WISH_IN_FUNDING_EXAMPLE),
@@ -631,7 +631,7 @@ interface FundingControllerDocs {
               "error": {
                 "code": "COMMON_001",
                 "message": "입력값이 올바르지 않습니다.",
-                "detail": "공개 시각은 마감일 이후여야 합니다."
+                "detail": "공개 시각은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다."
               }
             }
         """
@@ -663,7 +663,7 @@ interface FundingControllerDocs {
               "data": null,
               "error": {
                 "code": "FUNDING_045",
-                "message": "이미 이 친구를 위한 서프라이즈 펀딩이 진행 중입니다.",
+                "message": "이미 이 친구를 위한 공개 전 서프라이즈 펀딩이 있습니다.",
                 "detail": null
               }
             }

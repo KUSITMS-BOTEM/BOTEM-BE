@@ -80,9 +80,11 @@ class FundingCreationService(
 
         val now = LocalDateTime.now(clock)
         validateActiveFundingCount(userId, now)
-        if (fundingRepository.existsByRecipientIdAndTypeAndStatusNotIn(
+        // 개설자 진행 중 한도와 같이, 공개 시각이 지난 서프라이즈는 중복으로 보지 않는다
+        if (fundingRepository.existsByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
                 request.recipientId,
                 FundingType.SURPRISE,
+                now,
                 ENDED_FUNDING_STATUSES,
             )
         ) {
