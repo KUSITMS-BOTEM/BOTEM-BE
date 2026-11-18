@@ -450,7 +450,7 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
-    fun `공개 시각이 지난 수신자의 미완료 서프라이즈를 공개 시각 순으로 조회한다`() {
+    fun `공개 시각이 지난 수신자의 선물 준비를 마친 미완료 서프라이즈를 공개 시각 순으로 조회한다`() {
         val now = LocalDateTime.of(2026, 11, 10, 12, 0)
         val recipient = saveNamedUser(nickname = "지유", name = "이지유")
         val otherRecipient = saveNamedUser(nickname = "다른 친구", name = "다른 친구")
@@ -539,6 +539,19 @@ class HomeDomainPersistenceTest {
                 contribution(oldRevealed.id, 5_000L, ContributionStatus.CANCELLED),
             ),
         )
+        val notPrepared = fundingRepository.saveAndFlush(
+            fundingForVerification(
+                ownerId = nicknameOrganizer.id,
+                recipientId = recipient.id,
+                type = FundingType.SURPRISE,
+                deadline = LocalDateTime.of(2026, 11, 8, 0, 0),
+                account = nicknameAccount,
+                wish = nicknameWish,
+            ),
+        )
+        updateFundingStatus(oldRevealed.id, FundingStatus.REVEALED)
+        updateFundingStatus(revealedExactlyNow.id, FundingStatus.WAITING_REVEAL)
+        updateFundingStatus(notPrepared.id, FundingStatus.CLOSED)
         updateFundingStatus(completed.id, FundingStatus.COMPLETED)
         updateFundingStatus(cancelled.id, FundingStatus.CANCELLED)
         entityManager.clear()

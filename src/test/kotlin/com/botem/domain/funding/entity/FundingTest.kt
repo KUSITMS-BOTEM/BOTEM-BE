@@ -454,7 +454,7 @@ class FundingTest {
     }
 
     @Test
-    fun `서프라이즈를 조기 마감하면 공개 시각을 유지하고 공개 대기 상태가 된다`() {
+    fun `서프라이즈를 조기 마감하면 공개 시각을 유지하고 선물 준비 상태가 된다`() {
         val revealAt = OPENED_AT.plusDays(5)
         val funding = funding(
             type = FundingType.SURPRISE,
@@ -464,8 +464,62 @@ class FundingTest {
 
         funding.closeEarly(OPENED_AT)
 
-        assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
+        assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
         assertEquals(revealAt, funding.revealAt)
+    }
+
+    @Test
+    fun `마감된 서프라이즈의 선물 준비를 완료하면 공개 대기 상태가 되고 재요청은 최초 시각을 유지한다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT,
+            revealAt = OPENED_AT.plusDays(1),
+        )
+        setField(funding, "status", FundingStatus.CLOSED)
+
+        funding.prepareSurpriseGift(OPENED_AT)
+        funding.prepareSurpriseGift(OPENED_AT.plusHours(1))
+
+        assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
+        assertEquals(OPENED_AT, funding.giftPreparedAt)
+    }
+
+    @Test
+    fun `조기 마감한 서프라이즈는 기존 마감일 전에도 선물 준비를 완료할 수 있다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.plusDays(3),
+            revealAt = OPENED_AT.plusDays(4),
+        )
+        funding.closeEarly(OPENED_AT)
+
+        funding.prepareSurpriseGift(OPENED_AT.plusMinutes(1))
+
+        assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
+    }
+
+    @Test
+    fun `마감 전이거나 생일 펀딩이거나 이미 공개된 서프라이즈는 선물 준비를 완료할 수 없다`() {
+        val beforeDeadline = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.plusSeconds(1),
+            revealAt = OPENED_AT.plusDays(1),
+        )
+        val notEnded = assertFailsWith<BusinessException> { beforeDeadline.prepareSurpriseGift(OPENED_AT) }
+        assertEquals(FundingErrorCode.FUNDING_NOT_ENDED, notEnded.errorCode)
+
+        val birthday = funding(deadline = OPENED_AT.minusDays(1))
+        val notSurprise = assertFailsWith<BusinessException> { birthday.prepareSurpriseGift(OPENED_AT) }
+        assertEquals(FundingErrorCode.SURPRISE_FUNDING_REQUIRED, notSurprise.errorCode)
+
+        val revealed = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusHours(1),
+        )
+        setField(revealed, "status", FundingStatus.REVEALED)
+        val notAvailable = assertFailsWith<BusinessException> { revealed.prepareSurpriseGift(OPENED_AT) }
+        assertEquals(FundingErrorCode.SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE, notAvailable.errorCode)
     }
 
     @Test

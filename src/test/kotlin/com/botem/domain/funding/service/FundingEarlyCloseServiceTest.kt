@@ -46,13 +46,13 @@ class FundingEarlyCloseServiceTest {
     }
 
     @Test
-    fun `서프라이즈 조기 마감은 공개 시각을 유지하고 공개 대기 상태를 반환한다`() {
+    fun `서프라이즈 조기 마감은 공개 시각을 유지하고 선물 준비 상태를 반환한다`() {
         val funding = funding(type = FundingType.SURPRISE)
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
 
         val response = service.close(OWNER_ID, FUNDING_ID)
 
-        assertEquals(FundingStatus.WAITING_REVEAL, response.status)
+        assertEquals(FundingStatus.GIFT_PREPARING, response.status)
         assertEquals(REVEAL_AT, response.revealAt)
     }
 
