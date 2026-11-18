@@ -81,7 +81,24 @@ class FundingEarlyCloseServiceTest {
         )
     }
 
-    private fun funding(type: FundingType = FundingType.BIRTHDAY): Funding =
+    @Test
+    fun `취소된 펀딩은 찾을 수 없는 것으로 처리한다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(
+            funding(status = FundingStatus.CANCELLED),
+        )
+
+        val exception = assertFailsWith<BusinessException> {
+            service.close(OWNER_ID, FUNDING_ID)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+    }
+
+    private fun funding(
+        type: FundingType = FundingType.BIRTHDAY,
+        status: FundingStatus = FundingStatus.FUNDING,
+    ): Funding =
         Funding(
             ownerId = OWNER_ID,
             recipientId = if (type == FundingType.SURPRISE) 3L else null,
@@ -94,7 +111,10 @@ class FundingEarlyCloseServiceTest {
             promise = null,
             product = FundingProductSnapshot(1L, "무선 헤드폰", "https://image.example.com/product.jpg", 100_000L, "https://shop.example.com/product"),
             payoutAccount = FundingPayoutAccountSnapshot(1L, Bank.KAKAO_BANK, "encrypted", "지유"),
-        ).also { setField(it, "id", FUNDING_ID) }
+        ).also {
+            setField(it, "id", FUNDING_ID)
+            setField(it, "status", status)
+        }
 
     private fun setField(target: Any, fieldName: String, value: Any?) {
         target.javaClass.getDeclaredField(fieldName).apply {

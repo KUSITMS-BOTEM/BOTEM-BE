@@ -143,12 +143,9 @@ class Funding(
     fun changeProduct(
         newProduct: FundingProductSnapshot,
         changedAt: LocalDateTime,
-    ): FundingProductChangeHistory? {
+    ): FundingProductChangeHistory {
         if (!deadline.isAfter(changedAt) || status !in PRODUCT_CHANGEABLE_STATUSES || earlyClosedAt != null) {
             throw BusinessException(FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE)
-        }
-        if (product.sourceWishId != null && product.sourceWishId == newProduct.sourceWishId) {
-            return null
         }
 
         val history = FundingProductChangeHistory.record(

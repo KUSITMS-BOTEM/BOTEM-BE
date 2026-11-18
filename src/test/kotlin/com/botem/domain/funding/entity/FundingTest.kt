@@ -512,10 +512,8 @@ class FundingTest {
     }
 
     @Test
-    fun `같은 위시 상품 변경은 이력을 만들지 않고 변경 불가 상태는 거부한다`() {
+    fun `조기 마감 후에는 상품 변경과 기간 연장을 거부한다`() {
         val funding = funding(deadline = OPENED_AT.plusDays(3))
-        assertEquals(null, funding.changeProduct(product(), OPENED_AT))
-
         funding.closeEarly(OPENED_AT)
         val changeException = assertFailsWith<BusinessException> {
             funding.changeProduct(

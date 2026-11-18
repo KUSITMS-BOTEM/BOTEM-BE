@@ -56,7 +56,7 @@ class FundingProductChangeService(
             ),
             changedAt = changedAt,
         )
-        history?.let(productChangeHistoryRepository::save)
+        productChangeHistoryRepository.save(history)
 
         return FundingProductChangeResponse.from(funding)
     }

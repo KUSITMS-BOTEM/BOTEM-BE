@@ -5,6 +5,7 @@ import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductChangeHistory
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingProductChangeHistoryRepository
@@ -102,6 +103,34 @@ class FundingProductChangeServiceTest {
     }
 
     @Test
+    fun `취소된 펀딩은 찾을 수 없는 것으로 처리한다`() {
+        givenActiveUser()
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(
+            funding(status = FundingStatus.CANCELLED),
+        )
+
+        val exception = assertFailsWith<BusinessException> {
+            service.change(OWNER_ID, FUNDING_ID, NEW_WISH_ID)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
+        verify(resourceResolver, never()).resolveWish(OWNER_ID, NEW_WISH_ID)
+    }
+
+    @Test
+    fun `원본 위시 연결이 없는 기존 상품도 새 위시 상품으로 변경한다`() {
+        givenActiveUser()
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding(sourceWishId = null))
+        given(resourceResolver.resolveWish(OWNER_ID, NEW_WISH_ID)).willReturn(wish())
+        given(historyRepository.save(any(FundingProductChangeHistory::class.java))).willAnswer { it.arguments[0] }
+
+        val response = service.change(OWNER_ID, FUNDING_ID, NEW_WISH_ID)
+
+        assertEquals("새 헤드폰", response.product.name)
+        verify(historyRepository).save(any(FundingProductChangeHistory::class.java))
+    }
+
+    @Test
     fun `마감된 펀딩은 상품을 변경할 수 없다`() {
         givenActiveUser()
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding(deadline = NOW))
@@ -151,7 +180,11 @@ class FundingProductChangeServiceTest {
             productUrl = "https://shop.example.com/new",
         ).also { setField(it, "id", NEW_WISH_ID) }
 
-    private fun funding(deadline: LocalDateTime = NOW.plusDays(3)): Funding =
+    private fun funding(
+        deadline: LocalDateTime = NOW.plusDays(3),
+        status: FundingStatus = FundingStatus.FUNDING,
+        sourceWishId: Long? = CURRENT_WISH_ID,
+    ): Funding =
         Funding(
             ownerId = OWNER_ID,
             recipientId = null,
@@ -162,9 +195,12 @@ class FundingProductChangeServiceTest {
             revealAt = null,
             story = "새 헤드폰이 필요해요",
             promise = null,
-            product = FundingProductSnapshot(CURRENT_WISH_ID, "무선 헤드폰", "https://image.example.com/product.jpg", 100_000L, "https://shop.example.com/product"),
+            product = FundingProductSnapshot(sourceWishId, "무선 헤드폰", "https://image.example.com/product.jpg", 100_000L, "https://shop.example.com/product"),
             payoutAccount = FundingPayoutAccountSnapshot(1L, Bank.KAKAO_BANK, "encrypted", "지유"),
-        ).also { setField(it, "id", FUNDING_ID) }
+        ).also {
+            setField(it, "id", FUNDING_ID)
+            setField(it, "status", status)
+        }
 
     private fun setField(target: Any, fieldName: String, value: Any?) {
         target.javaClass.getDeclaredField(fieldName).apply {
