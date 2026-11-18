@@ -81,7 +81,14 @@ interface GuestContributionControllerDocs {
         SwaggerApiResponse(
             responseCode = "401",
             description = "접근 토큰 누락·만료·위조 또는 다른 펀딩의 토큰",
-            content = [Content(examples = [ExampleObject(value = TOKEN_INVALID_EXAMPLE)])],
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_033", summary = "유효하지 않은 토큰", value = TOKEN_INVALID_EXAMPLE),
+                        ExampleObject(name = "FUNDING_034", summary = "만료된 토큰", value = TOKEN_EXPIRED_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(
             responseCode = "404",
@@ -118,7 +125,14 @@ interface GuestContributionControllerDocs {
         SwaggerApiResponse(
             responseCode = "401",
             description = "접근 토큰 누락·만료·위조 또는 다른 펀딩의 토큰",
-            content = [Content(examples = [ExampleObject(value = TOKEN_INVALID_EXAMPLE)])],
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_033", summary = "유효하지 않은 토큰", value = TOKEN_INVALID_EXAMPLE),
+                        ExampleObject(name = "FUNDING_034", summary = "만료된 토큰", value = TOKEN_EXPIRED_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(
             responseCode = "404",
@@ -189,6 +203,9 @@ interface GuestContributionControllerDocs {
         """
         private const val TOKEN_INVALID_EXAMPLE = """
             { "success": false, "data": null, "error": { "code": "FUNDING_033", "message": "비회원 보탬 접근 토큰이 올바르지 않습니다.", "detail": null } }
+        """
+        private const val TOKEN_EXPIRED_EXAMPLE = """
+            { "success": false, "data": null, "error": { "code": "FUNDING_034", "message": "비회원 보탬 접근 토큰이 만료되었습니다.", "detail": null } }
         """
         private const val CONTRIBUTION_NOT_FOUND_EXAMPLE = """
             { "success": false, "data": null, "error": { "code": "FUNDING_023", "message": "참여 내역을 찾을 수 없습니다.", "detail": null } }

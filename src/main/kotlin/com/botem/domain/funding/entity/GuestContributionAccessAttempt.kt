@@ -16,17 +16,14 @@ import java.time.LocalDateTime
     name = "guest_contribution_access_attempts",
     uniqueConstraints = [
         UniqueConstraint(
-            name = "uk_guest_contribution_access_funding_name",
-            columnNames = ["funding_id", "participant_name"],
+            name = "uk_guest_contribution_access_contribution",
+            columnNames = ["contribution_id"],
         ),
     ],
 )
 class GuestContributionAccessAttempt(
     @Column(nullable = false, updatable = false)
-    val fundingId: Long,
-
-    @Column(nullable = false, updatable = false, length = 50)
-    val participantName: String,
+    val contributionId: Long,
 ) : BaseEntity() {
 
     @Id

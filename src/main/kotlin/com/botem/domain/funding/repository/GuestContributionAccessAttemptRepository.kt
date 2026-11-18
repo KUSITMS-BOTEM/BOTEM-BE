@@ -14,12 +14,10 @@ interface GuestContributionAccessAttemptRepository : JpaRepository<GuestContribu
         """
         SELECT attempt
         FROM GuestContributionAccessAttempt attempt
-        WHERE attempt.fundingId = :fundingId
-          AND attempt.participantName = :participantName
+        WHERE attempt.contributionId = :contributionId
         """,
     )
-    fun findByFundingIdAndParticipantNameForUpdate(
-        @Param("fundingId") fundingId: Long,
-        @Param("participantName") participantName: String,
+    fun findByContributionIdForUpdate(
+        @Param("contributionId") contributionId: Long,
     ): GuestContributionAccessAttempt?
 }

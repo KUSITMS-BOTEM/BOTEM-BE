@@ -66,7 +66,7 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감, 목표 달성, 남은 목표 금액 초과 또는 이미 사용된 requestKey",
+            description = "마감, 목표 달성, 남은 목표 금액 초과, 이미 사용된 requestKey 또는 중복 비회원 이름",
             content = [
                 Content(
                     examples = [
@@ -81,6 +81,11 @@ interface ContributionControllerDocs {
                             name = "FUNDING_027",
                             summary = "이미 사용된 요청 키",
                             value = REQUEST_KEY_CONFLICT_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_032",
+                            summary = "중복 비회원 이름",
+                            value = GUEST_IDENTITY_DUPLICATED_EXAMPLE,
                         ),
                     ],
                 ),
@@ -128,7 +133,7 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감된 펀딩 또는 이미 사용된 requestKey",
+            description = "마감된 펀딩, 이미 사용된 requestKey 또는 중복 비회원 이름",
             content = [
                 Content(
                     examples = [
@@ -137,6 +142,11 @@ interface ContributionControllerDocs {
                             name = "FUNDING_027",
                             summary = "이미 사용된 요청 키",
                             value = REQUEST_KEY_CONFLICT_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_032",
+                            summary = "중복 비회원 이름",
+                            value = GUEST_IDENTITY_DUPLICATED_EXAMPLE,
                         ),
                     ],
                 ),
@@ -378,6 +388,17 @@ interface ContributionControllerDocs {
               "error": {
                 "code": "FUNDING_027",
                 "message": "이미 다른 요청에 사용된 요청 키입니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val GUEST_IDENTITY_DUPLICATED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_032",
+                "message": "같은 이름으로 등록한 비회원 보탬이 이미 있습니다.",
                 "detail": null
               }
             }

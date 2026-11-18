@@ -9,25 +9,22 @@ import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
-import com.botem.domain.funding.entity.GuestContributionAccessAttempt
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
-import com.botem.domain.funding.repository.GuestContributionAccessAttemptRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.util.ReflectionTestUtils.setField
-import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -37,15 +34,14 @@ class GuestContributionServiceTest {
     private val fundingRepository = mock(FundingRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
-    private val accessAttemptRepository = mock(GuestContributionAccessAttemptRepository::class.java)
     private val accessTokenProvider = mock(GuestContributionAccessTokenProvider::class.java)
+    private val passwordVerifier = mock(GuestContributionPasswordVerifier::class.java)
     private val service = GuestContributionService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
-        accessAttemptRepository = accessAttemptRepository,
         accessTokenProvider = accessTokenProvider,
-        clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
+        passwordVerifier = passwordVerifier,
     )
 
     @Test
@@ -53,9 +49,8 @@ class GuestContributionServiceTest {
         val contribution = contribution()
         val message = message()
         givenFunding()
-        given(accessAttemptRepository.findByFundingIdAndParticipantNameForUpdate(FUNDING_ID, "민지"))
-            .willReturn(null)
         givenGuestContributions("민지", listOf(contribution))
+        given(passwordVerifier.authenticate("1234", listOf(contribution))).willReturn(contribution)
         given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(message)
         given(accessTokenProvider.issue(FUNDING_ID, CONTRIBUTION_ID))
             .willReturn(IssuedGuestContributionAccessToken(ACCESS_TOKEN, TOKEN_EXPIRES_AT))
@@ -70,55 +65,31 @@ class GuestContributionServiceTest {
     }
 
     @Test
-    fun `존재하지 않는 이름도 비밀번호 불일치와 같은 오류를 반환하고 실패를 기록한다`() {
-        val attempt = GuestContributionAccessAttempt(FUNDING_ID, "없는 이름")
+    fun `존재하지 않는 이름도 비밀번호 불일치와 같은 오류를 반환한다`() {
         givenFunding()
-        given(accessAttemptRepository.findByFundingIdAndParticipantNameForUpdate(FUNDING_ID, "없는 이름"))
-            .willReturn(attempt)
         givenGuestContributions("없는 이름", emptyList())
+        given(passwordVerifier.authenticate("1234", emptyList()))
+            .willThrow(BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH))
 
         assertError(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH) {
             service.access(FUNDING_ID, AccessGuestContributionRequest("없는 이름", "1234"))
         }
-
-        assertEquals(1, attempt.failedCount)
     }
 
     @Test
-    fun `비밀번호를 다섯 번 틀리면 10분 동안 잠근다`() {
-        val attempt = GuestContributionAccessAttempt(FUNDING_ID, "민지")
-        repeat(4) { attempt.recordFailure(NOW) }
-        givenFunding()
-        given(accessAttemptRepository.findByFundingIdAndParticipantNameForUpdate(FUNDING_ID, "민지"))
-            .willReturn(attempt)
-        givenGuestContributions("민지", emptyList())
-
-        assertError(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH) {
-            service.access(FUNDING_ID, AccessGuestContributionRequest("민지", "0000"))
-        }
-        assertEquals(NOW.plusMinutes(10), attempt.lockedUntil)
-
-        assertError(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED) {
-            service.access(FUNDING_ID, AccessGuestContributionRequest("민지", "1234"))
-        }
-    }
-
-    @Test
-    fun `인증에 성공하면 기존 실패 횟수를 초기화한다`() {
-        val attempt = GuestContributionAccessAttempt(FUNDING_ID, "민지").also { it.recordFailure(NOW) }
+    fun `롤링페이퍼가 없는 기존 보탬도 조회할 수 있다`() {
         val contribution = contribution()
         givenFunding()
-        given(accessAttemptRepository.findByFundingIdAndParticipantNameForUpdate(FUNDING_ID, "민지"))
-            .willReturn(attempt)
         givenGuestContributions("민지", listOf(contribution))
-        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(message())
+        given(passwordVerifier.authenticate("1234", listOf(contribution))).willReturn(contribution)
+        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(null)
         given(accessTokenProvider.issue(FUNDING_ID, CONTRIBUTION_ID))
             .willReturn(IssuedGuestContributionAccessToken(ACCESS_TOKEN, TOKEN_EXPIRES_AT))
 
-        service.access(FUNDING_ID, AccessGuestContributionRequest("민지", "1234"))
+        val response = service.access(FUNDING_ID, AccessGuestContributionRequest("민지", "1234"))
 
-        assertEquals(0, attempt.failedCount)
-        assertNull(attempt.lockedUntil)
+        assertNull(response.message)
+        assertNull(response.paperTemplateCode)
     }
 
     @Test
@@ -155,6 +126,23 @@ class GuestContributionServiceTest {
             )
         }
         verify(rollingPaperMessageRepository, never()).findByContributionId(CONTRIBUTION_ID)
+    }
+
+    @Test
+    fun `롤링페이퍼가 없는 기존 보탬을 수정하면 새 행을 만든다`() {
+        val contribution = contribution()
+        givenToken(contribution)
+        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(null)
+        given(rollingPaperMessageRepository.save(any(RollingPaperMessage::class.java))).willAnswer { it.arguments[0] }
+
+        val response = service.update(
+            FUNDING_ID,
+            ACCESS_TOKEN,
+            UpdateGuestContributionRequest("민지", "새 메시지", "BLUE_DOT_GRID"),
+        )
+
+        assertEquals("새 메시지", response.message)
+        verify(rollingPaperMessageRepository).save(any(RollingPaperMessage::class.java))
     }
 
     @Test
@@ -199,6 +187,7 @@ class GuestContributionServiceTest {
     }
 
     private fun givenToken(contribution: Contribution) {
+        givenFunding()
         given(accessTokenProvider.parse(ACCESS_TOKEN))
             .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
         given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID))

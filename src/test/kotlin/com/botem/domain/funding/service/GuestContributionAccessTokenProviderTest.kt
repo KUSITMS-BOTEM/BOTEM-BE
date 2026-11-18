@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -16,7 +17,7 @@ class GuestContributionAccessTokenProviderTest {
 
     @Test
     fun `발급한 토큰에서 펀딩과 보탬 ID를 확인한다`() {
-        val provider = provider(Instant.parse("2030-01-01T00:00:00Z"))
+        val provider = provider(MutableClock(Instant.parse("2030-01-01T00:00:00.750Z")))
 
         val issued = provider.issue(FUNDING_ID, CONTRIBUTION_ID)
         val principal = provider.parse(issued.token)
@@ -28,8 +29,8 @@ class GuestContributionAccessTokenProviderTest {
 
     @Test
     fun `위조된 토큰은 거부한다`() {
-        val provider = provider(Instant.parse("2030-01-01T00:00:00Z"))
-        val otherProvider = provider(Instant.parse("2030-01-01T00:00:00Z"), OTHER_SECRET)
+        val provider = provider(MutableClock(Instant.parse("2030-01-01T00:00:00Z")))
+        val otherProvider = provider(MutableClock(Instant.parse("2030-01-01T00:00:00Z")), OTHER_SECRET)
         val token = otherProvider.issue(FUNDING_ID, CONTRIBUTION_ID).token
 
         assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
@@ -39,15 +40,17 @@ class GuestContributionAccessTokenProviderTest {
 
     @Test
     fun `만료된 토큰은 만료 오류로 거부한다`() {
-        val provider = provider(Instant.parse("2020-01-01T00:00:00Z"))
+        val clock = MutableClock(Instant.parse("2030-01-01T00:00:00Z"))
+        val provider = provider(clock)
         val token = provider.issue(FUNDING_ID, CONTRIBUTION_ID).token
+        clock.advance(Duration.ofMinutes(11))
 
         assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_EXPIRED) {
             provider.parse(token)
         }
     }
 
-    private fun provider(instant: Instant, secret: String = SECRET) =
+    private fun provider(clock: Clock, secret: String = SECRET) =
         GuestContributionAccessTokenProvider(
             jwtProperties = JwtProperties(
                 secret = secret,
@@ -55,8 +58,22 @@ class GuestContributionAccessTokenProviderTest {
                 refreshTokenExpiration = Duration.ofDays(7),
             ),
             tokenProperties = GuestContributionTokenProperties(Duration.ofMinutes(10)),
-            clock = Clock.fixed(instant, ZoneOffset.UTC),
+            clock = clock,
         )
+
+    private class MutableClock(
+        private var current: Instant,
+    ) : Clock() {
+        override fun getZone(): ZoneId = ZoneOffset.UTC
+
+        override fun withZone(zone: ZoneId): Clock = this
+
+        override fun instant(): Instant = current
+
+        fun advance(duration: Duration) {
+            current = current.plus(duration)
+        }
+    }
 
     private fun assertError(errorCode: FundingErrorCode, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)

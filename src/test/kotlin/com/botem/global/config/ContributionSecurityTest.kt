@@ -59,7 +59,7 @@ class ContributionSecurityTest {
                 .content("""{"guestPassword": "1234"}"""),
         )
             .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.error.code").value("FUNDING_023"))
+            .andExpect(jsonPath("$.error.code").value("FUNDING_002"))
     }
 
     @Test

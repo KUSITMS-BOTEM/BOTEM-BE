@@ -12,6 +12,7 @@ import io.jsonwebtoken.security.Keys
 import org.springframework.stereotype.Component
 import java.time.Clock
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.UUID
 import javax.crypto.SecretKey
@@ -26,8 +27,8 @@ class GuestContributionAccessTokenProvider(
     private val secretKey: SecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret))
 
     fun issue(fundingId: Long, contributionId: Long): IssuedGuestContributionAccessToken {
-        val issuedAt = Instant.now(clock)
-        val expiresAt = issuedAt.plus(tokenProperties.accessTokenExpiration)
+        val issuedAt = Instant.now(clock).truncatedTo(ChronoUnit.SECONDS)
+        val expiresAt = issuedAt.plus(tokenProperties.accessTokenExpiration).truncatedTo(ChronoUnit.SECONDS)
         val token = Jwts.builder()
             .id(UUID.randomUUID().toString())
             .subject(contributionId.toString())
@@ -45,6 +46,7 @@ class GuestContributionAccessTokenProvider(
         val claims = try {
             Jwts.parser()
                 .verifyWith(secretKey)
+                .clock { Date.from(Instant.now(clock)) }
                 .build()
                 .parseSignedClaims(token)
                 .payload

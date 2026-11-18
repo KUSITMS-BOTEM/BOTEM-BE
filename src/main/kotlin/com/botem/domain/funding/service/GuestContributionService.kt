@@ -7,31 +7,24 @@ import com.botem.domain.funding.dto.response.UpdatedGuestContributionResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.FundingStatus
-import com.botem.domain.funding.entity.GuestContributionAccessAttempt
+import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
-import com.botem.domain.funding.repository.GuestContributionAccessAttemptRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
-import java.time.LocalDateTime
 
 @Service
 class GuestContributionService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
-    private val accessAttemptRepository: GuestContributionAccessAttemptRepository,
     private val accessTokenProvider: GuestContributionAccessTokenProvider,
-    private val clock: Clock,
+    private val passwordVerifier: GuestContributionPasswordVerifier,
 ) {
-
-    private val passwordEncoder = BCryptPasswordEncoder()
 
     // 인증 실패 횟수는 오류 응답을 반환해도 유지한다.
     @Transactional(noRollbackFor = [BusinessException::class])
@@ -43,24 +36,9 @@ class GuestContributionService(
         validateGuestPassword(request.guestPassword)
         lockFunding(fundingId)
 
-        val now = LocalDateTime.now(clock)
-        val attempt = accessAttemptRepository.findByFundingIdAndParticipantNameForUpdate(
-            fundingId,
-            participantName,
-        )
-        if (attempt?.isLocked(now) == true) {
-            throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED)
-        }
-
-        val contribution = findMatchingContribution(fundingId, participantName, request.guestPassword)
-        if (contribution == null) {
-            recordFailure(attempt, fundingId, participantName, now)
-            throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH)
-        }
-
-        attempt?.reset()
+        val candidates = findGuestContributions(fundingId, participantName)
+        val contribution = passwordVerifier.authenticate(request.guestPassword, candidates)
         val message = rollingPaperMessageRepository.findByContributionId(contribution.id)
-            ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
         val issuedToken = accessTokenProvider.issue(fundingId, contribution.id)
 
         return GuestContributionResponse.of(
@@ -91,7 +69,13 @@ class GuestContributionService(
         }
         contribution.updateParticipantName(participantName)
         val rollingPaperMessage = rollingPaperMessageRepository.findByContributionId(contribution.id)
-            ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
+            ?: rollingPaperMessageRepository.save(
+                RollingPaperMessage(
+                    contributionId = contribution.id,
+                    content = message,
+                    paperTemplateCode = paperTemplateCode,
+                ),
+            )
         rollingPaperMessage.updateTextContent(message, paperTemplateCode)
 
         return UpdatedGuestContributionResponse.of(contribution, rollingPaperMessage)
@@ -103,6 +87,7 @@ class GuestContributionService(
         if (contribution.status !in CANCELLABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_CANCELLABLE)
         }
+        passwordVerifier.clear(contribution.id)
         contribution.cancel()
     }
 
@@ -111,6 +96,7 @@ class GuestContributionService(
         if (principal.fundingId != fundingId) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
         }
+        lockFunding(fundingId)
 
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(
             principal.contributionId,
@@ -145,35 +131,16 @@ class GuestContributionService(
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
     }
 
-    private fun findMatchingContribution(
+    private fun findGuestContributions(
         fundingId: Long,
         participantName: String,
-        guestPassword: String,
-    ): Contribution? =
+    ): List<Contribution> =
         contributionRepository
             .findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(
                 fundingId,
                 participantName,
                 ContributionStatus.CANCELLED,
             )
-            .firstOrNull { contribution ->
-                contribution.guestPasswordHash?.let { passwordEncoder.matches(guestPassword, it) } == true
-            }
-
-    private fun recordFailure(
-        attempt: GuestContributionAccessAttempt?,
-        fundingId: Long,
-        participantName: String,
-        now: LocalDateTime,
-    ) {
-        val accessAttempt = attempt ?: accessAttemptRepository.save(
-            GuestContributionAccessAttempt(
-                fundingId = fundingId,
-                participantName = participantName,
-            ),
-        )
-        accessAttempt.recordFailure(now)
-    }
 
     private fun normalizeParticipantName(participantName: String): String {
         val normalized = participantName.trim { it.isWhitespace() || Character.isSpaceChar(it) }

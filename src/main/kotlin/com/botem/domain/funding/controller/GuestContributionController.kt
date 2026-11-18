@@ -5,9 +5,9 @@ import com.botem.domain.funding.dto.request.AccessGuestContributionRequest
 import com.botem.domain.funding.dto.request.UpdateGuestContributionRequest
 import com.botem.domain.funding.dto.response.GuestContributionResponse
 import com.botem.domain.funding.dto.response.UpdatedGuestContributionResponse
+import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.service.GuestContributionAccessTokenProvider
 import com.botem.domain.funding.service.GuestContributionService
-import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.response.ApiResponse
 import jakarta.validation.Valid
@@ -37,7 +37,7 @@ class GuestContributionController(
     override fun update(
         @PathVariable fundingId: Long,
         @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME, required = false) accessToken: String?,
-        @Valid @RequestBody request: UpdateGuestContributionRequest,
+        @RequestBody request: UpdateGuestContributionRequest,
     ): ApiResponse<UpdatedGuestContributionResponse> =
         ApiResponse.success(guestContributionService.update(fundingId, requireAccessToken(accessToken), request))
 

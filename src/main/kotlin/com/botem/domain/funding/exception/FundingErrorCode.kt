@@ -114,7 +114,7 @@ enum class FundingErrorCode(
     CONTRIBUTION_GUEST_IDENTITY_DUPLICATED(
         HttpStatus.CONFLICT,
         "FUNDING_032",
-        "같은 이름과 비밀번호로 등록한 보탬이 이미 있습니다.",
+        "같은 이름으로 등록한 비회원 보탬이 이미 있습니다.",
     ),
     CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID(
         HttpStatus.UNAUTHORIZED,

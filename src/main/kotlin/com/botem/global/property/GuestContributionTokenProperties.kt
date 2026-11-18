@@ -10,7 +10,7 @@ import java.time.Duration
 data class GuestContributionTokenProperties(
     val accessTokenExpiration: Duration,
 ) {
-    @get:AssertTrue(message = "비회원 보탬 접근 토큰 만료 시간은 0보다 커야 합니다")
-    val isAccessTokenExpirationPositive: Boolean
-        get() = !accessTokenExpiration.isZero && !accessTokenExpiration.isNegative
+    @get:AssertTrue(message = "비회원 보탬 접근 토큰 만료 시간은 1초 이상이어야 합니다")
+    val isAccessTokenExpirationValid: Boolean
+        get() = accessTokenExpiration >= Duration.ofSeconds(1)
 }

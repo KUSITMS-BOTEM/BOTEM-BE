@@ -11,14 +11,14 @@ data class GuestContributionResponse(
     val amount: Long,
     val status: ContributionStatus,
     val message: String?,
-    val paperTemplateCode: String,
+    val paperTemplateCode: String?,
     val accessToken: String,
     val accessTokenExpiresAt: Instant,
 ) {
     companion object {
         fun of(
             contribution: Contribution,
-            rollingPaperMessage: RollingPaperMessage,
+            rollingPaperMessage: RollingPaperMessage?,
             accessToken: String,
             accessTokenExpiresAt: Instant,
         ): GuestContributionResponse =
@@ -27,8 +27,8 @@ data class GuestContributionResponse(
                 participantName = contribution.participantName,
                 amount = contribution.amount,
                 status = contribution.status,
-                message = rollingPaperMessage.content,
-                paperTemplateCode = rollingPaperMessage.paperTemplateCode,
+                message = rollingPaperMessage?.content,
+                paperTemplateCode = rollingPaperMessage?.paperTemplateCode,
                 accessToken = accessToken,
                 accessTokenExpiresAt = accessTokenExpiresAt,
             )
