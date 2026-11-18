@@ -14,13 +14,15 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
-import jakarta.persistence.EntityManager
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -29,8 +31,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-// 마감 처리의 일괄 전환 쿼리와 결과 공개 흐름을 실제 DB로 확인한다
+// 마감 처리의 일괄 전환 쿼리와 결과 공개 흐름을 실제 DB로 확인한다.
+// 서비스 호출마다 커밋·롤백되는지 확인해야 하므로 테스트 트랜잭션 밖에서 실행한다
 @DataJpaTest
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import(
     JpaAuditingConfig::class,
     FundingResultService::class,
@@ -51,8 +55,12 @@ class FundingResultPersistenceTest {
     @Autowired
     private lateinit var contributionRepository: ContributionRepository
 
-    @Autowired
-    private lateinit var entityManager: EntityManager
+    @AfterEach
+    fun tearDown() {
+        contributionRepository.deleteAll()
+        fundingRepository.deleteAll()
+        userRepository.deleteAll()
+    }
 
     @Test
     fun `마감 후 결과를 조회하면 송금 전 참여만 0원 메시지 전용으로 바뀐다`() {
@@ -63,8 +71,6 @@ class FundingResultPersistenceTest {
         saveContribution(funding.id, 30_000L, ContributionStatus.CONFIRMED)
 
         val result = service.getResult(owner.id, funding.id)
-        entityManager.flush()
-        entityManager.clear()
 
         val converted = contributionRepository.findById(awaiting.id).orElseThrow()
         assertEquals(ContributionStatus.MESSAGE_ONLY, converted.status)
@@ -83,18 +89,26 @@ class FundingResultPersistenceTest {
     }
 
     @Test
-    fun `확인 대기를 제외하고 열면 확인 대기는 그대로 두고 확정 금액만 결과에 반영한다`() {
+    fun `확인 대기로 공개를 거부해도 마감은 커밋되고, 제외하고 열면 확정 금액만 반영한다`() {
         val owner = userRepository.save(User(kakaoId = 1L, nickname = "지유", profileImageUrl = null))
         val funding = saveFunding(owner.id)
+        val awaiting = saveContribution(funding.id, 10_000L)
         val pending = saveContribution(funding.id, 20_000L, ContributionStatus.PENDING_CONFIRMATION)
         saveContribution(funding.id, 30_000L, ContributionStatus.CONFIRMED)
 
-        assertFailsWith<BusinessException> {
+        val exception = assertFailsWith<BusinessException> {
             service.openResult(owner.id, funding.id, excludePendingContributions = false)
         }
+        assertEquals(FundingErrorCode.PENDING_CONTRIBUTION_EXISTS, exception.errorCode)
+        val rejectedFunding = fundingRepository.findById(funding.id).orElseThrow()
+        assertEquals(FundingStatus.CLOSED, rejectedFunding.status)
+        assertEquals(null, rejectedFunding.resultOpenedAt)
+        assertEquals(
+            ContributionStatus.MESSAGE_ONLY,
+            contributionRepository.findById(awaiting.id).orElseThrow().status,
+        )
+
         val result = service.openResult(owner.id, funding.id, excludePendingContributions = true)
-        entityManager.flush()
-        entityManager.clear()
 
         assertEquals(30_000L, result.confirmedAmount)
         assertEquals(

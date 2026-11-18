@@ -6,11 +6,13 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
+import jakarta.persistence.EntityManager
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
@@ -46,6 +48,9 @@ class DepositConfirmationPersistenceTest {
     @Autowired
     private lateinit var contributionRepository: ContributionRepository
 
+    @Autowired
+    private lateinit var entityManager: EntityManager
+
     @Test
     fun `확정과 미입금 처리 결과가 응답 진행률에 바로 반영된다`() {
         val owner = userRepository.save(User(kakaoId = 1L, nickname = "지유", profileImageUrl = null))
@@ -65,7 +70,7 @@ class DepositConfirmationPersistenceTest {
     }
 
     @Test
-    fun `전체 확정은 확인 대기만 확정하고 송금 전 참여는 그대로 둔다`() {
+    fun `전체 확정으로 목표에 닿으면 보태기를 마감하고 송금 전 참여를 0원 메시지 전용으로 바꾼다`() {
         val owner = userRepository.save(User(kakaoId = 1L, nickname = "지유", profileImageUrl = null))
         val funding = saveFunding(owner.id)
         savePendingContribution(funding.id, 60_000L)
@@ -73,14 +78,16 @@ class DepositConfirmationPersistenceTest {
         val awaiting = contributionRepository.saveAndFlush(contribution(funding.id, 10_000L))
 
         val response = service.confirmAll(owner.id, funding.id)
+        entityManager.flush()
+        entityManager.clear()
 
         assertEquals(2, response.confirmedCount)
         assertEquals(110, response.progress.confirmedPercentage)
         assertTrue(response.progress.targetReached)
-        assertEquals(
-            ContributionStatus.AWAITING_TRANSFER,
-            contributionRepository.findById(awaiting.id).orElseThrow().status,
-        )
+        val converted = contributionRepository.findById(awaiting.id).orElseThrow()
+        assertEquals(ContributionStatus.MESSAGE_ONLY, converted.status)
+        assertEquals(0L, converted.amount)
+        assertEquals(FundingStatus.CLOSED, fundingRepository.findById(funding.id).orElseThrow().status)
     }
 
     private fun savePendingContribution(fundingId: Long, amount: Long): Contribution =
