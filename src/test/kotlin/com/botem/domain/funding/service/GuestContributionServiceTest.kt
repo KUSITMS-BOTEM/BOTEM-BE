@@ -15,6 +15,7 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.global.exception.BusinessException
+import com.botem.global.exception.CommonErrorCode
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
@@ -157,6 +158,75 @@ class GuestContributionServiceTest {
     }
 
     @Test
+    fun `참여자 이름과 비밀번호 형식을 서비스에서도 검증한다`() {
+        assertInvalidInput {
+            service.access(FUNDING_ID, AccessGuestContributionRequest(" ", "1234"))
+        }
+        assertInvalidInput {
+            service.access(FUNDING_ID, AccessGuestContributionRequest("민지", "12a4"))
+        }
+    }
+
+    @Test
+    fun `존재하지 않거나 취소된 펀딩의 비회원 보탬은 조회할 수 없다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
+
+        assertError(FundingErrorCode.FUNDING_NOT_FOUND) {
+            service.access(FUNDING_ID, AccessGuestContributionRequest("민지", "1234"))
+        }
+    }
+
+    @Test
+    fun `접근 토큰의 보탬이 없으면 수정할 수 없다`() {
+        givenFunding()
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(null)
+
+        assertError(FundingErrorCode.CONTRIBUTION_NOT_FOUND) {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"),
+            )
+        }
+    }
+
+    @Test
+    fun `로그인 회원의 보탬에는 비회원 접근 토큰을 사용할 수 없다`() {
+        givenToken(contribution(participantUserId = 1L))
+
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"),
+            )
+        }
+    }
+
+    @Test
+    fun `수정할 메시지와 편지지는 공백이거나 최대 길이를 넘을 수 없다`() {
+        val contribution = contribution()
+        givenToken(contribution)
+
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest("민지", " ", "BLUE_DOT_GRID"),
+            )
+        }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest("민지", "메시지", "A".repeat(51)),
+            )
+        }
+    }
+
+    @Test
     fun `송금 전 보탬은 삭제하고 입금 확인 중인 보탬은 삭제하지 않는다`() {
         val cancellable = contribution()
         givenToken(cancellable)
@@ -212,9 +282,10 @@ class GuestContributionServiceTest {
         id: Long = CONTRIBUTION_ID,
         participantName: String = "민지",
         status: ContributionStatus = ContributionStatus.AWAITING_TRANSFER,
+        participantUserId: Long? = null,
     ) = Contribution(
         fundingId = FUNDING_ID,
-        participantUserId = null,
+        participantUserId = participantUserId,
         participantName = participantName,
         amount = 10_000L,
         status = status,
@@ -231,6 +302,11 @@ class GuestContributionServiceTest {
     private fun assertError(errorCode: FundingErrorCode, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
         assertEquals(errorCode, exception.errorCode)
+    }
+
+    private fun assertInvalidInput(block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
     }
 
     companion object {

@@ -58,6 +58,9 @@ class GuestContributionPasswordVerifierTest {
         }
         assertNotNull(attempt.lockedUntil)
         assertError(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED) {
+            verifier.authenticate("0000", listOf(contribution))
+        }
+        assertError(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED) {
             verifier.authenticate("1234", listOf(contribution))
         }
 
@@ -78,6 +81,25 @@ class GuestContributionPasswordVerifierTest {
 
         verify(accessAttemptRepository).delete(secondAttempt)
         verify(accessAttemptRepository, never()).delete(firstAttempt)
+    }
+
+    @Test
+    fun `취소할 보탬의 실패 이력이 있으면 삭제한다`() {
+        val attempt = GuestContributionAccessAttempt(CONTRIBUTION_ID)
+        given(accessAttemptRepository.findByContributionIdForUpdate(CONTRIBUTION_ID)).willReturn(attempt)
+
+        verifier.clear(CONTRIBUTION_ID)
+
+        verify(accessAttemptRepository).delete(attempt)
+    }
+
+    @Test
+    fun `취소할 보탬의 실패 이력이 없어도 정상 처리한다`() {
+        given(accessAttemptRepository.findByContributionIdForUpdate(CONTRIBUTION_ID)).willReturn(null)
+
+        verifier.clear(CONTRIBUTION_ID)
+
+        verify(accessAttemptRepository, never()).delete(any(GuestContributionAccessAttempt::class.java))
     }
 
     private fun contribution(id: Long, password: String) = Contribution(

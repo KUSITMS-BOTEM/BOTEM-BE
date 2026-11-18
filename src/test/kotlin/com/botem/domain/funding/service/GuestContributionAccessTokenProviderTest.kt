@@ -4,12 +4,16 @@ import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.GuestContributionTokenProperties
 import com.botem.global.property.JwtProperties
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.io.Decoders
+import io.jsonwebtoken.security.Keys
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -50,6 +54,28 @@ class GuestContributionAccessTokenProviderTest {
         }
     }
 
+    @Test
+    fun `로그인 토큰 타입은 비회원 접근 토큰으로 사용할 수 없다`() {
+        val clock = MutableClock(Instant.parse("2030-01-01T00:00:00Z"))
+        val provider = provider(clock)
+        val token = customToken(type = "access", subject = CONTRIBUTION_ID.toString(), fundingId = FUNDING_ID)
+
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            provider.parse(token)
+        }
+    }
+
+    @Test
+    fun `필수 식별자가 없는 비회원 접근 토큰은 거부한다`() {
+        val clock = MutableClock(Instant.parse("2030-01-01T00:00:00Z"))
+        val provider = provider(clock)
+        val token = customToken(type = "guest-contribution-access", subject = null, fundingId = null)
+
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            provider.parse(token)
+        }
+    }
+
     private fun provider(clock: Clock, secret: String = SECRET) =
         GuestContributionAccessTokenProvider(
             jwtProperties = JwtProperties(
@@ -78,6 +104,18 @@ class GuestContributionAccessTokenProviderTest {
     private fun assertError(errorCode: FundingErrorCode, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
         assertEquals(errorCode, exception.errorCode)
+    }
+
+    private fun customToken(type: String, subject: String?, fundingId: Long?): String {
+        val builder = Jwts.builder()
+            .claim("type", type)
+            .issuedAt(Date.from(Instant.parse("2030-01-01T00:00:00Z")))
+            .expiration(Date.from(Instant.parse("2030-01-01T00:10:00Z")))
+        subject?.let(builder::subject)
+        fundingId?.let { builder.claim("fundingId", it) }
+        return builder
+            .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
+            .compact()
     }
 
     companion object {
