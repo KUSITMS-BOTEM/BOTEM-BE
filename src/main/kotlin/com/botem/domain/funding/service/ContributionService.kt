@@ -39,12 +39,15 @@ class ContributionService(
 
     @Transactional
     fun contribute(userId: Long?, fundingId: Long, request: CreateContributionRequest): ContributionResponse {
-        // 해시 계산과 입력 정규화는 펀딩 락을 잡기 전에 끝내 락 점유 시간을 줄인다
+        // 해시 계산과 입력 정규화는 펀딩 락을 잡기 전에 끝내 락 점유 시간을 줄인다.
+        // DB 조회는 락 이후에 해야 MySQL REPEATABLE READ 스냅샷이 앞선 요청의 커밋을 본다
         val message = request.message.normalizeOptional()
             ?: throw invalidInput("축하 메시지는 필수입니다.")
         val paperTemplateCode = request.paperTemplateCode.normalizeOptional()
             ?: throw invalidInput("편지지를 선택해야 합니다.")
-        val participantName = resolveParticipantName(userId, request.participantName)
+        if (userId == null && request.participantName.normalizeOptional() == null) {
+            throw invalidInput("참여자 이름은 필수입니다.")
+        }
         val guestPasswordHash = if (userId == null) hashGuestPassword(request.guestPassword) else null
 
         // 펀딩 단위로 잠가 남은 금액 검증과 요청 키 중복 확인을 직렬화한다
@@ -60,6 +63,7 @@ class ContributionService(
         }
 
         validateContributable(funding, request.amount)
+        val participantName = resolveParticipantName(userId, request.participantName)
 
         val contribution = contributionRepository.save(
             Contribution(
