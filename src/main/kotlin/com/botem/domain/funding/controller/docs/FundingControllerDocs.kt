@@ -201,6 +201,7 @@ interface FundingControllerDocs {
             Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
             title은 서프라이즈 펀딩에서는 null입니다.
             서프라이즈를 받는 사람이 로그인 상태로 공개 시각 전에 조회하면 403(FUNDING_046)을 반환합니다.
+            공개 시각이 지났더라도 주최자가 선물 준비를 완료하기 전이면 같은 403(FUNDING_046)을 반환합니다.
         """,
     )
     @ApiResponses(
