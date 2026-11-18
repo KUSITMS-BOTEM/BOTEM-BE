@@ -4,6 +4,7 @@ import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.global.exception.ErrorCode
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -125,6 +126,47 @@ interface FundingControllerDocs {
         @Parameter(hidden = true) tokenErrorCode: ErrorCode?,
         @Parameter(description = "펀딩 ID") fundingId: Long,
     ): ApiResponse<FundingDetailResponse>
+
+    @Operation(
+        summary = "개설자용 펀딩 관리 상세 조회",
+        description = """
+            펀딩 개설자가 진행률, 확인 대기 건수, 참여자와 메시지 현황을 확인합니다. 개설자 본인만 조회할 수 있습니다.
+            확정·대기 달성률은 홈 펀딩 카드와 같은 기준(소수점 버림)이며, 참여자별 금액은 반환하지 않습니다.
+            participants는 입금 대조를 위해 취소를 제외한 참여 기록마다 한 줄씩 참여 시각 순으로 반환합니다.
+            order는 사람 기준 첫 참여 순서(1부터)로 역할 배지에 쓰며, 같은 회원이 여러 번 보태면 같은 order를 가집니다.
+            status는 AWAITING_TRANSFER(송금 전), PENDING_CONFIRMATION(확인 대기), CONFIRMED(확정),
+            REJECTED(못 받았어요), MESSAGE_ONLY(메시지로 보탬) 중 하나입니다.
+            messageCount는 도착한 롤링페이퍼 메시지 개수이며 메시지 내용은 마감 전까지 반환하지 않습니다.
+            remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
+            revealAt은 서프라이즈 펀딩의 공개 시각이며 생일 펀딩은 null입니다.
+            managementState는 NO_PARTICIPANTS(참여자 0명), IN_PROGRESS(진행 중), TARGET_REACHED(확정 금액 100% 도달),
+            CLOSED(마감) 중 하나이며, extended는 기간을 연장한 적이 있으면 true입니다.
+            actions는 지금 가능한 관리 동작입니다. 조기 마감·상품 바꾸기·공유 카드 다시 받기는 마감 전 진행 중에만,
+            기간 연장은 생일 펀딩이 마감 후 목표에 못 미쳤고 아직 연장한 적이 없을 때만 true입니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [Content(examples = [ExampleObject(value = MANAGEMENT_DETAIL_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "펀딩 개설자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음 또는 취소된 펀딩",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+    )
+    fun getFundingManagementDetail(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+    ): ApiResponse<OwnerFundingDetailResponse>
 
     @Operation(
         summary = "마감된 펀딩 결과 조회",
@@ -368,6 +410,69 @@ interface FundingControllerDocs {
                 "message": "만료된 토큰입니다.",
                 "detail": null
               }
+            }
+        """
+        private const val MANAGEMENT_DETAIL_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "type": "BIRTHDAY",
+                "title": "지유의 생일",
+                "story": "올해 생일에는 오래 사용한 헤드폰을 바꾸고 싶어요.",
+                "promise": null,
+                "product": {
+                  "name": "소니 WH-1000XM5",
+                  "imageUrl": "https://image.example.com/product.jpg",
+                  "price": 459000,
+                  "url": "https://shop.example.com/product"
+                },
+                "targetAmount": 459000,
+                "deadline": "2026-11-30T23:59:59.999999",
+                "revealAt": null,
+                "remainingDays": 7,
+                "confirmedPercentage": 45,
+                "pendingPercentage": 15,
+                "pendingContributionCount": 2,
+                "targetReached": false,
+                "extended": false,
+                "participantCount": 3,
+                "participants": [
+                  {
+                    "contributionId": 31,
+                    "order": 1,
+                    "name": "하린",
+                    "profileImageUrl": "https://image.example.com/profile.jpg",
+                    "status": "CONFIRMED",
+                    "participatedAt": "2026-11-20T14:03:12"
+                  },
+                  {
+                    "contributionId": 32,
+                    "order": 2,
+                    "name": "도윤",
+                    "profileImageUrl": null,
+                    "status": "PENDING_CONFIRMATION",
+                    "participatedAt": "2026-11-21T09:41:00"
+                  },
+                  {
+                    "contributionId": 33,
+                    "order": 3,
+                    "name": "민지",
+                    "profileImageUrl": null,
+                    "status": "MESSAGE_ONLY",
+                    "participatedAt": "2026-11-22T20:15:30"
+                  }
+                ],
+                "messageCount": 3,
+                "managementState": "IN_PROGRESS",
+                "actions": {
+                  "canCloseEarly": true,
+                  "canExtend": false,
+                  "canChangeProduct": true,
+                  "canReissueShareCard": true
+                }
+              },
+              "error": null
             }
         """
         private const val RESULT_EXAMPLE = """

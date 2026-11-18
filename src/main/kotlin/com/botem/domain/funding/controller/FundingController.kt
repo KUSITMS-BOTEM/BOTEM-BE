@@ -5,9 +5,11 @@ import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
 import com.botem.domain.funding.service.FundingResultService
+import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.ErrorCode
 import com.botem.global.jwt.JwtAuthenticationFilter
@@ -30,6 +32,7 @@ class FundingController(
     private val fundingCreationService: FundingCreationService,
     private val fundingResultService: FundingResultService,
     private val fundingDetailService: FundingDetailService,
+    private val ownerFundingDetailService: OwnerFundingDetailService,
 ) : FundingControllerDocs {
 
     @PostMapping
@@ -53,6 +56,13 @@ class FundingController(
 
         return ApiResponse.success(fundingDetailService.getDetail(userId, fundingId))
     }
+
+    @GetMapping("/{fundingId}/management")
+    override fun getFundingManagementDetail(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+    ): ApiResponse<OwnerFundingDetailResponse> =
+        ApiResponse.success(ownerFundingDetailService.getManagementDetail(userId, fundingId))
 
     @GetMapping("/{fundingId}/result")
     override fun getFundingResult(
