@@ -4,13 +4,44 @@ import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.funding.repository.projection.FundingParticipantPreviewProjection
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface ContributionRepository : JpaRepository<Contribution, Long> {
 
     fun findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId: Long): List<Contribution>
+
+    fun findByFundingIdAndRequestKey(fundingId: Long, requestKey: String): Contribution?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT contribution
+        FROM Contribution contribution
+        WHERE contribution.id = :contributionId
+          AND contribution.fundingId = :fundingId
+        """,
+    )
+    fun findByIdAndFundingIdForUpdate(
+        @Param("contributionId") contributionId: Long,
+        @Param("fundingId") fundingId: Long,
+    ): Contribution?
+
+    @Query(
+        """
+        SELECT COALESCE(SUM(contribution.amount), 0)
+        FROM Contribution contribution
+        WHERE contribution.fundingId = :fundingId
+          AND contribution.status = :status
+        """,
+    )
+    fun sumAmountByFundingIdAndStatus(
+        @Param("fundingId") fundingId: Long,
+        @Param("status") status: ContributionStatus,
+    ): Long
 
     fun existsByFundingIdAndStatus(
         fundingId: Long,

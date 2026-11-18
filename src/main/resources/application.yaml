@@ -7,6 +7,10 @@ spring:
     clients:
       connect-timeout: 3s
       read-timeout: 5s
+  # 금액 같은 정수 필드에 소수를 보내면 잘라서 받지 않고 400으로 거절한다
+  jackson:
+    deserialization:
+      accept-float-as-int: false
 
 wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}
