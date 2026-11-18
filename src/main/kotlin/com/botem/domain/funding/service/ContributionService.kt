@@ -222,6 +222,9 @@ class ContributionService(
     // 상세 조회의 canContributeAmount와 같은 기준(마감 전 + 확정 금액 기준 미달성)으로 막는다
     private fun validateContributable(funding: Funding, amount: Long) {
         validateOpen(funding)
+        if (funding.earlyClosedAt != null) {
+            throw BusinessException(FundingErrorCode.FUNDING_CLOSED)
+        }
 
         val confirmedAmount = contributionRepository.sumAmountByFundingIdAndStatus(
             funding.id,
