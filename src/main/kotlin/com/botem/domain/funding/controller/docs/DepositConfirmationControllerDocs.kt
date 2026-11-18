@@ -135,7 +135,18 @@ interface DepositConfirmationControllerDocs {
         SwaggerApiResponse(
             responseCode = "409",
             description = "확인 대기가 아닌 참여 또는 결과를 연 펀딩",
-            content = [Content(examples = [ExampleObject(value = NOT_PENDING_EXAMPLE)])],
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_030", summary = "확인 대기 아님", value = NOT_PENDING_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_031",
+                            summary = "결과를 연 펀딩",
+                            value = RESULT_ALREADY_OPENED_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
         ),
     )
     fun reject(
