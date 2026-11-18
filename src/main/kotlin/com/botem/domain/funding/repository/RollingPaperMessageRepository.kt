@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param
 
 interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Long> {
 
+    fun findByContributionId(contributionId: Long): RollingPaperMessage?
+
     @Query(
         """
         SELECT new com.botem.domain.funding.repository.projection.RollingPaperMessageProjection(
