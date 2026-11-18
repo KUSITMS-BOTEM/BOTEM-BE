@@ -29,6 +29,7 @@ import kotlin.test.assertTrue
 @Import(
     JpaAuditingConfig::class,
     DepositConfirmationService::class,
+    FundingContributionCloser::class,
     DepositConfirmationPersistenceTest.FixedClockConfig::class,
 )
 class DepositConfirmationPersistenceTest {

@@ -10,6 +10,7 @@ import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
@@ -31,16 +32,19 @@ class FundingResultServiceTest {
 
     private val fundingRepository = mock(FundingRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
+    private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val service = FundingResultService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
+        rollingPaperMessageRepository = rollingPaperMessageRepository,
+        fundingContributionCloser = FundingContributionCloser(contributionRepository),
         clock = Clock.fixed(Instant.parse("2026-11-14T15:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
     @Test
     fun `개설자가 마감된 생일 펀딩 결과를 조회한다`() {
         val funding = funding()
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
             .willReturn(listOf(summary(confirmedAmount = 80_000L, participantCount = 4L)))
 
@@ -58,7 +62,7 @@ class FundingResultServiceTest {
     @Test
     fun `다른 사용자의 펀딩 결과 조회를 거부한다`() {
         val funding = funding()
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
 
         val exception = assertFailsWith<BusinessException> {
             service.getResult(USER_ID + 1, FUNDING_ID)
@@ -70,7 +74,7 @@ class FundingResultServiceTest {
 
     @Test
     fun `존재하지 않는 펀딩 결과 조회를 거부한다`() {
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.empty())
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
 
         val exception = assertFailsWith<BusinessException> {
             service.getResult(USER_ID, FUNDING_ID)
@@ -82,7 +86,7 @@ class FundingResultServiceTest {
     @Test
     fun `참여 내역이 없는 펀딩 결과는 금액과 참여자 수를 0으로 반환한다`() {
         val funding = funding()
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID))).willReturn(emptyList())
 
         val result = service.getResult(USER_ID, FUNDING_ID)
@@ -96,7 +100,7 @@ class FundingResultServiceTest {
     @Test
     fun `서프라이즈 펀딩 결과 조회를 거부한다`() {
         val funding = funding(type = FundingType.SURPRISE)
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
 
         val exception = assertFailsWith<BusinessException> {
             service.getResult(USER_ID, FUNDING_ID)
@@ -108,7 +112,7 @@ class FundingResultServiceTest {
     @Test
     fun `마감 전 펀딩 결과 조회를 거부한다`() {
         val funding = funding(deadline = NOW.plusMinutes(1))
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
 
         val exception = assertFailsWith<BusinessException> {
             service.getResult(USER_ID, FUNDING_ID)
@@ -120,7 +124,7 @@ class FundingResultServiceTest {
     @Test
     fun `결과 조회가 허용되지 않은 펀딩 상태를 거부한다`() {
         val funding = funding(status = FundingStatus.WAITING_REVEAL)
-        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
 
         val exception = assertFailsWith<BusinessException> {
             service.getResult(USER_ID, FUNDING_ID)
@@ -133,16 +137,10 @@ class FundingResultServiceTest {
     fun `확인 대기 참여가 없으면 펀딩 결과를 열고 최신 결과를 반환한다`() {
         val funding = funding()
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
-        given(
-            contributionRepository.existsByFundingIdAndStatus(
-                FUNDING_ID,
-                ContributionStatus.PENDING_CONFIRMATION,
-            ),
-        ).willReturn(false)
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
             .willReturn(listOf(summary(confirmedAmount = 120_000L, participantCount = 5L)))
 
-        val result = service.openResult(USER_ID, FUNDING_ID)
+        val result = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
 
         assertEquals(NOW, result.resultOpenedAt)
         assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
@@ -154,15 +152,9 @@ class FundingResultServiceTest {
     fun `참여 내역이 없는 펀딩도 결과를 열 수 있다`() {
         val funding = funding()
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
-        given(
-            contributionRepository.existsByFundingIdAndStatus(
-                FUNDING_ID,
-                ContributionStatus.PENDING_CONFIRMATION,
-            ),
-        ).willReturn(false)
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID))).willReturn(emptyList())
 
-        val result = service.openResult(USER_ID, FUNDING_ID)
+        val result = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
 
         assertEquals(NOW, result.resultOpenedAt)
         assertEquals(0L, result.confirmedAmount)
@@ -175,7 +167,7 @@ class FundingResultServiceTest {
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
 
         val exception = assertFailsWith<BusinessException> {
-            service.openResult(USER_ID, FUNDING_ID)
+            service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
         }
 
         assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
@@ -185,21 +177,16 @@ class FundingResultServiceTest {
     fun `확인 대기 참여가 있으면 펀딩 결과를 열 수 없다`() {
         val funding = funding()
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
-        given(
-            contributionRepository.existsByFundingIdAndStatus(
-                FUNDING_ID,
-                ContributionStatus.PENDING_CONFIRMATION,
-            ),
-        ).willReturn(true)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 50_000L, participantCount = 3L, pendingCount = 1L)))
 
         val exception = assertFailsWith<BusinessException> {
-            service.openResult(USER_ID, FUNDING_ID)
+            service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
         }
 
         assertEquals(FundingErrorCode.PENDING_CONTRIBUTION_EXISTS, exception.errorCode)
         assertEquals(null, funding.resultOpenedAt)
         assertEquals(FundingStatus.CLOSED, funding.status)
-        verify(contributionRepository, never()).summarizeByFundingIds(listOf(FUNDING_ID))
     }
 
     @Test
@@ -211,13 +198,43 @@ class FundingResultServiceTest {
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
             .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 3L)))
 
-        val result = service.openResult(USER_ID, FUNDING_ID)
+        val result = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
 
         assertEquals(firstOpenedAt, result.resultOpenedAt)
-        verify(contributionRepository, never()).existsByFundingIdAndStatus(
-            FUNDING_ID,
-            ContributionStatus.PENDING_CONFIRMATION,
-        )
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+    }
+
+    @Test
+    fun `결과를 열기 전 조회하면 보태기를 마감하고 송금 전 참여를 메시지 전용으로 바꾼다`() {
+        val funding = funding(status = FundingStatus.FUNDING)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 0L, participantCount = 2L, pendingCount = 1L)))
+        given(rollingPaperMessageRepository.countByFundingId(FUNDING_ID)).willReturn(2L)
+
+        val result = service.getResult(USER_ID, FUNDING_ID)
+
+        assertEquals(FundingStatus.CLOSED, funding.status)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        assertEquals(2L, result.messageCount)
+        assertEquals(1L, result.pendingContributionCount)
+        assertTrue(result.pendingCleanupRequired)
+    }
+
+    @Test
+    fun `확인 대기를 결과에서 제외하겠다고 요청하면 확인 대기가 있어도 결과를 연다`() {
+        val funding = funding()
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 50_000L, participantCount = 3L, pendingCount = 1L)))
+
+        val result = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = true)
+
+        assertEquals(NOW, result.resultOpenedAt)
+        assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
+        assertEquals(50_000L, result.confirmedAmount)
+        assertEquals(1L, result.pendingContributionCount)
+        assertFalse(result.pendingCleanupRequired)
     }
 
     private fun funding(
@@ -256,12 +273,13 @@ class FundingResultServiceTest {
     private fun summary(
         confirmedAmount: Long,
         participantCount: Long,
+        pendingCount: Long = 0L,
     ): FundingContributionSummary =
         FundingContributionSummary(
             fundingId = FUNDING_ID,
             confirmedAmount = confirmedAmount,
-            pendingAmount = 0L,
-            pendingCount = 0L,
+            pendingAmount = pendingCount * 10_000L,
+            pendingCount = pendingCount,
             participantCount = participantCount,
         )
 

@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyIterable
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -37,6 +39,7 @@ class DepositConfirmationServiceTest {
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         userRepository = userRepository,
+        fundingContributionCloser = FundingContributionCloser(contributionRepository),
         clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -149,6 +152,32 @@ class DepositConfirmationServiceTest {
         assertTrue(pending.all { it.status == ContributionStatus.CONFIRMED })
         assertEquals(120, response.progress.confirmedPercentage)
         assertTrue(response.progress.targetReached)
+    }
+
+    @Test
+    fun `확정 금액이 목표에 닿으면 보태기를 마감하고 송금 전 참여를 메시지 전용으로 바꾼다`() {
+        val funding = funding()
+        givenLockedFunding(funding)
+        givenContribution(ContributionStatus.PENDING_CONFIRMATION)
+        givenSummary(confirmedAmount = 100_000L)
+
+        service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
+
+        assertEquals(FundingStatus.CLOSED, funding.status)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+    }
+
+    @Test
+    fun `확정 금액이 목표에 못 미치면 보태기를 마감하지 않는다`() {
+        val funding = funding()
+        givenLockedFunding(funding)
+        givenContribution(ContributionStatus.PENDING_CONFIRMATION)
+        givenSummary(confirmedAmount = 99_999L)
+
+        service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
+
+        assertEquals(FundingStatus.FUNDING, funding.status)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
     }
 
     @Test
