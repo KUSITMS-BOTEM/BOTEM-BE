@@ -1,8 +1,10 @@
 package com.botem.domain.funding.controller.docs
 
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
+import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.global.exception.ErrorCode
@@ -169,6 +171,111 @@ interface FundingControllerDocs {
     ): ApiResponse<OwnerFundingDetailResponse>
 
     @Operation(
+        summary = "펀딩 기간 연장",
+        description = """
+            마감된 일반 생일 펀딩의 마감일을 한 번 연장합니다. 펀딩 개설자 본인만 요청할 수 있습니다.
+            새 마감일은 요청한 날짜의 마지막 시각으로 저장되며, 요청일로부터 최대 14일까지 선택할 수 있습니다.
+            목표 금액에 도달하지 않은 펀딩만 연장할 수 있고 기존 참여 내역과 확정 금액은 유지됩니다.
+            기존 마감일까지 송금 완료하지 않은 보탬은 메시지만 남기고, 연장 이후 새 보탬으로 다시 참여할 수 있습니다.
+            결과를 이미 열었다면 공개된 롤링페이퍼를 유지한 채 다시 진행 상태로 전환합니다.
+            연장 기간에는 추가 보태기와 메시지 작성이 가능하지만, 확정 금액이 목표에 도달하면 금액 보태기는 종료됩니다.
+            비회원은 기존 참여와 같은 이름으로 새 참여를 만들 수 없으며 기존 참여는 발급받은 접근 토큰으로 관리합니다.
+        """,
+    )
+    @RequestBody(
+        required = true,
+        content = [Content(examples = [ExampleObject(value = EXTEND_FUNDING_REQUEST_EXAMPLE)])],
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "기간 연장 성공",
+            content = [Content(examples = [ExampleObject(value = EXTEND_FUNDING_RESPONSE_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "생일 펀딩이 아니거나 날짜 형식 또는 새 마감일이 잘못됨",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(
+                            name = "COMMON_001",
+                            summary = "날짜 형식 오류",
+                            value = FUNDING_EXTENSION_DATE_FORMAT_INVALID_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_004",
+                            summary = "생일 펀딩이 아님",
+                            value = BIRTHDAY_FUNDING_REQUIRED_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_040",
+                            summary = "새 마감일 오류",
+                            value = FUNDING_EXTENSION_DEADLINE_INVALID_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_041",
+                            summary = "최대 연장 기간 초과",
+                            value = FUNDING_EXTENSION_PERIOD_EXCEEDED_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "펀딩 개설자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "마감 전, 연장할 수 없는 상태, 연장 횟수 초과, 목표 금액 달성 또는 진행 중 펀딩 개수 초과",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(
+                            name = "FUNDING_019",
+                            summary = "진행 중 펀딩 5개",
+                            value = ACTIVE_FUNDING_LIMIT_EXCEEDED_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_021",
+                            summary = "목표 금액 달성",
+                            value = FUNDING_TARGET_REACHED_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_037",
+                            summary = "마감 전",
+                            value = FUNDING_EXTENSION_BEFORE_DEADLINE_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_038",
+                            summary = "연장할 수 없는 상태",
+                            value = FUNDING_EXTENSION_NOT_AVAILABLE_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_039",
+                            summary = "연장 횟수 초과",
+                            value = FUNDING_EXTENSION_LIMIT_EXCEEDED_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    fun extendFunding(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+        request: ExtendFundingRequest,
+    ): ApiResponse<FundingExtensionResponse>
+
+    @Operation(
         summary = "마감된 펀딩 결과 조회",
         description = """
             로그인한 펀딩 개설자가 마감된 생일 펀딩의 결과를 조회합니다. 마감 여부는 마감일과 현재 시각으로 판단합니다.
@@ -178,6 +285,7 @@ interface FundingControllerDocs {
             pendingCleanupRequired가 true면 기본 팡 열기 요청 전에 확인 대기(pendingContributionCount건)를 정리해야 합니다.
             정리하지 않고 열려면 excludePendingContributions=true로 요청해 확인 대기를 결과에서 제외합니다.
             이 API는 결과 열람 상태를 변경하지 않으며, resultOpenedAt이 null이면 아직 팡을 열지 않은 상태입니다.
+            기간을 연장하면 기존 결과 열람 상태가 초기화되며, 새 마감일 전에는 결과를 조회할 수 없습니다.
         """,
     )
     @ApiResponses(
@@ -232,6 +340,7 @@ interface FundingControllerDocs {
             excludePendingContributions=true로 요청하면 남은 확인 대기를 결과 금액에서 제외하고 엽니다.
             제외된 참여는 상태를 그대로 유지해 참여자에게는 '확인 중'으로 보입니다.
             이미 결과를 연 펀딩에 다시 요청하면 상태를 변경하지 않고 기존 결과를 반환합니다.
+            단, 기간을 연장한 펀딩은 기존 결과 열람 상태가 초기화되므로 새 마감일 이후 다시 열어야 합니다.
         """,
     )
     @ApiResponses(
@@ -483,6 +592,35 @@ interface FundingControllerDocs {
               "error": null
             }
         """
+        private const val EXTEND_FUNDING_REQUEST_EXAMPLE = """
+            {
+              "newDeadline": "2026-11-30"
+            }
+        """
+        private const val EXTEND_FUNDING_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "status": "FUNDING",
+                "deadline": "2026-11-30T23:59:59.999999",
+                "extensionCount": 1,
+                "extendedAt": "2026-11-18T14:30:00"
+              },
+              "error": null
+            }
+        """
+        private const val FUNDING_EXTENSION_DATE_FORMAT_INVALID_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_001",
+                "message": "입력값이 올바르지 않습니다.",
+                "detail": "newDeadline: 올바르지 않은 값입니다"
+              }
+            }
+        """
         private const val RESULT_EXAMPLE = """
             {
               "success": true,
@@ -585,6 +723,72 @@ interface FundingControllerDocs {
               "error": {
                 "code": "FUNDING_007",
                 "message": "입금 확인 대기 중인 참여를 모두 확인한 후 결과를 열 수 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_TARGET_REACHED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_021",
+                "message": "목표 금액을 이미 달성한 펀딩입니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_EXTENSION_BEFORE_DEADLINE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_037",
+                "message": "펀딩이 마감된 후 기간을 연장할 수 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_EXTENSION_NOT_AVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_038",
+                "message": "현재 상태에서는 펀딩 기간을 연장할 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_EXTENSION_LIMIT_EXCEEDED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_039",
+                "message": "펀딩 기간은 한 번만 연장할 수 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_EXTENSION_DEADLINE_INVALID_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_040",
+                "message": "새 마감일은 현재 시각과 기존 마감일 이후여야 합니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_EXTENSION_PERIOD_EXCEEDED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_041",
+                "message": "펀딩 기간은 최대 14일까지 연장할 수 있습니다.",
                 "detail": null
               }
             }

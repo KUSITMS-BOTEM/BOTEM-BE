@@ -354,6 +354,93 @@ class FundingTest {
         assertEquals(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE, statusException.errorCode)
     }
 
+    @Test
+    fun `마감된 생일 펀딩을 연장하면 진행 상태와 새 마감 정보를 기록한다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+        setField(funding, "status", FundingStatus.CLOSED)
+        val newDeadline = OPENED_AT.plusDays(14)
+
+        funding.extendDeadline(newDeadline, OPENED_AT, OPENED_AT, confirmedAmount = 80_000L)
+
+        assertEquals(newDeadline, funding.deadline)
+        assertEquals(1, funding.extensionCount)
+        assertEquals(OPENED_AT, funding.extendedAt)
+        assertEquals(FundingStatus.FUNDING, funding.status)
+    }
+
+    @Test
+    fun `결과를 연 펀딩을 연장하면 롤링페이퍼는 유지할 수 있도록 결과 확정 상태만 초기화한다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+        funding.openResult(OPENED_AT)
+
+        funding.extendDeadline(
+            OPENED_AT.plusDays(7),
+            requestedAt = OPENED_AT,
+            extendedAt = OPENED_AT.plusHours(1),
+            confirmedAmount = 80_000L,
+        )
+
+        assertEquals(null, funding.resultOpenedAt)
+        assertEquals(FundingStatus.FUNDING, funding.status)
+    }
+
+    @Test
+    fun `서프라이즈와 마감 전 생일 펀딩은 연장할 수 없다`() {
+        val surprise = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.plusDays(1),
+        )
+        val typeException = assertFailsWith<BusinessException> {
+            surprise.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+        }
+        assertEquals(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED, typeException.errorCode)
+
+        val ongoing = funding(deadline = OPENED_AT.plusMinutes(1))
+        val deadlineException = assertFailsWith<BusinessException> {
+            ongoing.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_BEFORE_DEADLINE, deadlineException.errorCode)
+    }
+
+    @Test
+    fun `연장 횟수를 모두 사용했거나 연장할 수 없는 상태이면 거부한다`() {
+        val alreadyExtended = funding(deadline = OPENED_AT.minusDays(1))
+        setField(alreadyExtended, "extensionCount", 1)
+        val countException = assertFailsWith<BusinessException> {
+            alreadyExtended.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_LIMIT_EXCEEDED, countException.errorCode)
+
+        val cancelled = funding(deadline = OPENED_AT.minusDays(1))
+        setField(cancelled, "status", FundingStatus.CANCELLED)
+        val statusException = assertFailsWith<BusinessException> {
+            cancelled.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE, statusException.errorCode)
+    }
+
+    @Test
+    fun `목표 금액을 달성했거나 새 마감일 범위를 벗어나면 연장할 수 없다`() {
+        val targetReached = funding(deadline = OPENED_AT.minusDays(1))
+        val amountException = assertFailsWith<BusinessException> {
+            targetReached.extendDeadline(OPENED_AT.plusDays(1), OPENED_AT, OPENED_AT, confirmedAmount = 100_000L)
+        }
+        assertEquals(FundingErrorCode.FUNDING_TARGET_REACHED, amountException.errorCode)
+
+        val invalidDeadline = funding(deadline = OPENED_AT.minusDays(1))
+        val deadlineException = assertFailsWith<BusinessException> {
+            invalidDeadline.extendDeadline(OPENED_AT, OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_DEADLINE_INVALID, deadlineException.errorCode)
+
+        val tooLong = funding(deadline = OPENED_AT.minusDays(1))
+        val periodException = assertFailsWith<BusinessException> {
+            tooLong.extendDeadline(OPENED_AT.plusDays(15), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_PERIOD_EXCEEDED, periodException.errorCode)
+    }
+
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,
         deadline: LocalDateTime,

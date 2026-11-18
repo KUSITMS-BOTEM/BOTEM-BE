@@ -6,6 +6,7 @@ import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
 import com.botem.domain.funding.dto.response.FundingDetailProductResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
+import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingManagementActionsResponse
 import com.botem.domain.funding.dto.response.FundingManagementState
 import com.botem.domain.funding.dto.response.FundingResultResponse
@@ -14,6 +15,7 @@ import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
+import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import org.junit.jupiter.api.Test
@@ -51,6 +53,9 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var ownerFundingDetailService: OwnerFundingDetailService
+
+    @MockitoBean
+    private lateinit var fundingExtensionService: FundingExtensionService
 
     @Test
     fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
@@ -213,6 +218,35 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.managementState").value("NO_PARTICIPANTS"))
             .andExpect(jsonPath("$.data.pendingContributionCount").value(1))
             .andExpect(jsonPath("$.data.actions.canCloseEarly").value(true))
+    }
+
+    @Test
+    fun `로그인한 개설자가 펀딩 기간을 연장한다`() {
+        val deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59, 999_999_000)
+        given(fundingExtensionService.extend(USER_ID, FUNDING_ID, deadline)).willReturn(
+            FundingExtensionResponse(
+                fundingId = FUNDING_ID,
+                status = FundingStatus.FUNDING,
+                deadline = deadline,
+                extensionCount = 1,
+                extendedAt = LocalDateTime.of(2026, 11, 18, 12, 0),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/extension", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content("""{ "newDeadline": "2026-11-30" }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
+            .andExpect(jsonPath("$.data.status").value("FUNDING"))
+            .andExpect(jsonPath("$.data.deadline").value("2026-11-30T23:59:59.999999"))
+            .andExpect(jsonPath("$.data.extensionCount").value(1))
+
+        verify(fundingExtensionService).extend(USER_ID, FUNDING_ID, deadline)
     }
 
     @Test
