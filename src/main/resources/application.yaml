@@ -18,6 +18,9 @@ wish-profile:
 funding-share:
   base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/fundings}
 
+guest-contribution-token:
+  access-token-expiration: ${GUEST_CONTRIBUTION_ACCESS_TOKEN_EXPIRATION:10m}
+
 payout-account:
   encryption:
     key: ${PAYOUT_ACCOUNT_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}

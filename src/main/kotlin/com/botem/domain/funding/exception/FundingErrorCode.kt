@@ -116,4 +116,14 @@ enum class FundingErrorCode(
         "FUNDING_032",
         "같은 이름과 비밀번호로 등록한 보탬이 이미 있습니다.",
     ),
+    CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID(
+        HttpStatus.UNAUTHORIZED,
+        "FUNDING_033",
+        "비회원 보탬 접근 토큰이 올바르지 않습니다.",
+    ),
+    CONTRIBUTION_GUEST_ACCESS_TOKEN_EXPIRED(
+        HttpStatus.UNAUTHORIZED,
+        "FUNDING_034",
+        "비회원 보탬 접근 토큰이 만료되었습니다.",
+    ),
 }
