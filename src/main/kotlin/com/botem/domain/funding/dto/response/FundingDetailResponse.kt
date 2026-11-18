@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 data class FundingDetailResponse(
     val fundingId: Long,
     val type: FundingType,
-    val title: String,
+    val title: String?,
     val product: FundingDetailProductResponse,
     val productChanged: Boolean,
     val productChangedAt: LocalDateTime?,

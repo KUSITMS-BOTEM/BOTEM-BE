@@ -171,4 +171,15 @@ enum class FundingErrorCode(
         "FUNDING_043",
         "현재 상태에서는 펀딩 상품을 변경할 수 없습니다.",
     ),
+    SURPRISE_SELF_RECIPIENT_NOT_ALLOWED(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_044",
+        "자기 자신에게는 서프라이즈 펀딩을 열 수 없습니다.",
+    ),
+    SURPRISE_FUNDING_ALREADY_EXISTS(
+        HttpStatus.CONFLICT,
+        "FUNDING_045",
+        "이미 이 친구를 위한 공개 전 서프라이즈 펀딩이 있습니다.",
+    ),
+    SURPRISE_NOT_REVEALED(HttpStatus.FORBIDDEN, "FUNDING_046", "아직 공개되지 않은 서프라이즈입니다."),
 }

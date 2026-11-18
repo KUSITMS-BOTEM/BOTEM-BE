@@ -60,6 +60,11 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(responseCode = "401", description = "보낸 토큰이 만료되었거나 유효하지 않음"),
         SwaggerApiResponse(
+            responseCode = "403",
+            description = "공개 전 서프라이즈를 받는 사람이 요청",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_NOT_REVEALED_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
             responseCode = "404",
             description = "펀딩 없음 또는 취소된 펀딩",
             content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
@@ -126,6 +131,11 @@ interface ContributionControllerDocs {
             content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
         ),
         SwaggerApiResponse(responseCode = "401", description = "보낸 토큰이 만료되었거나 유효하지 않음"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "공개 전 서프라이즈를 받는 사람이 요청",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_NOT_REVEALED_EXAMPLE)])],
+        ),
         SwaggerApiResponse(
             responseCode = "404",
             description = "펀딩 없음 또는 취소된 펀딩",
@@ -244,6 +254,17 @@ interface ContributionControllerDocs {
     ): ApiResponse<TransferSentResponse>
 
     companion object {
+        private const val SURPRISE_NOT_REVEALED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_046",
+                "message": "아직 공개되지 않은 서프라이즈입니다.",
+                "detail": null
+              }
+            }
+        """
         private const val CONTRIBUTE_GUEST_REQUEST_EXAMPLE = """
             {
               "requestKey": "7f1c2a9e-3b4d-4e5f-8a6b-1c2d3e4f5a6b",

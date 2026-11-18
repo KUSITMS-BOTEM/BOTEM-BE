@@ -33,7 +33,7 @@ class Funding(
 
     type: FundingType,
 
-    title: String,
+    title: String?,
 
     targetAmount: Long,
 
@@ -48,6 +48,13 @@ class Funding(
     product: FundingProductSnapshot,
 
     payoutAccount: FundingPayoutAccountSnapshot,
+
+    // 서프라이즈 비밀 노출 옵션. 받는 사람 계정에는 어느 경우에도 노출하지 않는다
+    @Column(nullable = false, updatable = false)
+    val showOnRecipientProfile: Boolean = false,
+
+    @Column(nullable = false, updatable = false)
+    val notifyRecipientFriends: Boolean = false,
 ) : BaseEntity() {
 
     @Id
@@ -63,8 +70,9 @@ class Funding(
     var status: FundingStatus = FundingStatus.FUNDING
         protected set
 
-    @Column(nullable = false, length = 20)
-    var title: String = title
+    // 서프라이즈 펀딩은 제목 없이 개설한다
+    @Column(length = 20)
+    var title: String? = title
         protected set
 
     @Column(nullable = false)
@@ -245,6 +253,9 @@ class Funding(
         }
     }
 
+    fun isHiddenFromRecipient(viewerId: Long?, now: LocalDateTime): Boolean =
+        type == FundingType.SURPRISE && viewerId == recipientId && revealAt?.isAfter(now) != false
+
     fun validateSurpriseRevealAccess(userId: Long, now: LocalDateTime) {
         if (type != FundingType.SURPRISE) {
             throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_REQUIRED)
@@ -325,6 +336,45 @@ class Funding(
                 promise = normalizedPromise,
                 product = product,
                 payoutAccount = payoutAccount,
+            )
+        }
+
+        fun createSurprise(
+            ownerId: Long,
+            recipientId: Long,
+            targetAmount: Long,
+            deadline: LocalDateTime,
+            revealAt: LocalDateTime,
+            showOnRecipientProfile: Boolean,
+            notifyRecipientFriends: Boolean,
+            product: FundingProductSnapshot,
+            payoutAccount: FundingPayoutAccountSnapshot,
+            now: LocalDateTime,
+        ): Funding {
+            validateTargetAmount(targetAmount)
+            validateDeadline(deadline, now)
+            // 마감(생일 전날) 다음 날 안에서만 공개한다
+            if (!revealAt.isAfter(deadline) || revealAt.toLocalDate().isAfter(deadline.toLocalDate().plusDays(1))) {
+                throw BusinessException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "공개 시각은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다.",
+                )
+            }
+
+            return Funding(
+                ownerId = ownerId,
+                recipientId = recipientId,
+                type = FundingType.SURPRISE,
+                title = null,
+                targetAmount = targetAmount,
+                deadline = deadline,
+                revealAt = revealAt,
+                story = null,
+                promise = null,
+                product = product,
+                payoutAccount = payoutAccount,
+                showOnRecipientProfile = showOnRecipientProfile,
+                notifyRecipientFriends = notifyRecipientFriends,
             )
         }
 

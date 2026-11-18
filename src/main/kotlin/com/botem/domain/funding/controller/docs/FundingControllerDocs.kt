@@ -2,6 +2,7 @@ package com.botem.domain.funding.controller.docs
 
 import com.botem.domain.funding.dto.request.ChangeFundingProductRequest
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
@@ -92,6 +93,94 @@ interface FundingControllerDocs {
     ): ApiResponse<CreateFundingResponse>
 
     @Operation(
+        summary = "서프라이즈 펀딩 개설",
+        description = """
+            친구(recipientId)의 위시 상품으로 공개 시각이 정해진 서프라이즈 펀딩을 개설합니다. 제목과 사연은 받지 않습니다.
+            상품은 받는 사람의 위시, 받을 계좌는 개설자 본인의 계좌를 스냅샷으로 저장하며 payoutAccountId를 생략하면 기본 계좌를 사용합니다.
+            마감일은 내일부터 선택할 수 있고 선택한 날짜의 마지막 시각으로 저장됩니다. revealAt은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다.
+            showOnRecipientProfile(위시 프로필에 몰래 알리기)과 notifyRecipientFriends(보탬 친구에게도 알리기)는 생략하면 true이며,
+            받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
+            받는 사람 한 명당 공개 전 서프라이즈는 하나만 열 수 있고(공개 시각이 지나면 새로 열 수 있음), 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
+            서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크입니다.
+        """,
+    )
+    @RequestBody(
+        required = true,
+        content = [Content(examples = [ExampleObject(value = CREATE_SURPRISE_FUNDING_REQUEST_EXAMPLE)])],
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "201",
+            description = "개설 성공",
+            content = [Content(examples = [ExampleObject(value = CREATE_SURPRISE_FUNDING_RESPONSE_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "목표 금액·마감일·공개 시각 입력 오류 또는 자기 자신을 받는 사람으로 지정",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "COMMON_001", summary = "입력 오류", value = INVALID_REVEAL_AT_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_044",
+                            summary = "자기 자신에게 개설",
+                            value = SURPRISE_SELF_RECIPIENT_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "받는 사람(없거나 탈퇴), 받는 사람의 위시 또는 받을 계좌 없음",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "USER_001", summary = "받는 사람 없음", value = USER_NOT_FOUND_EXAMPLE),
+                        ExampleObject(name = "WISH_002", summary = "위시 없음", value = WISH_NOT_FOUND_EXAMPLE),
+                        ExampleObject(
+                            name = "PAYOUT_ACCOUNT_001",
+                            summary = "받을 계좌 없음",
+                            value = PAYOUT_ACCOUNT_NOT_FOUND_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "공개 전 서프라이즈 존재, 사용 중인 위시, 사용할 수 없는 계좌 또는 진행 중 펀딩 개수 초과",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(
+                            name = "FUNDING_045",
+                            summary = "공개 전 서프라이즈 존재",
+                            value = SURPRISE_FUNDING_ALREADY_EXISTS_EXAMPLE,
+                        ),
+                        ExampleObject(name = "WISH_003", summary = "사용 중인 위시", value = WISH_IN_FUNDING_EXAMPLE),
+                        ExampleObject(
+                            name = "PAYOUT_ACCOUNT_005",
+                            summary = "사용할 수 없는 계좌",
+                            value = PAYOUT_ACCOUNT_NOT_AVAILABLE_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_019",
+                            summary = "진행 중 펀딩 5개",
+                            value = ACTIVE_FUNDING_LIMIT_EXCEEDED_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    fun createSurpriseFunding(
+        @Parameter(hidden = true) userId: Long,
+        request: CreateSurpriseFundingRequest,
+    ): ApiResponse<CreateFundingResponse>
+
+    @Operation(
         summary = "참여자용 펀딩 상세 조회",
         description = """
             공유 링크로 펀딩 정보와 진행 상태를 조회합니다. 로그인하지 않아도 조회할 수 있습니다.
@@ -109,6 +198,8 @@ interface FundingControllerDocs {
             giftVerification은 선물 인증을 마친 경우(COMPLETED)에만 사진, 감사 메시지, 완료 시각을 반환하고 그 외에는 null입니다.
             thankCard는 서프라이즈 펀딩에서 받는 사람이 감사 카드를 보낸 경우에만 반환하고 그 외에는 null입니다.
             Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
+            title은 서프라이즈 펀딩에서는 null입니다.
+            서프라이즈를 받는 사람이 로그인 상태로 공개 시각 전에 조회하면 403(FUNDING_046)을 반환합니다.
         """,
     )
     @ApiResponses(
@@ -116,6 +207,11 @@ interface FundingControllerDocs {
             responseCode = "200",
             description = "조회 성공",
             content = [Content(examples = [ExampleObject(value = DETAIL_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "공개 전 서프라이즈를 받는 사람이 조회",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_NOT_REVEALED_EXAMPLE)])],
         ),
         SwaggerApiResponse(
             responseCode = "401",
@@ -504,6 +600,85 @@ interface FundingControllerDocs {
     ): ApiResponse<FundingResultResponse>
 
     companion object {
+        private const val CREATE_SURPRISE_FUNDING_REQUEST_EXAMPLE = """
+            {
+              "recipientId": 7,
+              "wishId": 21,
+              "payoutAccountId": 2,
+              "targetAmount": 39000,
+              "deadline": "2026-12-12",
+              "revealAt": "2026-12-13T00:00:00",
+              "showOnRecipientProfile": true,
+              "notifyRecipientFriends": true
+            }
+        """
+        private const val CREATE_SURPRISE_FUNDING_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 13,
+                "type": "SURPRISE",
+                "status": "FUNDING",
+                "shareUrl": "https://botem.me/fundings/13"
+              },
+              "error": null
+            }
+        """
+        private const val INVALID_REVEAL_AT_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_001",
+                "message": "입력값이 올바르지 않습니다.",
+                "detail": "공개 시각은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다."
+              }
+            }
+        """
+        private const val SURPRISE_SELF_RECIPIENT_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_044",
+                "message": "자기 자신에게는 서프라이즈 펀딩을 열 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val USER_NOT_FOUND_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "USER_001",
+                "message": "사용자를 찾을 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val SURPRISE_FUNDING_ALREADY_EXISTS_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_045",
+                "message": "이미 이 친구를 위한 공개 전 서프라이즈 펀딩이 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val SURPRISE_NOT_REVEALED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_046",
+                "message": "아직 공개되지 않은 서프라이즈입니다.",
+                "detail": null
+              }
+            }
+        """
         private const val CREATE_FUNDING_REQUEST_EXAMPLE = """
             {
               "wishId": 3,

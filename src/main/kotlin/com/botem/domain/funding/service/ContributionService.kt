@@ -50,6 +50,7 @@ class ContributionService(
             guestPassword = request.guestPassword,
         )
         val funding = lockFunding(fundingId)
+        validateVisibleTo(funding, userId)
 
         contributionRepository.findByFundingIdAndRequestKey(fundingId, request.requestKey)?.let { existing ->
             if (existing.participantUserId != userId || existing.amount != request.amount) {
@@ -87,6 +88,7 @@ class ContributionService(
             guestPassword = request.guestPassword,
         )
         val funding = lockFunding(fundingId)
+        validateVisibleTo(funding, userId)
 
         contributionRepository.findByFundingIdAndRequestKey(fundingId, request.requestKey)?.let { existing ->
             if (existing.participantUserId != userId || existing.status != ContributionStatus.MESSAGE_ONLY) {
@@ -213,6 +215,13 @@ class ContributionService(
     }
 
     // 상세 조회의 canParticipate와 같은 기준(마감 전)으로 막는다
+    // 공개 전 서프라이즈를 받는 사람이 직접 호출해도 주최자 계좌 등 정보를 내려주지 않는다
+    private fun validateVisibleTo(funding: Funding, userId: Long?) {
+        if (funding.isHiddenFromRecipient(userId, LocalDateTime.now(clock))) {
+            throw BusinessException(FundingErrorCode.SURPRISE_NOT_REVEALED)
+        }
+    }
+
     private fun validateOpen(funding: Funding) {
         if (funding.status !in CONTRIBUTABLE_STATUSES || !funding.deadline.isAfter(LocalDateTime.now(clock))) {
             throw BusinessException(FundingErrorCode.FUNDING_CLOSED)

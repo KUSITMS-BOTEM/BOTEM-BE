@@ -2,6 +2,7 @@ package com.botem.domain.funding.repository
 
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.repository.projection.RevealedSurpriseCardProjection
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
@@ -35,6 +36,13 @@ interface FundingRepository : JpaRepository<Funding, Long> {
     fun existsByOwnerIdAndProductSourceWishIdAndStatusNotIn(
         ownerId: Long,
         sourceWishId: Long,
+        statuses: Collection<FundingStatus>,
+    ): Boolean
+
+    fun existsByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
+        recipientId: Long,
+        type: FundingType,
+        now: LocalDateTime,
         statuses: Collection<FundingStatus>,
     ): Boolean
 

@@ -165,6 +165,26 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `공개 전 서프라이즈를 받는 사람은 보탤 수 없다`() {
+        givenFunding(confirmedAmount = 0L, surpriseRecipientId = USER_ID)
+
+        assertErrorCode(FundingErrorCode.SURPRISE_NOT_REVEALED) {
+            service.contribute(USER_ID, FUNDING_ID, request())
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
+    fun `공개 전 서프라이즈를 받는 사람은 메시지를 남길 수 없다`() {
+        givenFunding(confirmedAmount = 0L, surpriseRecipientId = USER_ID)
+
+        assertErrorCode(FundingErrorCode.SURPRISE_NOT_REVEALED) {
+            service.leaveMessage(USER_ID, FUNDING_ID, messageRequest())
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
     fun `마감된 펀딩에는 보탤 수 없다`() {
         givenFunding(confirmedAmount = 0L, deadline = NOW)
 
@@ -410,16 +430,17 @@ class ContributionServiceTest {
     private fun givenFunding(
         confirmedAmount: Long,
         deadline: LocalDateTime = NOW.plusDays(3),
+        surpriseRecipientId: Long? = null,
         earlyClosedAt: LocalDateTime? = null,
     ) {
         val funding = Funding(
             ownerId = OTHER_USER_ID,
-            recipientId = null,
-            type = FundingType.BIRTHDAY,
+            recipientId = surpriseRecipientId,
+            type = if (surpriseRecipientId == null) FundingType.BIRTHDAY else FundingType.SURPRISE,
             title = "생일 펀딩",
             targetAmount = TARGET_AMOUNT,
             deadline = deadline,
-            revealAt = null,
+            revealAt = surpriseRecipientId?.let { deadline.plusDays(1) },
             story = "사연",
             promise = null,
             product = FundingProductSnapshot(null, "에어팟", "https://image.example.com/p.jpg", 300_000L, "https://example.com/p"),
