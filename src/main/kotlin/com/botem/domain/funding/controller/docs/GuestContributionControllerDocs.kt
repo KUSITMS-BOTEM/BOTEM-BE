@@ -96,7 +96,7 @@ interface GuestContributionControllerDocs {
     )
     fun update(
         @Parameter(description = "펀딩 ID") fundingId: Long,
-        @Parameter(description = "비회원 보탬 접근 토큰", required = true) accessToken: String,
+        @Parameter(description = "비회원 보탬 접근 토큰", required = true) accessToken: String?,
         request: UpdateGuestContributionRequest,
     ): ApiResponse<UpdatedGuestContributionResponse>
 
@@ -133,7 +133,7 @@ interface GuestContributionControllerDocs {
     )
     fun cancel(
         @Parameter(description = "펀딩 ID") fundingId: Long,
-        @Parameter(description = "비회원 보탬 접근 토큰", required = true) accessToken: String,
+        @Parameter(description = "비회원 보탬 접근 토큰", required = true) accessToken: String?,
     ): ApiResponse<Nothing>
 
     companion object {

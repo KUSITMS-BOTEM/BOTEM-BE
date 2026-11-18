@@ -7,6 +7,8 @@ import com.botem.domain.funding.dto.response.GuestContributionResponse
 import com.botem.domain.funding.dto.response.UpdatedGuestContributionResponse
 import com.botem.domain.funding.service.GuestContributionAccessTokenProvider
 import com.botem.domain.funding.service.GuestContributionService
+import com.botem.domain.funding.exception.FundingErrorCode
+import com.botem.global.exception.BusinessException
 import com.botem.global.response.ApiResponse
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -34,18 +36,22 @@ class GuestContributionController(
     @PatchMapping
     override fun update(
         @PathVariable fundingId: Long,
-        @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME) accessToken: String,
+        @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME, required = false) accessToken: String?,
         @Valid @RequestBody request: UpdateGuestContributionRequest,
     ): ApiResponse<UpdatedGuestContributionResponse> =
-        ApiResponse.success(guestContributionService.update(fundingId, accessToken, request))
+        ApiResponse.success(guestContributionService.update(fundingId, requireAccessToken(accessToken), request))
 
     @DeleteMapping
     override fun cancel(
         @PathVariable fundingId: Long,
-        @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME) accessToken: String,
+        @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME, required = false) accessToken: String?,
     ): ApiResponse<Nothing> {
-        guestContributionService.cancel(fundingId, accessToken)
+        guestContributionService.cancel(fundingId, requireAccessToken(accessToken))
 
         return ApiResponse.success()
     }
+
+    private fun requireAccessToken(accessToken: String?): String =
+        accessToken?.takeIf { it.isNotBlank() }
+            ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
 }
