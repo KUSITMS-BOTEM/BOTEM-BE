@@ -21,11 +21,9 @@ class RollingPaperMessage(
     @Column(nullable = false, updatable = false)
     val contributionId: Long,
 
-    @Lob
-    val content: String? = null,
+    content: String? = null,
 
-    @Column(nullable = false, length = 50)
-    val paperTemplateCode: String,
+    paperTemplateCode: String,
 
     @Column(length = 50)
     val decorationCode: String? = null,
@@ -55,4 +53,17 @@ class RollingPaperMessage(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
+
+    @Lob
+    var content: String? = content
+        protected set
+
+    @Column(nullable = false, length = 50)
+    var paperTemplateCode: String = paperTemplateCode
+        protected set
+
+    fun updateTextContent(content: String, paperTemplateCode: String) {
+        this.content = content
+        this.paperTemplateCode = paperTemplateCode
+    }
 }

@@ -111,4 +111,29 @@ enum class FundingErrorCode(
         "FUNDING_031",
         "결과를 연 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
     ),
+    CONTRIBUTION_GUEST_IDENTITY_DUPLICATED(
+        HttpStatus.CONFLICT,
+        "FUNDING_032",
+        "같은 이름으로 등록한 비회원 보탬이 이미 있습니다.",
+    ),
+    CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID(
+        HttpStatus.UNAUTHORIZED,
+        "FUNDING_033",
+        "비회원 보탬 접근 토큰이 올바르지 않습니다.",
+    ),
+    CONTRIBUTION_GUEST_ACCESS_TOKEN_EXPIRED(
+        HttpStatus.UNAUTHORIZED,
+        "FUNDING_034",
+        "비회원 보탬 접근 토큰이 만료되었습니다.",
+    ),
+    CONTRIBUTION_NOT_CANCELLABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_035",
+        "송금 확인 중이거나 확인된 보탬은 삭제할 수 없습니다.",
+    ),
+    CONTRIBUTION_GUEST_NAME_DUPLICATED(
+        HttpStatus.CONFLICT,
+        "FUNDING_036",
+        "이미 사용 중인 참여자 이름으로 변경할 수 없습니다.",
+    ),
 }

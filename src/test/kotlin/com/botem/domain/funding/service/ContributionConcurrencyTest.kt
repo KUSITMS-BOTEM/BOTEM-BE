@@ -9,9 +9,11 @@ import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.GuestContributionAccessAttempt
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.GuestContributionAccessAttemptRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
@@ -42,6 +44,7 @@ import kotlin.test.assertNotNull
 @Import(
     JpaAuditingConfig::class,
     ContributionService::class,
+    GuestContributionPasswordVerifier::class,
     ContributionConcurrencyTest.FixedConfig::class,
 )
 class ContributionConcurrencyTest {
@@ -59,6 +62,9 @@ class ContributionConcurrencyTest {
     private lateinit var rollingPaperMessageRepository: RollingPaperMessageRepository
 
     @Autowired
+    private lateinit var accessAttemptRepository: GuestContributionAccessAttemptRepository
+
+    @Autowired
     private lateinit var userRepository: UserRepository
 
     @Autowired
@@ -66,6 +72,7 @@ class ContributionConcurrencyTest {
 
     @AfterEach
     fun tearDown() {
+        accessAttemptRepository.deleteAll()
         rollingPaperMessageRepository.deleteAll()
         contributionRepository.deleteAll()
         fundingRepository.deleteAll()
@@ -101,14 +108,14 @@ class ContributionConcurrencyTest {
         val funding = saveFunding()
         val contributionId = contributionService.contribute(null, funding.id, request()).contributionId
 
-        repeat(Contribution.MAX_GUEST_PASSWORD_FAILURES) {
+        repeat(GuestContributionAccessAttempt.MAX_FAILURES) {
             runCatching {
                 contributionService.markTransferSent(null, funding.id, contributionId, MarkTransferSentRequest("9999"))
             }
         }
 
-        val locked = contributionRepository.findById(contributionId).orElseThrow()
-        assertNotNull(locked.guestPasswordLockedUntil)
+        val locked = accessAttemptRepository.findAll().single()
+        assertNotNull(locked.lockedUntil)
         val failure = runCatching {
             contributionService.markTransferSent(null, funding.id, contributionId, MarkTransferSentRequest("1234"))
         }.exceptionOrNull()

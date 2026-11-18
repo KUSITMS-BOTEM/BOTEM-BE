@@ -25,6 +25,9 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
 
+guest-contribution-token:
+  access-token-expiration: ${GUEST_CONTRIBUTION_ACCESS_TOKEN_EXPIRATION:10m}
+
 swagger:
   username: ${SWAGGER_USERNAME}
   password: ${SWAGGER_PASSWORD}

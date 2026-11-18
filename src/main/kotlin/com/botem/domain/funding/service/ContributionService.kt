@@ -34,6 +34,7 @@ class ContributionService(
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
     private val userRepository: UserRepository,
     private val accountNumberCipher: AccountNumberCipher,
+    private val guestPasswordVerifier: GuestContributionPasswordVerifier,
     private val clock: Clock,
 ) {
 
@@ -58,6 +59,7 @@ class ContributionService(
         }
 
         validateContributable(funding, request.amount)
+        validateGuestIdentityAvailable(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -94,6 +96,7 @@ class ContributionService(
         }
 
         validateOpen(funding)
+        validateGuestIdentityAvailable(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -114,7 +117,8 @@ class ContributionService(
         contributionId: Long,
         request: MarkTransferSentRequest,
     ): TransferSentResponse {
-        // 실패 횟수가 동시 요청으로 유실되지 않도록 참여 행을 잠근다
+        // 접근 API와 같은 순서로 펀딩부터 잠가 비밀번호 실패 기록을 함께 직렬화한다.
+        lockFunding(fundingId)
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
 
@@ -124,7 +128,7 @@ class ContributionService(
                 throw BusinessException(FundingErrorCode.CONTRIBUTION_PARTICIPANT_ONLY)
             }
         } else {
-            verifyGuestPassword(contribution, request.guestPassword)
+            guestPasswordVerifier.authenticate(request.guestPassword, listOf(contribution))
         }
 
         contribution.markTransferSent()
@@ -132,19 +136,19 @@ class ContributionService(
         return TransferSentResponse(contribution.id, contribution.status)
     }
 
-    private fun verifyGuestPassword(contribution: Contribution, password: String?) {
-        val now = LocalDateTime.now(clock)
-        if (contribution.isGuestPasswordLocked(now)) {
-            throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED)
-        }
+    private fun validateGuestIdentityAvailable(fundingId: Long, input: ParticipantInput) {
+        val participantName = input.participantName ?: return
+        val duplicated = contributionRepository
+            .findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(
+                fundingId,
+                participantName,
+                ContributionStatus.CANCELLED,
+            )
+            .isNotEmpty()
 
-        val hash = contribution.guestPasswordHash
-        if (password == null || hash == null || !passwordEncoder.matches(password, hash)) {
-            contribution.recordGuestPasswordFailure(now)
-            throw BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH)
+        if (duplicated) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_IDENTITY_DUPLICATED)
         }
-
-        contribution.resetGuestPasswordFailures()
     }
 
     // 해시 계산과 입력 정규화는 펀딩 락을 잡기 전에 끝내 락 점유 시간을 줄인다.
@@ -165,7 +169,7 @@ class ContributionService(
         }
 
         return ParticipantInput(
-            participantName = participantName,
+            participantName = participantName.normalizeOptional(),
             message = normalizedMessage,
             paperTemplateCode = normalizedPaperTemplateCode,
             guestPasswordHash = if (userId == null) hashGuestPassword(guestPassword) else null,

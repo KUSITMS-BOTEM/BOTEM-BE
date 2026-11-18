@@ -41,6 +41,8 @@ class SecurityConfig(
                 it.requestMatchers("/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/fundings/{fundingId:\\d+}").permitAll()
                 it.requestMatchers(HttpMethod.POST, *GUEST_ALLOWED_POST_URIS).access(REJECT_INVALID_TOKEN)
+                it.requestMatchers(HttpMethod.PATCH, GUEST_CONTRIBUTION_URI).access(REJECT_INVALID_TOKEN)
+                it.requestMatchers(HttpMethod.DELETE, GUEST_CONTRIBUTION_URI).access(REJECT_INVALID_TOKEN)
                 it.requestMatchers(AdminApiKeyFilter.ADMIN_URI_PATTERN).hasRole("ADMIN")
                 it.anyRequest().authenticated()
             }
@@ -59,7 +61,13 @@ class SecurityConfig(
         val configuration = CorsConfiguration().apply {
             allowedOrigins = listOf("https://botem.me", "https://botem.site", "https://botem-fe.vercel.app", "http://localhost:3000")
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-            allowedHeaders = listOf("Authorization", "Content-Type", "sentry-trace", "baggage")
+            allowedHeaders = listOf(
+                "Authorization",
+                "Content-Type",
+                "X-Guest-Contribution-Token",
+                "sentry-trace",
+                "baggage",
+            )
             allowCredentials = true
         }
 
@@ -73,7 +81,11 @@ class SecurityConfig(
             "/api/fundings/{fundingId:\\d+}/contributions",
             "/api/fundings/{fundingId:\\d+}/contributions/message-only",
             "/api/fundings/{fundingId:\\d+}/contributions/{contributionId:\\d+}/transfer-sent",
+            "/api/fundings/{fundingId:\\d+}/contributions/guest/access",
         )
+
+        private const val GUEST_CONTRIBUTION_URI =
+            "/api/fundings/{fundingId:\\d+}/contributions/guest"
 
         // 비로그인도 허용하지만, 보낸 토큰이 유효하지 않으면 본문 검증보다 먼저 401로 응답한다
         private val REJECT_INVALID_TOKEN = AuthorizationManager<RequestAuthorizationContext> { _, context ->

@@ -38,6 +38,12 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
 
     fun findByFundingIdAndRequestKey(fundingId: Long, requestKey: String): Contribution?
 
+    fun findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(
+        fundingId: Long,
+        participantName: String,
+        status: ContributionStatus,
+    ): List<Contribution>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
         """

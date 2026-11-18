@@ -45,6 +45,7 @@ class ContributionServiceTest {
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
+    private val guestPasswordVerifier = mock(GuestContributionPasswordVerifier::class.java)
     private val cipher = AccountNumberCipher(
         PayoutAccountEncryptionProperties(key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="),
     )
@@ -54,6 +55,7 @@ class ContributionServiceTest {
         rollingPaperMessageRepository = rollingPaperMessageRepository,
         userRepository = userRepository,
         accountNumberCipher = cipher,
+        guestPasswordVerifier = guestPasswordVerifier,
         clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -108,6 +110,26 @@ class ContributionServiceTest {
         assertInvalidInput { service.contribute(null, FUNDING_ID, request(participantName = null)) }
         assertInvalidInput { service.contribute(null, FUNDING_ID, request(guestPassword = null)) }
         assertInvalidInput { service.contribute(null, FUNDING_ID, request(guestPassword = "12a4")) }
+    }
+
+    @Test
+    fun `같은 펀딩에서 사용 중인 비회원 이름은 비밀번호가 달라도 다시 사용할 수 없다`() {
+        givenFunding(confirmedAmount = 0L)
+        given(
+            contributionRepository.findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(
+                FUNDING_ID,
+                "민지",
+                ContributionStatus.CANCELLED,
+            ),
+        ).willReturn(listOf(contribution(participantUserId = null)))
+
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_GUEST_IDENTITY_DUPLICATED) {
+            service.contribute(null, FUNDING_ID, request(guestPassword = "9999"))
+        }
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_GUEST_IDENTITY_DUPLICATED) {
+            service.leaveMessage(null, FUNDING_ID, messageRequest(guestPassword = "9999"))
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
     }
 
     @Test
@@ -284,6 +306,7 @@ class ContributionServiceTest {
     @Test
     fun `비회원이 맞는 비밀번호로 송금 완료를 표시하면 확인 대기로 바뀐다`() {
         val contribution = givenContribution(participantUserId = null)
+        given(guestPasswordVerifier.authenticate("1234", listOf(contribution))).willReturn(contribution)
 
         val response = service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest("1234"))
 
@@ -294,6 +317,10 @@ class ContributionServiceTest {
     @Test
     fun `비회원 비밀번호가 틀리거나 없으면 송금 완료를 표시할 수 없다`() {
         val contribution = givenContribution(participantUserId = null)
+        given(guestPasswordVerifier.authenticate("9999", listOf(contribution)))
+            .willThrow(BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH))
+        given(guestPasswordVerifier.authenticate(null, listOf(contribution)))
+            .willThrow(BusinessException(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH))
 
         assertErrorCode(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH) {
             service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest("9999"))
@@ -302,39 +329,6 @@ class ContributionServiceTest {
             service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest(null))
         }
         assertEquals(ContributionStatus.AWAITING_TRANSFER, contribution.status)
-    }
-
-    @Test
-    fun `비회원 비밀번호를 연속으로 틀리면 잠기고 맞는 비밀번호도 거절한다`() {
-        val contribution = givenContribution(participantUserId = null)
-
-        repeat(Contribution.MAX_GUEST_PASSWORD_FAILURES) {
-            assertErrorCode(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH) {
-                service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest("9999"))
-            }
-        }
-
-        assertEquals(NOW.plus(Contribution.GUEST_PASSWORD_LOCK_DURATION), contribution.guestPasswordLockedUntil)
-        assertErrorCode(FundingErrorCode.CONTRIBUTION_PASSWORD_LOCKED) {
-            service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest("1234"))
-        }
-        assertEquals(ContributionStatus.AWAITING_TRANSFER, contribution.status)
-    }
-
-    @Test
-    fun `잠기기 전에 비밀번호를 맞히면 실패 횟수를 초기화한다`() {
-        val contribution = givenContribution(participantUserId = null)
-        repeat(Contribution.MAX_GUEST_PASSWORD_FAILURES - 1) {
-            assertErrorCode(FundingErrorCode.CONTRIBUTION_PASSWORD_MISMATCH) {
-                service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest("9999"))
-            }
-        }
-
-        service.markTransferSent(null, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest("1234"))
-
-        assertEquals(0, contribution.guestPasswordFailedCount)
-        assertNull(contribution.guestPasswordLockedUntil)
-        assertEquals(ContributionStatus.PENDING_CONFIRMATION, contribution.status)
     }
 
     @Test
@@ -364,6 +358,7 @@ class ContributionServiceTest {
 
     @Test
     fun `보태기 마감으로 메시지 전용이 된 참여는 송금 완료로 표시할 수 없다`() {
+        givenFunding(confirmedAmount = 0L)
         given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(
             Contribution(
                 fundingId = FUNDING_ID,
@@ -393,6 +388,7 @@ class ContributionServiceTest {
 
     @Test
     fun `다른 펀딩의 참여는 찾을 수 없다`() {
+        givenFunding(confirmedAmount = 0L)
         assertErrorCode(FundingErrorCode.CONTRIBUTION_NOT_FOUND) {
             service.markTransferSent(USER_ID, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest())
         }
@@ -428,6 +424,7 @@ class ContributionServiceTest {
 
     private fun givenContribution(participantUserId: Long?): Contribution =
         contribution(participantUserId).also {
+            givenFunding(confirmedAmount = 0L)
             given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(it)
         }
 
