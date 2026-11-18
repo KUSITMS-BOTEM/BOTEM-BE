@@ -78,16 +78,18 @@ class ContributionConcurrencyTest {
 
         val start = CountDownLatch(1)
         val executor = Executors.newFixedThreadPool(2)
-        val futures = (1..2).map {
-            executor.submit<Long> {
-                start.await()
-                contributionService.contribute(null, funding.id, request()).contributionId
+        val contributionIds = try {
+            val futures = (1..2).map {
+                executor.submit<Long> {
+                    start.await()
+                    contributionService.contribute(null, funding.id, request()).contributionId
+                }
             }
+            start.countDown()
+            futures.map { it.get(10, TimeUnit.SECONDS) }
+        } finally {
+            executor.shutdownNow()
         }
-
-        start.countDown()
-        val contributionIds = futures.map { it.get(10, TimeUnit.SECONDS) }
-        executor.shutdown()
 
         assertEquals(1, contributionIds.toSet().size)
         assertEquals(1, contributionRepository.count())

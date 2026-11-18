@@ -8,8 +8,6 @@ import com.botem.domain.funding.dto.response.ContributionResponse
 import com.botem.domain.funding.dto.response.TransferSentResponse
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.service.ContributionService
-import com.botem.global.exception.AuthErrorCode
-import com.botem.global.jwt.JwtAuthenticationFilter
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verifyNoInteractions
@@ -98,27 +96,16 @@ class ContributionControllerTest {
     }
 
     @Test
-    fun `보낸 토큰이 유효하지 않으면 비로그인으로 처리하지 않고 401을 반환한다`() {
+    fun `금액에 소수를 보내면 잘라서 받지 않고 400을 반환한다`() {
         mockMvc.perform(
             post("/api/fundings/{fundingId}/contributions", FUNDING_ID)
                 .with(loggedIn())
                 .with(csrf())
-                .requestAttr(JwtAuthenticationFilter.ERROR_CODE_ATTRIBUTE, AuthErrorCode.EXPIRED_TOKEN)
                 .contentType("application/json")
-                .content(body()),
+                .content(body().replace("\"amount\": 10000", "\"amount\": 10000.9")),
         )
-            .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.error.code").value("AUTH_003"))
-
-        mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", FUNDING_ID, CONTRIBUTION_ID)
-                .with(loggedIn())
-                .with(csrf())
-                .requestAttr(JwtAuthenticationFilter.ERROR_CODE_ATTRIBUTE, AuthErrorCode.EXPIRED_TOKEN)
-                .contentType("application/json")
-                .content("{}"),
-        )
-            .andExpect(status().isUnauthorized)
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("COMMON_001"))
 
         verifyNoInteractions(contributionService)
     }

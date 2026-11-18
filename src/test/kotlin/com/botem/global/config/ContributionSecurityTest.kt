@@ -52,6 +52,27 @@ class ContributionSecurityTest {
     }
 
     @Test
+    fun `유효하지 않은 토큰과 잘못된 본문을 함께 보내도 본문 검증보다 401을 먼저 반환한다`() {
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions", MISSING_ID)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
+                .contentType("application/json")
+                .content("{}"),
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("AUTH_002"))
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", MISSING_ID, MISSING_ID)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
+                .contentType("application/json")
+                .content("""{"guestPassword": "12345"}"""),
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("AUTH_002"))
+    }
+
+    @Test
     fun `참여 하위의 다른 경로는 공개되지 않는다`() {
         mockMvc.perform(post("/api/fundings/{fundingId}/contributions/{contributionId}/confirm", MISSING_ID, MISSING_ID))
             .andExpect(status().isUnauthorized)
