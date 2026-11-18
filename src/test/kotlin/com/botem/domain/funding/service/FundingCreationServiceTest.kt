@@ -203,14 +203,37 @@ class FundingCreationServiceTest {
         verify(fundingRepository, never()).save(any(Funding::class.java))
     }
 
+    @Test
+    fun `공개 시각이 마감일 다음 날을 넘으면 서프라이즈 개설을 거부한다`() {
+        givenSurpriseCreatable()
+
+        val exception = assertFailsWith<BusinessException> {
+            service.createSurpriseFunding(USER_ID, surpriseRequest(revealAt = LocalDateTime.of(2026, 12, 2, 0, 0)))
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        verify(fundingRepository, never()).save(any(Funding::class.java))
+    }
+
+    @Test
+    fun `공개 시각이 마감일 다음 날 마지막 시각이면 서프라이즈를 개설한다`() {
+        givenSurpriseCreatable()
+        given(fundingRepository.save(any(Funding::class.java))).willAnswer { it.arguments[0] as Funding }
+
+        service.createSurpriseFunding(USER_ID, surpriseRequest(revealAt = LocalDateTime.of(2026, 12, 1, 23, 59, 59)))
+
+        verify(fundingRepository).save(any(Funding::class.java))
+    }
+
     private fun givenSurpriseCreatable(surpriseExists: Boolean = false) {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user())
         given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(user())
         given(fundingRepository.countActiveFundings(USER_ID, NOW)).willReturn(0L)
         given(
-            fundingRepository.existsByRecipientIdAndTypeAndStatusNotIn(
+            fundingRepository.existsByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
                 RECIPIENT_ID,
                 FundingType.SURPRISE,
+                NOW,
                 setOf(FundingStatus.COMPLETED, FundingStatus.CANCELLED),
             ),
         ).willReturn(surpriseExists)

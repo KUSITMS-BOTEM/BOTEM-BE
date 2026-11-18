@@ -1,6 +1,7 @@
 package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
+import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
 import com.botem.domain.funding.dto.response.FundingDetailProductResponse
@@ -121,6 +122,67 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/fundings/12"))
 
         verify(fundingCreationService).createBirthdayFunding(USER_ID, request)
+    }
+
+    @Test
+    fun `로그인 사용자가 서프라이즈 펀딩을 개설하고 비밀 노출 옵션은 생략하면 true로 받는다`() {
+        val request = CreateSurpriseFundingRequest(
+            recipientId = 5L,
+            wishId = 2L,
+            targetAmount = 39_000L,
+            deadline = LocalDate.of(2026, 12, 12),
+            revealAt = LocalDateTime.of(2026, 12, 13, 0, 0),
+        )
+        given(fundingCreationService.createSurpriseFunding(USER_ID, request)).willReturn(
+            CreateFundingResponse(FUNDING_ID, FundingType.SURPRISE, FundingStatus.FUNDING, "https://botem.me/fundings/12"),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/surprise")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "recipientId": 5,
+                      "wishId": 2,
+                      "targetAmount": 39000,
+                      "deadline": "2026-12-12",
+                      "revealAt": "2026-12-13T00:00:00"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isCreated)
+            .andExpect(jsonPath("$.data.type").value("SURPRISE"))
+            .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/fundings/12"))
+
+        verify(fundingCreationService).createSurpriseFunding(USER_ID, request)
+    }
+
+    @Test
+    fun `서프라이즈 펀딩 개설 요청의 값이 올바르지 않으면 400을 반환한다`() {
+        mockMvc.perform(
+            post("/api/fundings/surprise")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "recipientId": 0,
+                      "wishId": 2,
+                      "targetAmount": 10000001,
+                      "deadline": "2026-12-12",
+                      "revealAt": "2026-12-13T00:00:00"
+                    }
+                    """.trimIndent(),
+                ),
+        )
+            .andExpect(status().isBadRequest)
+
+        verifyNoInteractions(fundingCreationService)
     }
 
     @Test

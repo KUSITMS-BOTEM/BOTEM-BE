@@ -264,6 +264,16 @@ class FundingDetailServiceTest {
     }
 
     @Test
+    fun `서프라이즈를 받는 사람은 공개 시각부터 조회할 수 있다`() {
+        givenFunding(funding(deadline = NOW.minusDays(1), type = FundingType.SURPRISE))
+        givenContributions()
+
+        val result = service.getDetail(PARTICIPANT_ID, FUNDING_ID)
+
+        assertEquals(FundingType.SURPRISE, result.type)
+    }
+
+    @Test
     fun `서프라이즈를 받는 사람이 아니면 공개 전에도 조회할 수 있다`() {
         givenFunding(funding(type = FundingType.SURPRISE))
         givenContributions()
