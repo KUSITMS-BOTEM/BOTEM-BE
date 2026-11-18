@@ -15,6 +15,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -63,7 +64,7 @@ class FundingEarlyCloseServiceTest {
         val response = service.close(OWNER_ID, FUNDING_ID)
 
         assertEquals(NOW.minusMinutes(1), response.earlyClosedAt)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verifyNoInteractions(contributionRepository)
     }
 
     @Test

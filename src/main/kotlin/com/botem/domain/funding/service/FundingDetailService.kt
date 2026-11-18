@@ -126,7 +126,8 @@ class FundingDetailService(
     ): FundingDisplayStatus =
         when {
             funding.status == FundingStatus.COMPLETED -> FundingDisplayStatus.COMPLETED
-            funding.earlyClosedAt != null -> FundingDisplayStatus.CLOSED
+            funding.earlyClosedAt != null && funding.status != FundingStatus.GIFT_PREPARING ->
+                FundingDisplayStatus.CLOSED
             funding.status in PARTICIPATABLE_STATUSES -> when {
                 !funding.deadline.isAfter(now) -> FundingDisplayStatus.CLOSED
                 confirmedAmount >= funding.targetAmount -> FundingDisplayStatus.TARGET_REACHED

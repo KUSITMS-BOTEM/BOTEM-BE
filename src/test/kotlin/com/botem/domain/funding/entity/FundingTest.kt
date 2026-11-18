@@ -526,8 +526,8 @@ class FundingTest {
         val extensionException = assertFailsWith<BusinessException> {
             funding.extendDeadline(
                 OPENED_AT.plusDays(5),
-                requestedAt = OPENED_AT.plusDays(3),
-                extendedAt = OPENED_AT.plusDays(3),
+                requestedAt = OPENED_AT.plusDays(1),
+                extendedAt = OPENED_AT.plusDays(1),
                 confirmedAmount = 0L,
             )
         }

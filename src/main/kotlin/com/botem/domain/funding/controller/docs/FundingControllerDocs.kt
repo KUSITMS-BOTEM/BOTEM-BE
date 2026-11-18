@@ -179,7 +179,8 @@ interface FundingControllerDocs {
     @Operation(
         summary = "펀딩 조기 마감",
         description = """
-            진행 중인 펀딩을 개설자가 조기 마감합니다. 이미 조기 마감한 펀딩에 다시 요청하면 최초 결과를 반환합니다.
+            진행 중인 펀딩을 개설자가 조기 마감합니다. 이미 조기 마감한 펀딩에 다시 요청하면 조기 마감을 다시 수행하지 않으며,
+            최초 조기 마감 시각과 현재 펀딩 상태를 반환합니다.
             송금하지 않은 보탬은 금액을 제외하고 메시지만 유지하며, 이후 추가 금액 보태기는 차단됩니다.
             일반 생일 펀딩은 기존 마감일까지 메시지만 추가로 받을 수 있습니다.
             서프라이즈 펀딩은 메시지 참여도 종료하고 WAITING_REVEAL 상태가 되며 기존 공개 시각은 유지합니다.
@@ -235,7 +236,7 @@ interface FundingControllerDocs {
         SwaggerApiResponse(
             responseCode = "400",
             description = "위시 ID 입력 오류",
-            content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
+            content = [Content(examples = [ExampleObject(value = WISH_ID_INVALID_EXAMPLE)])],
         ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
@@ -534,6 +535,17 @@ interface FundingControllerDocs {
                 "code": "COMMON_001",
                 "message": "입력값이 올바르지 않습니다.",
                 "detail": "마감일은 내일부터 선택할 수 있습니다."
+              }
+            }
+        """
+        private const val WISH_ID_INVALID_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_001",
+                "message": "입력값이 올바르지 않습니다.",
+                "detail": "wishId: 0보다 커야 합니다"
               }
             }
         """

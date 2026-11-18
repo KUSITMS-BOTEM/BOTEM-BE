@@ -319,6 +319,22 @@ class FundingControllerTest {
     }
 
     @Test
+    fun `상품 변경 위시 ID가 양수가 아니면 400을 반환한다`() {
+        mockMvc.perform(
+            patch("/api/fundings/{fundingId}/product", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf())
+                .contentType("application/json")
+                .content("""{ "wishId": 0 }"""),
+        )
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+            .andExpect(jsonPath("$.error.detail").value("wishId: 0보다 커야 합니다"))
+
+        verifyNoInteractions(fundingProductChangeService)
+    }
+
+    @Test
     fun `인증 없이 펀딩 관리 상세를 조회하면 401을 반환한다`() {
         mockMvc.perform(get("/api/fundings/{fundingId}/management", FUNDING_ID))
             .andExpect(status().isUnauthorized)

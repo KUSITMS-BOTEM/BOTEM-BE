@@ -169,6 +169,9 @@ class Funding(
         if (type != FundingType.BIRTHDAY) {
             throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
         }
+        if (earlyClosedAt != null) {
+            throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE)
+        }
         if (deadline.isAfter(extendedAt)) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_BEFORE_DEADLINE)
         }
@@ -176,7 +179,6 @@ class Funding(
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_LIMIT_EXCEEDED)
         }
         if (
-            earlyClosedAt != null ||
             status !in EXTENDABLE_STATUSES ||
             (status == FundingStatus.GIFT_PREPARING) != (resultOpenedAt != null)
         ) {

@@ -144,7 +144,13 @@ class FundingDetailServiceTest {
     fun `결과를 연 뒤에는 선물 준비 중, 인증을 마치면 인증 완료 상태다`() {
         givenContributions()
 
-        givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.GIFT_PREPARING))
+        givenFunding(
+            funding(
+                deadline = NOW.minusDays(1),
+                status = FundingStatus.GIFT_PREPARING,
+                earlyClosedAt = NOW.minusDays(2),
+            ),
+        )
         assertEquals(FundingDisplayStatus.GIFT_PREPARING, service.getDetail(null, FUNDING_ID).displayStatus)
 
         givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.COMPLETED))

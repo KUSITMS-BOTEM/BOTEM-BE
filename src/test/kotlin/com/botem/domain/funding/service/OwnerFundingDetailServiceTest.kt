@@ -186,6 +186,19 @@ class OwnerFundingDetailServiceTest {
     }
 
     @Test
+    fun `원래 마감 전이어도 조기 마감한 펀딩은 관리 동작을 허용하지 않는다`() {
+        givenFunding(funding(deadline = NOW.plusDays(1), earlyClosedAt = NOW.minusHours(1)))
+        givenContributions()
+
+        val response = service.getManagementDetail(OWNER_ID, FUNDING_ID)
+
+        assertEquals(FundingManagementState.CLOSED, response.managementState)
+        assertFalse(response.actions.canCloseEarly)
+        assertFalse(response.actions.canChangeProduct)
+        assertFalse(response.actions.canExtend)
+    }
+
+    @Test
     fun `상품 변경 여부와 마지막 변경 시각을 반환한다`() {
         givenFunding(funding(productChangedAt = NOW.minusHours(1)))
         givenContributions()
