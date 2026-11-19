@@ -139,8 +139,6 @@ class FundingControllerTest {
             bank = Bank.TOSS_BANK,
             accountNumber = "1001-5901-4821",
             targetAmount = 39_000L,
-            deadline = LocalDate.of(2026, 12, 12),
-            revealAt = LocalDateTime.of(2026, 12, 13, 0, 0),
         )
         given(fundingCreationService.createSurpriseFunding(USER_ID, request)).willReturn(
             CreateFundingResponse(FUNDING_ID, FundingType.SURPRISE, FundingStatus.FUNDING, "https://botem.me/fundings/12"),
@@ -158,9 +156,7 @@ class FundingControllerTest {
                       "wishId": 2,
                       "bank": "TOSS_BANK",
                       "accountNumber": "1001-5901-4821",
-                      "targetAmount": 39000,
-                      "deadline": "2026-12-12",
-                      "revealAt": "2026-12-13T00:00:00"
+                      "targetAmount": 39000
                     }
                     """.trimIndent(),
                 ),
@@ -184,7 +180,7 @@ class FundingControllerTest {
                     .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
                     .with(csrf())
                     .contentType("application/json")
-                    .content("""{ $fields, "wishId": 2, "deadline": "2026-12-12", "revealAt": "2026-12-13T00:00:00" }"""),
+                    .content("""{ $fields, "wishId": 2 }"""),
             )
                 .andExpect(status().isBadRequest)
         }
