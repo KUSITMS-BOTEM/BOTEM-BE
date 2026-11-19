@@ -94,7 +94,9 @@ interface FundingControllerDocs {
         summary = "서프라이즈 펀딩 개설",
         description = """
             친구(recipientId)의 위시 상품으로 공개 시각이 정해진 서프라이즈 펀딩을 개설합니다. 제목과 사연은 받지 않습니다.
-            상품은 받는 사람의 위시, 받을 계좌는 개설자 본인의 계좌를 스냅샷으로 저장하며 payoutAccountId를 생략하면 기본 계좌를 사용합니다.
+            상품은 받는 사람의 위시를 스냅샷으로 저장합니다.
+            받을 계좌는 일반 펀딩과 같이 bank(지원 은행 코드)와 accountNumber로 받으며, 대표계좌를 사용하는 경우에도 같은 방식으로 보냅니다.
+            계좌번호는 숫자, 공백, 하이픈만 허용하고 숫자 8~20자리여야 합니다. 입력한 계좌는 내 계좌 목록에 등록되지 않습니다.
             마감일은 내일부터 선택할 수 있고 선택한 날짜의 마지막 시각으로 저장됩니다. revealAt은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다.
             showOnRecipientProfile(위시 프로필에 몰래 알리기)과 notifyRecipientFriends(보탬 친구에게도 알리기)는 생략하면 true이며,
             받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
@@ -114,11 +116,16 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "400",
-            description = "목표 금액·마감일·공개 시각 입력 오류 또는 자기 자신을 받는 사람으로 지정",
+            description = "목표 금액·마감일·공개 시각·계좌번호 입력 오류 또는 자기 자신을 받는 사람으로 지정",
             content = [
                 Content(
                     examples = [
                         ExampleObject(name = "COMMON_001", summary = "입력 오류", value = INVALID_REVEAL_AT_EXAMPLE),
+                        ExampleObject(
+                            name = "PAYOUT_ACCOUNT_004",
+                            summary = "계좌번호 형식 오류",
+                            value = INVALID_ACCOUNT_NUMBER_EXAMPLE,
+                        ),
                         ExampleObject(
                             name = "FUNDING_044",
                             summary = "자기 자신에게 개설",
@@ -131,24 +138,19 @@ interface FundingControllerDocs {
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
             responseCode = "404",
-            description = "받는 사람(없거나 탈퇴), 받는 사람의 위시 또는 받을 계좌 없음",
+            description = "받는 사람(없거나 탈퇴) 또는 받는 사람의 위시 없음",
             content = [
                 Content(
                     examples = [
                         ExampleObject(name = "USER_001", summary = "받는 사람 없음", value = USER_NOT_FOUND_EXAMPLE),
                         ExampleObject(name = "WISH_002", summary = "위시 없음", value = WISH_NOT_FOUND_EXAMPLE),
-                        ExampleObject(
-                            name = "PAYOUT_ACCOUNT_001",
-                            summary = "받을 계좌 없음",
-                            value = PAYOUT_ACCOUNT_NOT_FOUND_EXAMPLE,
-                        ),
                     ],
                 ),
             ],
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "공개 전 서프라이즈 존재, 사용 중인 위시, 사용할 수 없는 계좌 또는 진행 중 펀딩 개수 초과",
+            description = "공개 전 서프라이즈 존재, 사용 중인 위시 또는 진행 중 펀딩 개수 초과",
             content = [
                 Content(
                     examples = [
@@ -158,11 +160,6 @@ interface FundingControllerDocs {
                             value = SURPRISE_FUNDING_ALREADY_EXISTS_EXAMPLE,
                         ),
                         ExampleObject(name = "WISH_003", summary = "사용 중인 위시", value = WISH_IN_FUNDING_EXAMPLE),
-                        ExampleObject(
-                            name = "PAYOUT_ACCOUNT_005",
-                            summary = "사용할 수 없는 계좌",
-                            value = PAYOUT_ACCOUNT_NOT_AVAILABLE_EXAMPLE,
-                        ),
                         ExampleObject(
                             name = "FUNDING_019",
                             summary = "진행 중 펀딩 5개",
@@ -714,7 +711,8 @@ interface FundingControllerDocs {
             {
               "recipientId": 7,
               "wishId": 21,
-              "payoutAccountId": 2,
+              "bank": "TOSS_BANK",
+              "accountNumber": "1001-5901-4821",
               "targetAmount": 39000,
               "deadline": "2026-12-12",
               "revealAt": "2026-12-13T00:00:00",
@@ -856,17 +854,6 @@ interface FundingControllerDocs {
               }
             }
         """
-        private const val PAYOUT_ACCOUNT_NOT_FOUND_EXAMPLE = """
-            {
-              "success": false,
-              "data": null,
-              "error": {
-                "code": "PAYOUT_ACCOUNT_001",
-                "message": "받을 계좌를 찾을 수 없습니다.",
-                "detail": null
-              }
-            }
-        """
         private const val WISH_IN_FUNDING_EXAMPLE = """
             {
               "success": false,
@@ -874,17 +861,6 @@ interface FundingControllerDocs {
               "error": {
                 "code": "WISH_003",
                 "message": "진행 중인 펀딩에 사용 중인 위시입니다.",
-                "detail": null
-              }
-            }
-        """
-        private const val PAYOUT_ACCOUNT_NOT_AVAILABLE_EXAMPLE = """
-            {
-              "success": false,
-              "data": null,
-              "error": {
-                "code": "PAYOUT_ACCOUNT_005",
-                "message": "현재 사용할 수 없는 받을 계좌입니다.",
                 "detail": null
               }
             }
