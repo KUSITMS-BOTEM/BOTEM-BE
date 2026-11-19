@@ -1,5 +1,6 @@
 package com.botem.domain.funding.controller
 
+import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
@@ -92,8 +93,8 @@ class FundingControllerTest {
     fun `로그인 사용자가 일반 펀딩을 개설한다`() {
         val request = CreateBirthdayFundingRequest(
             wishId = 2L,
-            payoutAccountId = null,
-            title = "생일 선물 펀딩",
+            bank = Bank.TOSS_BANK,
+            accountNumber = "100159014821",
             targetAmount = 100_000L,
             deadline = LocalDate.of(2026, 11, 30),
             story = "새 헤드폰이 필요해요",
@@ -112,7 +113,8 @@ class FundingControllerTest {
                     """
                     {
                       "wishId": 2,
-                      "title": "생일 선물 펀딩",
+                      "bank": "TOSS_BANK",
+                      "accountNumber": "100159014821",
                       "targetAmount": 100000,
                       "deadline": "2026-11-30",
                       "story": "새 헤드폰이 필요해요"

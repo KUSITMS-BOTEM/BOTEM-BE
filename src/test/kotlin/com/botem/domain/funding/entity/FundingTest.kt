@@ -16,7 +16,6 @@ class FundingTest {
     fun `일반 펀딩 생성 시 문자열을 정규화하고 생일 펀딩 규칙을 적용한다`() {
         val funding = Funding.createBirthday(
             ownerId = 1L,
-            title = "  생일 선물 펀딩  ",
             targetAmount = 100_000L,
             deadline = OPENED_AT.plusDays(1),
             story = "  새 헤드폰이 필요해요  ",
@@ -29,29 +28,22 @@ class FundingTest {
         assertEquals(FundingType.BIRTHDAY, funding.type)
         assertEquals(null, funding.recipientId)
         assertEquals(null, funding.revealAt)
-        assertEquals("생일 선물 펀딩", funding.title)
+        assertNull(funding.title)
         assertEquals("새 헤드폰이 필요해요", funding.story)
         assertEquals(null, funding.promise)
     }
 
     @Test
-    fun `일반 펀딩 제목과 사연은 공백일 수 없다`() {
-        val titleException = assertFailsWith<BusinessException> {
-            createBirthday(title = "　 ")
-        }
+    fun `일반 펀딩 사연은 공백일 수 없다`() {
         val storyException = assertFailsWith<BusinessException> {
             createBirthday(story = "\u00A0")
         }
 
-        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, titleException.errorCode)
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, storyException.errorCode)
     }
 
     @Test
     fun `일반 펀딩 입력 문자열은 최대 길이를 넘을 수 없다`() {
-        val titleException = assertFailsWith<BusinessException> {
-            createBirthday(title = "가".repeat(21))
-        }
         val storyException = assertFailsWith<BusinessException> {
             createBirthday(story = "가".repeat(301))
         }
@@ -59,7 +51,6 @@ class FundingTest {
             createBirthday(promise = "가".repeat(301))
         }
 
-        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, titleException.errorCode)
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, storyException.errorCode)
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, promiseException.errorCode)
     }
@@ -624,7 +615,6 @@ class FundingTest {
         )
 
     private fun createBirthday(
-        title: String = "생일 선물 펀딩",
         targetAmount: Long = 100_000L,
         deadline: LocalDateTime = OPENED_AT.plusDays(1),
         story: String = "새 헤드폰이 필요해요",
@@ -632,7 +622,6 @@ class FundingTest {
     ): Funding =
         Funding.createBirthday(
             ownerId = 1L,
-            title = title,
             targetAmount = targetAmount,
             deadline = deadline,
             story = story,
