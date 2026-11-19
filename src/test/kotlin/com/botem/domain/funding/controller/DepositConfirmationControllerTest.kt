@@ -140,7 +140,7 @@ class DepositConfirmationControllerTest {
 
     private fun decisions(status: ContributionStatus): ContributionDecisionsResponse =
         ContributionDecisionsResponse(
-            listOf(ContributionDecisionResult(31L, status), ContributionDecisionResult(32L, status)),
+            listOf(ContributionDecisionResult(31L, status, true), ContributionDecisionResult(32L, status, true)),
             progress(),
         )
 

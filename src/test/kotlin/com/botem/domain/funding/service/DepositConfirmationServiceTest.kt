@@ -229,12 +229,16 @@ class DepositConfirmationServiceTest {
     fun `선택한 확인 대기 참여를 한 번에 받았어요로 처리한다`() {
         givenLockedFunding(funding())
         val contributions = givenContributions(31L to ContributionStatus.PENDING_CONFIRMATION, 32L to ContributionStatus.PENDING_CONFIRMATION)
+        contributions[1].confirm(NOW.minusMinutes(5))
         givenSummary(confirmedAmount = 20_000L)
 
         val response = service.decide(OWNER_ID, FUNDING_ID, DecideContributionsRequest(listOf(31L, 32L, 31L), ContributionDecision.CONFIRM))
 
-        assertTrue(contributions.all { it.status == ContributionStatus.CONFIRMED && it.confirmedAt == NOW })
-        assertEquals(listOf(31L, 32L), response.contributions.map { it.contributionId })
+        assertTrue(contributions.all { it.status == ContributionStatus.CONFIRMED })
+        assertEquals(NOW, contributions[0].confirmedAt)
+        assertEquals(NOW.minusMinutes(5), contributions[1].confirmedAt)
+        // 이미 확정돼 있던 32는 이번 요청으로 바뀌지 않았으므로 실행 취소 대상이 아니다
+        assertEquals(listOf(31L to true, 32L to false), response.contributions.map { it.contributionId to it.changed })
         assertEquals(20, response.progress.confirmedPercentage)
     }
 
@@ -253,12 +257,15 @@ class DepositConfirmationServiceTest {
     @Test
     fun `선택한 참여 중 이 펀딩에 없는 참여가 있으면 처리하지 않는다`() {
         givenLockedFunding(funding())
-        val contributions = givenContributions(31L to ContributionStatus.PENDING_CONFIRMATION)
+        val found = contribution(id = 31L, status = ContributionStatus.PENDING_CONFIRMATION)
+        // 요청한 두 건 중 이 펀딩에 있는 한 건만 조회되는 상황
+        given(contributionRepository.findAllByIdInAndFundingIdForUpdate(setOf(31L, 99L), FUNDING_ID))
+            .willReturn(listOf(found))
 
         assertErrorCode(FundingErrorCode.CONTRIBUTION_NOT_FOUND) {
             service.decide(OWNER_ID, FUNDING_ID, DecideContributionsRequest(listOf(31L, 99L), ContributionDecision.CONFIRM))
         }
-        assertEquals(ContributionStatus.PENDING_CONFIRMATION, contributions.single().status)
+        assertEquals(ContributionStatus.PENDING_CONFIRMATION, found.status)
     }
 
     @Test
@@ -281,6 +288,7 @@ class DepositConfirmationServiceTest {
             assertEquals(null, it.rejectedAt)
         }
         assertEquals(3L, response.progress.pendingContributionCount)
+        assertEquals(listOf(true, true, false), response.contributions.map { it.changed })
     }
 
     @Test

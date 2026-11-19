@@ -10,11 +10,13 @@ import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
+import com.botem.global.exception.BusinessException
 import jakarta.persistence.EntityManager
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -22,11 +24,14 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 // 처리 직후 응답의 진행률이 같은 트랜잭션에서 바뀐 상태를 반영하는지 실제 DB로 확인한다
@@ -119,6 +124,45 @@ class DepositConfirmationPersistenceTest {
             contributionRepository.findById(untouched.id).orElseThrow().status,
         )
         assertEquals(null, contributionRepository.findById(first.id).orElseThrow().rejectedAt)
+    }
+
+    // 서비스 트랜잭션이 실제로 롤백되는지 보려고 테스트 트랜잭션 밖에서 실행하고 데이터를 직접 지운다
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    fun `실행 취소 중 한 건이라도 시간이 지났으면 앞서 되돌린 보탬도 커밋하지 않는다`() {
+        val owner = userRepository.save(User(kakaoId = 1L, nickname = "지유", profileImageUrl = null))
+        val funding = saveFunding(owner.id)
+        try {
+            // ID 순서로 처리되므로 최근 처리한 보탬을 먼저 저장해 먼저 되돌린 뒤 실패하게 한다
+            val recent = contributionRepository.saveAndFlush(
+                contribution(funding.id, 30_000L).also {
+                    it.markTransferSent()
+                    it.reject(NOW.minusSeconds(1))
+                },
+            )
+            val expired = contributionRepository.saveAndFlush(
+                contribution(funding.id, 20_000L).also {
+                    it.markTransferSent()
+                    it.confirm(NOW.minusSeconds(11))
+                },
+            )
+
+            val exception = assertFailsWith<BusinessException> {
+                service.undo(owner.id, funding.id, UndoContributionDecisionsRequest(listOf(recent.id, expired.id)))
+            }
+
+            assertEquals(FundingErrorCode.CONTRIBUTION_DECISION_UNDO_EXPIRED, exception.errorCode)
+            val recentAfter = contributionRepository.findById(recent.id).orElseThrow()
+            assertEquals(ContributionStatus.REJECTED, recentAfter.status)
+            assertEquals(NOW.minusSeconds(1), recentAfter.rejectedAt)
+            val expiredAfter = contributionRepository.findById(expired.id).orElseThrow()
+            assertEquals(ContributionStatus.CONFIRMED, expiredAfter.status)
+            assertEquals(NOW.minusSeconds(11), expiredAfter.confirmedAt)
+        } finally {
+            contributionRepository.deleteAll(contributionRepository.findAll().filter { it.fundingId == funding.id })
+            fundingRepository.deleteById(funding.id)
+            userRepository.deleteById(owner.id)
+        }
     }
 
     private fun savePendingContribution(fundingId: Long, amount: Long): Contribution =
