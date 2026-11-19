@@ -75,8 +75,23 @@ interface MyContributionControllerDocs {
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
             responseCode = "403",
-            description = "내 보탬이 아님",
-            content = [Content(examples = [ExampleObject(value = PARTICIPANT_ONLY_EXAMPLE)])],
+            description = "내 보탬이 아니거나 공개 전 서프라이즈를 받는 사람이 요청",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(
+                            name = "FUNDING_024",
+                            summary = "내 보탬이 아님",
+                            value = PARTICIPANT_ONLY_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_046",
+                            summary = "공개 전 서프라이즈",
+                            value = SURPRISE_NOT_REVEALED_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(
             responseCode = "404",
@@ -209,7 +224,7 @@ interface MyContributionControllerDocs {
               "data": null,
               "error": {
                 "code": "FUNDING_048",
-                "message": "마감일이 지나 보탬을 수정할 수 없습니다.",
+                "message": "현재 펀딩 상태에서는 보탬을 수정할 수 없습니다.",
                 "detail": null
               }
             }

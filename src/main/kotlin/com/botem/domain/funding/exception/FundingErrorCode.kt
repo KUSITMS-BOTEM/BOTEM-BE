@@ -187,5 +187,5 @@ enum class FundingErrorCode(
         "FUNDING_047",
         "현재 상태에서는 서프라이즈 선물 준비를 진행할 수 없습니다.",
     ),
-    CONTRIBUTION_NOT_EDITABLE(HttpStatus.CONFLICT, "FUNDING_048", "마감일이 지나 보탬을 수정할 수 없습니다."),
+    CONTRIBUTION_NOT_EDITABLE(HttpStatus.CONFLICT, "FUNDING_048", "현재 펀딩 상태에서는 보탬을 수정할 수 없습니다."),
 }
