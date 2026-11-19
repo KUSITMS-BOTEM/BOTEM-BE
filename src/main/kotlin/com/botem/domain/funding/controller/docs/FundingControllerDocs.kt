@@ -236,6 +236,7 @@ interface FundingControllerDocs {
             title은 제목 입력이 없어진 뒤 개설된 펀딩과 서프라이즈 펀딩에서는 null입니다.
             확정·대기 달성률은 홈 펀딩 카드와 같은 기준(소수점 버림)이며, 참여자별 금액은 반환하지 않습니다.
             participants는 입금 대조를 위해 취소를 제외한 참여 기록마다 한 줄씩 참여 시각 순으로 반환합니다.
+            각 참여의 thankCardSent와 thankCardSentAt으로 감사카드 발송 여부와 최초 발송 시각을 확인합니다.
             order는 사람 기준 첫 참여 순서(1부터)로 역할 배지에 쓰며, 같은 회원이 여러 번 보태면 같은 order를 가집니다.
             status는 AWAITING_TRANSFER(송금 전), PENDING_CONFIRMATION(확인 대기), CONFIRMED(확정),
             REJECTED(못 받았어요), MESSAGE_ONLY(메시지로 보탬) 중 하나입니다.
@@ -982,7 +983,9 @@ interface FundingControllerDocs {
                     "name": "하린",
                     "profileImageUrl": "https://image.example.com/profile.jpg",
                     "status": "CONFIRMED",
-                    "participatedAt": "2026-11-20T14:03:12"
+                    "participatedAt": "2026-11-20T14:03:12",
+                    "thankCardSent": true,
+                    "thankCardSentAt": "2026-11-24T18:30:00"
                   },
                   {
                     "contributionId": 32,
@@ -990,7 +993,9 @@ interface FundingControllerDocs {
                     "name": "도윤",
                     "profileImageUrl": null,
                     "status": "PENDING_CONFIRMATION",
-                    "participatedAt": "2026-11-21T09:41:00"
+                    "participatedAt": "2026-11-21T09:41:00",
+                    "thankCardSent": false,
+                    "thankCardSentAt": null
                   },
                   {
                     "contributionId": 33,
@@ -998,7 +1003,9 @@ interface FundingControllerDocs {
                     "name": "민지",
                     "profileImageUrl": null,
                     "status": "MESSAGE_ONLY",
-                    "participatedAt": "2026-11-22T20:15:30"
+                    "participatedAt": "2026-11-22T20:15:30",
+                    "thankCardSent": false,
+                    "thankCardSentAt": null
                   }
                 ],
                 "messageCount": 3,

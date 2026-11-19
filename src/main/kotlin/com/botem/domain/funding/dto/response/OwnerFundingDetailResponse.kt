@@ -41,6 +41,8 @@ data class OwnerFundingParticipantResponse(
     val profileImageUrl: String?,
     val status: ContributionStatus,
     val participatedAt: LocalDateTime,
+    val thankCardSent: Boolean,
+    val thankCardSentAt: LocalDateTime?,
 )
 
 data class FundingManagementActionsResponse(

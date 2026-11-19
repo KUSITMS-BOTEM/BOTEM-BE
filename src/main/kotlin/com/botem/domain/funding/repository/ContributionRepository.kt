@@ -16,6 +16,8 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
 
     fun findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId: Long): List<Contribution>
 
+    fun findByIdAndParticipantUserId(contributionId: Long, participantUserId: Long): Contribution?
+
     fun findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
         fundingId: Long,
         status: ContributionStatus,
