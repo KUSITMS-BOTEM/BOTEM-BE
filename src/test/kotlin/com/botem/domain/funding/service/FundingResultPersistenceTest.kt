@@ -83,6 +83,11 @@ class FundingResultPersistenceTest {
         assertEquals(30_000L, result.confirmedAmount)
         assertEquals(1L, result.pendingContributionCount)
         assertTrue(result.pendingCleanupRequired)
+        // 일괄 전환 이후 상태로 보탬 목록을 내려준다
+        assertEquals(
+            listOf(ContributionStatus.MESSAGE_ONLY, ContributionStatus.PENDING_CONFIRMATION, ContributionStatus.CONFIRMED),
+            result.contributions.map { it.status },
+        )
 
         val exception = assertFailsWith<BusinessException> { converted.markTransferSent() }
         assertEquals(FundingErrorCode.CONTRIBUTION_CONVERTED_TO_MESSAGE_ONLY, exception.errorCode)

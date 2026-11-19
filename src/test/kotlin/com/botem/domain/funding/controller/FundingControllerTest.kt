@@ -12,10 +12,12 @@ import com.botem.domain.funding.dto.response.FundingEarlyCloseResponse
 import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingManagementActionsResponse
 import com.botem.domain.funding.dto.response.FundingManagementState
+import com.botem.domain.funding.dto.response.FundingResultContributionResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
+import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
@@ -274,6 +276,8 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
             .andExpect(jsonPath("$.data.resultOpenedAt").value("2026-11-15T00:00:00"))
+            .andExpect(jsonPath("$.data.contributions[0].contributionId").value(31))
+            .andExpect(jsonPath("$.data.contributions[0].hasMessage").value(true))
 
         verify(fundingResultService).openResult(USER_ID, FUNDING_ID, false)
     }
@@ -524,6 +528,19 @@ class FundingControllerTest {
             pendingContributionCount = 0L,
             pendingCleanupRequired = false,
             resultOpenedAt = resultOpenedAt,
+            contributions = listOf(
+                FundingResultContributionResponse(
+                    contributionId = 31L,
+                    name = "서준",
+                    profileImageUrl = null,
+                    status = ContributionStatus.CONFIRMED,
+                    participatedAt = LocalDateTime.of(2026, 11, 10, 14, 20),
+                    hasMessage = true,
+                    hasPhoto = false,
+                    hasVoice = false,
+                    thankCardSent = false,
+                ),
+            ),
         )
 
     private fun surpriseGiftPreparationResponse(giftPreparedAt: LocalDateTime?): SurpriseGiftPreparationResponse =

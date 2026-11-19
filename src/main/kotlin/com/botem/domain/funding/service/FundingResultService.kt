@@ -1,14 +1,19 @@
 package com.botem.domain.funding.service
 
+import com.botem.domain.funding.dto.response.FundingResultContributionResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.entity.Contribution
+import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
+import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
+import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
@@ -23,6 +28,8 @@ class FundingResultService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
+    private val contributionThankCardRepository: ContributionThankCardRepository,
+    private val userRepository: UserRepository,
     private val fundingContributionCloser: FundingContributionCloser,
     private val clock: Clock,
 ) {
@@ -72,7 +79,41 @@ class FundingResultService(
             summary = summary,
             achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messageCount = rollingPaperMessageRepository.countByFundingId(funding.id),
+            contributions = contributionsOf(funding),
         )
+    }
+
+    // 결과 화면에서 보탬마다 감사카드를 보내도록 취소를 뺀 모든 보탬을 참여 순서로 내려준다
+    private fun contributionsOf(funding: Funding): List<FundingResultContributionResponse> {
+        val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(funding.id)
+            .filter { it.status != ContributionStatus.CANCELLED }
+        if (contributions.isEmpty()) {
+            return emptyList()
+        }
+
+        val contributionIds = contributions.map(Contribution::id)
+        val messagesByContributionId = rollingPaperMessageRepository.findAllByContributionIdIn(contributionIds)
+            .associateBy { it.contributionId }
+        val thankCardContributionIds = contributionThankCardRepository.findAllByContributionIdIn(contributionIds)
+            .mapTo(mutableSetOf()) { it.contributionId }
+        val profileImageUrls = userRepository.findAllById(contributions.mapNotNull(Contribution::participantUserId).toSet())
+            .associate { it.id to it.profileImageUrl }
+
+        return contributions.map { contribution ->
+            val message = messagesByContributionId[contribution.id]
+
+            FundingResultContributionResponse(
+                contributionId = contribution.id,
+                name = contribution.participantName,
+                profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
+                status = contribution.status,
+                participatedAt = contribution.createdAt,
+                hasMessage = !message?.content.isNullOrBlank(),
+                hasPhoto = message?.photoUrl != null,
+                hasVoice = message?.voiceUrl != null,
+                thankCardSent = contribution.id in thankCardContributionIds,
+            )
+        }
     }
 
     private fun summaryOf(funding: Funding): FundingContributionSummary =
