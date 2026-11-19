@@ -85,9 +85,9 @@ class FriendProfileService(
             throw BusinessException(FriendErrorCode.FRIEND_NOT_FOUND)
         }
 
-        return userRepository.findById(friendId).orElse(null)
-            ?.takeIf { it.status == UserStatus.ACTIVE }
-            ?: throw BusinessException(FriendErrorCode.FRIEND_NOT_FOUND)
+        // 탈퇴하면 같은 트랜잭션에서 친구 관계가 지워지므로 친구 관계가 있으면 활성 회원이다
+        return userRepository.findById(friendId)
+            .orElseThrow { BusinessException(FriendErrorCode.FRIEND_NOT_FOUND) }
     }
 
     private fun profileOf(target: User, viewerId: Long?, wishesVisible: Boolean): FriendProfileResponse {
