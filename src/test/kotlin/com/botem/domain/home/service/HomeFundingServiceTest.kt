@@ -11,6 +11,8 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.funding.repository.projection.FundingParticipantPreviewProjection
 import com.botem.domain.home.dto.response.HomeFundingCardType
+import com.botem.domain.user.entity.User
+import com.botem.domain.user.repository.UserRepository
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
@@ -27,9 +29,11 @@ class HomeFundingServiceTest {
 
     private val fundingRepository = mock(FundingRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
+    private val userRepository = mock(UserRepository::class.java)
     private val service = HomeFundingService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
+        userRepository = userRepository,
         clock = Clock.fixed(Instant.parse("2026-11-08T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -73,6 +77,26 @@ class HomeFundingServiceTest {
         assertEquals(3L, response.fundingCards[2].remainingDays)
         assertEquals(2, response.activeFundingCount)
         assertTrue(response.canOpenFunding)
+    }
+
+    @Test
+    fun `서프라이즈 카드에는 받는 사람 이름을, 생일 카드에는 null을 담는다`() {
+        val birthday = funding(id = 2L, type = FundingType.BIRTHDAY, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
+        val surprise = funding(
+            id = 3L,
+            type = FundingType.SURPRISE,
+            deadline = LocalDateTime.of(2026, 11, 9, 23, 59),
+            revealAt = LocalDateTime.of(2026, 11, 11, 0, 0),
+        )
+        given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
+            .willReturn(listOf(birthday, surprise))
+        given(userRepository.findAllById(setOf(2L))).willReturn(
+            listOf(User(kakaoId = 2L, nickname = "서준닉", profileImageUrl = null, name = "서준").also { setField(it, "id", 2L) }),
+        )
+
+        val names = service.getHomeFundings(USER_ID).fundingCards.associate { it.fundingId to it.recipientName }
+
+        assertEquals(mapOf(2L to null, 3L to "서준"), names)
     }
 
     @Test

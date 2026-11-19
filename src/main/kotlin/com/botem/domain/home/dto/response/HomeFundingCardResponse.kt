@@ -15,4 +15,6 @@ data class HomeFundingCardResponse(
     val confirmedPercentage: Int,
     val pendingPercentage: Int,
     val pendingContributionCount: Long,
+    // 서프라이즈 카드 제목용 받는 사람 이름(없으면 닉네임). 생일 펀딩은 null
+    val recipientName: String? = null,
 )

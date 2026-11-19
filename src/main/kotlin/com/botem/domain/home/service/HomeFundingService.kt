@@ -11,6 +11,7 @@ import com.botem.domain.home.dto.response.HomeFundingCardResponse
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeFundingParticipantPreviewResponse
+import com.botem.domain.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
@@ -21,6 +22,7 @@ import java.time.temporal.ChronoUnit
 class HomeFundingService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
+    private val userRepository: UserRepository,
     private val clock: Clock,
 ) {
 
@@ -30,11 +32,13 @@ class HomeFundingService(
         val fundings = fundingRepository.findAllByOwnerIdAndStatusIn(userId, HOME_CANDIDATE_STATUSES)
         val summaries = getContributionSummaries(fundings)
         val participantPreviews = getParticipantPreviews(fundings)
+        val recipientNames = getRecipientNames(fundings)
         val cards = fundings.mapNotNull { funding ->
             toCard(
                 funding = funding,
                 summary = summaries[funding.id] ?: FundingContributionSummary.empty(funding.id),
                 participantPreviews = participantPreviews[funding.id].orEmpty(),
+                recipientName = funding.recipientId?.let(recipientNames::get),
                 now = now,
             )
         }
@@ -70,10 +74,21 @@ class HomeFundingService(
             )
     }
 
+    // 홈 펀딩 탭은 내가 연 펀딩만 보여주므로 서프라이즈 주최자에게 받는 사람 이름을 알려도 비밀이 새지 않는다
+    private fun getRecipientNames(fundings: List<Funding>): Map<Long, String> {
+        val recipientIds = fundings.mapNotNull(Funding::recipientId).toSet()
+        if (recipientIds.isEmpty()) {
+            return emptyMap()
+        }
+
+        return userRepository.findAllById(recipientIds).associate { it.id to (it.name ?: it.nickname) }
+    }
+
     private fun toCard(
         funding: Funding,
         summary: FundingContributionSummary,
         participantPreviews: List<HomeFundingParticipantPreviewResponse>,
+        recipientName: String?,
         now: LocalDateTime,
     ): HomeFundingCardResponse? {
         val cardType = when {
@@ -100,6 +115,7 @@ class HomeFundingService(
             confirmedPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             pendingPercentage = progressPercentage(summary.pendingAmount, funding.targetAmount),
             pendingContributionCount = summary.pendingCount,
+            recipientName = recipientName,
         )
     }
 
