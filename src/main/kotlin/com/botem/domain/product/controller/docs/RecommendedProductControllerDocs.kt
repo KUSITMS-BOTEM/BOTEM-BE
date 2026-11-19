@@ -19,6 +19,10 @@ interface RecommendedProductControllerDocs {
         description = """
             위시 추가 화면의 추천 선물 카드를 노출 순서대로 조회합니다.
             category를 생략하면 전체 카테고리를 조회하며, 판매 종료된 상품은 제외됩니다.
+            wishId는 내 위시에 담은 상품이면 그 위시 ID, 아니면 null입니다.
+            fundingId는 그 위시로 내가 연 펀딩이 완료·취소 전이면 그 펀딩 ID, 아니면 null입니다.
+            친구가 나에게 연 서프라이즈 펀딩은 드러나지 않도록 fundingId에 반영하지 않습니다.
+            화면 분기: 위시에 추가한 상품은 wishId != null && fundingId == null, 펀딩중은 fundingId != null입니다.
         """,
     )
     @ApiResponses(
@@ -35,6 +39,7 @@ interface RecommendedProductControllerDocs {
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
     )
     fun getRecommendedProducts(
+        @Parameter(hidden = true) userId: Long,
         @Parameter(description = "카테고리 (생략 시 전체)") category: ProductCategory?,
     ): ApiResponse<List<RecommendedProductResponse>>
 
@@ -43,6 +48,11 @@ interface RecommendedProductControllerDocs {
         description = """
             추천 선물 하나를 조회합니다.
             판매 종료된 상품도 조회되며, status가 DISCONTINUED이면 "지금은 고를 수 없는 선물" 화면을 표시합니다.
+            status는 운영자가 정하는 판매 상태이며 내 위시·펀딩 여부와 별개입니다.
+            wishId는 내 위시에 담은 상품이면 그 위시 ID, 아니면 null입니다.
+            fundingId는 그 위시로 내가 연 펀딩이 완료·취소 전이면 그 펀딩 ID, 아니면 null입니다.
+            친구가 나에게 연 서프라이즈 펀딩은 드러나지 않도록 fundingId에 반영하지 않습니다.
+            화면 분기: 위시에 추가한 상품은 wishId != null && fundingId == null, 펀딩중은 fundingId != null입니다.
         """,
     )
     @ApiResponses(
@@ -59,6 +69,7 @@ interface RecommendedProductControllerDocs {
         ),
     )
     fun getRecommendedProduct(
+        @Parameter(hidden = true) userId: Long,
         @Parameter(description = "추천 상품 ID") productId: Long,
     ): ApiResponse<RecommendedProductResponse>
 
@@ -74,7 +85,9 @@ interface RecommendedProductControllerDocs {
                   "price": 350000,
                   "sellerName": "Apple 공식 브랜드관",
                   "category": "EARPHONE_HEADPHONE",
-                  "status": "ON_SALE"
+                  "status": "ON_SALE",
+                  "wishId": 21,
+                  "fundingId": null
                 }
               ],
               "error": null
@@ -91,7 +104,9 @@ interface RecommendedProductControllerDocs {
                 "price": 350000,
                 "sellerName": "Apple 공식 브랜드관",
                 "category": "EARPHONE_HEADPHONE",
-                "status": "ON_SALE"
+                "status": "ON_SALE",
+                "wishId": 21,
+                "fundingId": 7
               },
               "error": null
             }
