@@ -11,6 +11,7 @@ import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
+import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.entity.User
@@ -36,11 +37,13 @@ class OwnerFundingDetailServiceTest {
 
     private val fundingRepository = mock(FundingRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
+    private val contributionThankCardRepository = mock(ContributionThankCardRepository::class.java)
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val service = OwnerFundingDetailService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
+        contributionThankCardRepository = contributionThankCardRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
         userRepository = userRepository,
         clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),

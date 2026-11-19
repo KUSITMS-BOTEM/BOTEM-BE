@@ -7,5 +7,7 @@ interface ContributionThankCardRepository : JpaRepository<ContributionThankCard,
 
     fun findByContributionId(contributionId: Long): ContributionThankCard?
 
+    fun findAllByContributionIdIn(contributionIds: Collection<Long>): List<ContributionThankCard>
+
     fun findByShareKey(shareKey: String): ContributionThankCard?
 }

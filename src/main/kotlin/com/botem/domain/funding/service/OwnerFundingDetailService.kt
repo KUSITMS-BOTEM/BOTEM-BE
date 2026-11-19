@@ -7,11 +7,13 @@ import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.dto.response.OwnerFundingParticipantResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
+import com.botem.domain.funding.entity.ContributionThankCard
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
+import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.repository.UserRepository
@@ -26,6 +28,7 @@ import java.time.temporal.ChronoUnit
 class OwnerFundingDetailService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
+    private val contributionThankCardRepository: ContributionThankCardRepository,
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
     private val userRepository: UserRepository,
     private val clock: Clock,
@@ -44,7 +47,13 @@ class OwnerFundingDetailService(
         val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId)
             .filter { it.status != ContributionStatus.CANCELLED }
         val confirmedAmount = contributions.sumAmount(ContributionStatus.CONFIRMED)
-        val participants = toParticipants(contributions)
+        val thankCardsByContributionId = if (contributions.isEmpty()) {
+            emptyMap()
+        } else {
+            contributionThankCardRepository.findAllByContributionIdIn(contributions.map(Contribution::id))
+                .associateBy { it.contributionId }
+        }
+        val participants = toParticipants(contributions, thankCardsByContributionId)
         val participantCount = participants.maxOfOrNull(OwnerFundingParticipantResponse::order) ?: 0
 
         val beforeDeadline = funding.deadline.isAfter(now)
@@ -106,7 +115,10 @@ class OwnerFundingDetailService(
             funding.status in EXTENDABLE_STATUSES
 
     // 로그인 참여자는 첫 참여 순서를 공유하고, 비로그인 참여는 각각 한 명으로 센다
-    private fun toParticipants(contributions: List<Contribution>): List<OwnerFundingParticipantResponse> {
+    private fun toParticipants(
+        contributions: List<Contribution>,
+        thankCardsByContributionId: Map<Long, ContributionThankCard>,
+    ): List<OwnerFundingParticipantResponse> {
         val userIds = contributions.mapNotNull(Contribution::participantUserId).toSet()
         val profileImageUrls = userRepository.findAllById(userIds).associate { it.id to it.profileImageUrl }
         val orderByUserId = mutableMapOf<Long, Int>()
@@ -115,6 +127,7 @@ class OwnerFundingDetailService(
         return contributions.map { contribution ->
             val userId = contribution.participantUserId
             val order = if (userId == null) nextOrder++ else orderByUserId.getOrPut(userId) { nextOrder++ }
+            val thankCard = thankCardsByContributionId[contribution.id]
 
             OwnerFundingParticipantResponse(
                 contributionId = contribution.id,
@@ -123,6 +136,8 @@ class OwnerFundingDetailService(
                 profileImageUrl = userId?.let(profileImageUrls::get),
                 status = contribution.status,
                 participatedAt = contribution.createdAt,
+                thankCardSent = thankCard != null,
+                thankCardSentAt = thankCard?.sentAt,
             )
         }
     }
