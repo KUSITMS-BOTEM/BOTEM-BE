@@ -69,14 +69,23 @@ class Contribution(
     var confirmedAt: LocalDateTime? = null
         protected set
 
+    // 실행 취소 허용 시간을 판단하려고 '못 받았어요'를 누른 시각을 남긴다
+    var rejectedAt: LocalDateTime? = null
+        protected set
+
     fun updateParticipantName(participantName: String) {
         this.participantName = participantName
     }
 
-    // 같은 요청이 다시 와도 결과가 같도록 이미 보낸 상태면 그대로 둔다
+    // 같은 요청이 다시 와도 결과가 같도록 이미 보낸 상태면 그대로 둔다.
+    // 개설자가 '못 받았어요'를 누른 보탬도 다시 보내면 같은 보탬으로 확인 대기에 올린다
     fun markTransferSent() {
         when (status) {
             ContributionStatus.AWAITING_TRANSFER -> status = ContributionStatus.PENDING_CONFIRMATION
+            ContributionStatus.REJECTED -> {
+                status = ContributionStatus.PENDING_CONFIRMATION
+                rejectedAt = null
+            }
             ContributionStatus.PENDING_CONFIRMATION, ContributionStatus.CONFIRMED -> Unit
             ContributionStatus.MESSAGE_ONLY ->
                 throw BusinessException(FundingErrorCode.CONTRIBUTION_CONVERTED_TO_MESSAGE_ONLY)
@@ -96,13 +105,33 @@ class Contribution(
         }
     }
 
-    // 확인 대기만 미입금 처리한다. 이미 미입금 처리된 참여는 그대로 둔다
-    fun reject() {
+    // 확인 대기만 '못 받았어요' 처리한다. 이미 처리된 참여는 그대로 둔다
+    fun reject(rejectedAt: LocalDateTime) {
         when (status) {
-            ContributionStatus.PENDING_CONFIRMATION -> status = ContributionStatus.REJECTED
+            ContributionStatus.PENDING_CONFIRMATION -> {
+                status = ContributionStatus.REJECTED
+                this.rejectedAt = rejectedAt
+            }
             ContributionStatus.REJECTED -> Unit
             else -> throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_PENDING)
         }
+    }
+
+    // 받았어요·못 받았어요를 처리 직후에만 확인 대기로 되돌린다. 이미 되돌린 참여는 그대로 둔다
+    fun undoDecision(now: LocalDateTime, undoableSince: LocalDateTime) {
+        val decidedAt = when (status) {
+            ContributionStatus.PENDING_CONFIRMATION -> return
+            ContributionStatus.CONFIRMED -> confirmedAt
+            ContributionStatus.REJECTED -> rejectedAt
+            else -> throw BusinessException(FundingErrorCode.CONTRIBUTION_DECISION_NOT_UNDOABLE)
+        }
+        if (decidedAt == null || decidedAt.isBefore(undoableSince) || decidedAt.isAfter(now)) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_DECISION_UNDO_EXPIRED)
+        }
+
+        status = ContributionStatus.PENDING_CONFIRMATION
+        confirmedAt = null
+        rejectedAt = null
     }
 
     fun cancel() {

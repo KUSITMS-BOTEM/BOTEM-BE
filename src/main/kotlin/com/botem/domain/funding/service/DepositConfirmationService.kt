@@ -1,7 +1,12 @@
 package com.botem.domain.funding.service
 
+import com.botem.domain.funding.dto.request.ContributionDecision
+import com.botem.domain.funding.dto.request.DecideContributionsRequest
+import com.botem.domain.funding.dto.request.UndoContributionDecisionsRequest
 import com.botem.domain.funding.dto.response.ConfirmAllContributionsResponse
 import com.botem.domain.funding.dto.response.ContributionDecisionResponse
+import com.botem.domain.funding.dto.response.ContributionDecisionResult
+import com.botem.domain.funding.dto.response.ContributionDecisionsResponse
 import com.botem.domain.funding.dto.response.FundingProgressResponse
 import com.botem.domain.funding.dto.response.PendingContributionListResponse
 import com.botem.domain.funding.dto.response.PendingContributionResponse
@@ -18,6 +23,7 @@ import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Duration
 import java.time.LocalDateTime
 
 // 개설자가 은행 앱에서 입금을 확인한 뒤 직접 확정하거나 미입금 처리한다 (FUND-BS-007)
@@ -48,6 +54,7 @@ class DepositConfirmationService(
                     participantName = contribution.participantName,
                     profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
                     participatedAt = contribution.createdAt,
+                    amount = contribution.amount,
                 )
             },
         )
@@ -70,7 +77,7 @@ class DepositConfirmationService(
         val funding = lockChangeableFunding(userId, fundingId)
         val contribution = lockContribution(fundingId, contributionId)
 
-        contribution.reject()
+        contribution.reject(LocalDateTime.now(clock))
 
         return ContributionDecisionResponse(contribution.id, contribution.status, progressOf(funding))
     }
@@ -88,6 +95,38 @@ class DepositConfirmationService(
         pendingContributions.forEach { it.confirm(now) }
 
         return ConfirmAllContributionsResponse(pendingContributions.size, progressAfterConfirm(funding, now))
+    }
+
+    @Transactional
+    fun decide(userId: Long, fundingId: Long, request: DecideContributionsRequest): ContributionDecisionsResponse {
+        val funding = lockChangeableFunding(userId, fundingId)
+        val contributions = lockContributions(fundingId, request.contributionIds)
+        val now = LocalDateTime.now(clock)
+
+        val progress = when (request.decision) {
+            ContributionDecision.CONFIRM -> {
+                contributions.forEach { it.confirm(now) }
+                progressAfterConfirm(funding, now)
+            }
+            ContributionDecision.REJECT -> {
+                contributions.forEach { it.reject(now) }
+                progressOf(funding)
+            }
+        }
+
+        return ContributionDecisionsResponse(contributions.map(::toResult), progress)
+    }
+
+    // 토스트의 실행 취소는 처리 직후에만 허용한다. 허용 시간은 토스트(5초)보다 길게 두어 네트워크 지연을 흡수한다
+    @Transactional
+    fun undo(userId: Long, fundingId: Long, request: UndoContributionDecisionsRequest): ContributionDecisionsResponse {
+        val funding = lockChangeableFunding(userId, fundingId)
+        val contributions = lockContributions(fundingId, request.contributionIds)
+        val now = LocalDateTime.now(clock)
+
+        contributions.forEach { it.undoDecision(now, now.minus(UNDO_WINDOW)) }
+
+        return ContributionDecisionsResponse(contributions.map(::toResult), progressOf(funding))
     }
 
     // 펀딩을 잠가 같은 펀딩의 확인·미입금·전체 확인 요청과 새 보태기를 직렬화한다
@@ -115,6 +154,20 @@ class DepositConfirmationService(
     private fun lockContribution(fundingId: Long, contributionId: Long): Contribution =
         contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
+
+    // 요청한 보탬이 하나라도 이 펀딩에 없으면 아무것도 처리하지 않는다
+    private fun lockContributions(fundingId: Long, contributionIds: List<Long>): List<Contribution> {
+        val distinctIds = contributionIds.toSet()
+        val contributions = contributionRepository.findAllByIdInAndFundingIdForUpdate(distinctIds, fundingId)
+        if (contributions.size != distinctIds.size) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
+        }
+
+        return contributions
+    }
+
+    private fun toResult(contribution: Contribution): ContributionDecisionResult =
+        ContributionDecisionResult(contribution.id, contribution.status)
 
     private fun findPendingContributions(fundingId: Long): List<Contribution> =
         contributionRepository.findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
@@ -144,5 +197,9 @@ class DepositConfirmationService(
             pendingContributionCount = summary.pendingCount,
             targetReached = summary.confirmedAmount >= funding.targetAmount,
         )
+    }
+
+    companion object {
+        private val UNDO_WINDOW: Duration = Duration.ofSeconds(10)
     }
 }

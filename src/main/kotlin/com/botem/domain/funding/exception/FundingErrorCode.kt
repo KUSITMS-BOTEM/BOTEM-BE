@@ -218,4 +218,14 @@ enum class FundingErrorCode(
         "FUNDING_054",
         "받는 사람의 생일이 임박해 서프라이즈 펀딩을 열 수 없습니다.",
     ),
+    CONTRIBUTION_DECISION_NOT_UNDOABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_055",
+        "받았어요·못 받았어요를 처리한 보탬만 되돌릴 수 있습니다.",
+    ),
+    CONTRIBUTION_DECISION_UNDO_EXPIRED(
+        HttpStatus.CONFLICT,
+        "FUNDING_056",
+        "실행 취소 가능 시간이 지났습니다.",
+    ),
 }
