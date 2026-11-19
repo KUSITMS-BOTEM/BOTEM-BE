@@ -8,14 +8,19 @@ data class ContributionThankCardResponse(
     val contributionId: Long,
     val message: String,
     val sentAt: LocalDateTime,
+    val shareUrl: String,
 ) {
     companion object {
-        fun from(thankCard: ContributionThankCard): ContributionThankCardResponse =
+        fun from(
+            thankCard: ContributionThankCard,
+            shareUrl: String,
+        ): ContributionThankCardResponse =
             ContributionThankCardResponse(
                 thankCardId = thankCard.id,
                 contributionId = thankCard.contributionId,
                 message = thankCard.message,
                 sentAt = thankCard.sentAt,
+                shareUrl = shareUrl,
             )
     }
 }

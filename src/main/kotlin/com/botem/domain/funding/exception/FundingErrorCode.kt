@@ -192,4 +192,9 @@ enum class FundingErrorCode(
         "FUNDING_048",
         "입금이 확인된 보탬에만 감사 카드를 보낼 수 있습니다.",
     ),
+    CONTRIBUTION_THANK_CARD_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "FUNDING_049",
+        "감사 카드를 찾을 수 없습니다.",
+    ),
 }

@@ -18,6 +18,9 @@ wish-profile:
 funding-share:
   base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/fundings}
 
+contribution-thank-card:
+  base-url: ${CONTRIBUTION_THANK_CARD_BASE_URL:https://botem.me/thank-cards}
+
 guest-contribution-token:
   access-token-expiration: ${GUEST_CONTRIBUTION_ACCESS_TOKEN_EXPIRATION:10m}
 
