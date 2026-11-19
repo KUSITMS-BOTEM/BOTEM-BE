@@ -1,11 +1,9 @@
 package com.botem.domain.funding.service
 
-import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
 import com.botem.domain.funding.entity.Funding
-import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
@@ -70,6 +68,8 @@ class FundingCreationService(
         if (userId == request.recipientId) {
             throw BusinessException(FundingErrorCode.SURPRISE_SELF_RECIPIENT_NOT_ALLOWED)
         }
+        // 입력만으로 판단하는 계좌번호 검증은 잠금 전에 끝낸다
+        val payoutAccount = resourceResolver.resolveDirectPayoutAccount(request.bank, request.accountNumber)
         // 서로에게 동시에 서프라이즈를 여는 요청의 교착을 막기 위해 ID 순서로 잠근다
         val lockedUsers = listOf(userId, request.recipientId).sorted()
             .associateWith { userRepository.findByIdForUpdate(it) }
@@ -92,7 +92,6 @@ class FundingCreationService(
         }
 
         val wish = resourceResolver.resolveWish(request.recipientId, request.wishId)
-        val payoutAccount = resourceResolver.resolvePayoutAccount(userId, request.payoutAccountId)
         val funding = Funding.createSurprise(
             ownerId = userId,
             recipientId = request.recipientId,
@@ -102,7 +101,7 @@ class FundingCreationService(
             showOnRecipientProfile = request.showOnRecipientProfile,
             notifyRecipientFriends = request.notifyRecipientFriends,
             product = wish.toSnapshot(),
-            payoutAccount = payoutAccount.toSnapshot(),
+            payoutAccount = payoutAccount,
             now = now,
         )
         val savedFunding = fundingRepository.save(funding)
@@ -130,14 +129,6 @@ class FundingCreationService(
             imageUrl = productImageUrl,
             price = price,
             url = productUrl,
-        )
-
-    private fun PayoutAccount.toSnapshot(): FundingPayoutAccountSnapshot =
-        FundingPayoutAccountSnapshot(
-            sourcePayoutAccountId = id,
-            bank = bank,
-            encryptedAccountNumber = encryptedAccountNumber,
-            accountHolder = accountHolder,
         )
 
     private fun validateActiveFundingCount(userId: Long, now: LocalDateTime) {
