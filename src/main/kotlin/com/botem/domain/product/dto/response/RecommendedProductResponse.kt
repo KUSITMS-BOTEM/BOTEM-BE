@@ -12,9 +12,17 @@ data class RecommendedProductResponse(
     val sellerName: String,
     val category: ProductCategory,
     val status: RecommendedProductStatus,
+    // 내 위시에 담은 상품이면 그 위시 ID
+    val wishId: Long?,
+    // 그 위시로 내가 연 펀딩이 끝나지 않았으면 그 펀딩 ID
+    val fundingId: Long?,
 ) {
     companion object {
-        fun from(product: RecommendedProduct): RecommendedProductResponse =
+        fun from(
+            product: RecommendedProduct,
+            wishId: Long? = null,
+            fundingId: Long? = null,
+        ): RecommendedProductResponse =
             RecommendedProductResponse(
                 id = product.id,
                 name = product.name,
@@ -23,6 +31,8 @@ data class RecommendedProductResponse(
                 sellerName = product.sellerName,
                 category = product.category,
                 status = product.status,
+                wishId = wishId,
+                fundingId = fundingId,
             )
     }
 }

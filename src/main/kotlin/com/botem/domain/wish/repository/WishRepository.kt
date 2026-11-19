@@ -25,4 +25,6 @@ interface WishRepository : JpaRepository<Wish, Long> {
     ): Wish?
 
     fun existsByUserIdAndRecommendedProductId(userId: Long, recommendedProductId: Long): Boolean
+
+    fun findAllByUserIdAndRecommendedProductIdIn(userId: Long, recommendedProductIds: Collection<Long>): List<Wish>
 }
