@@ -27,30 +27,34 @@ class RecommendedProductControllerTest {
 
     @Test
     fun `카테고리로 추천 상품 목록을 조회한다`() {
-        given(recommendedProductService.getRecommendedProducts(ProductCategory.EARPHONE_HEADPHONE))
+        given(recommendedProductService.getRecommendedProducts(USER_ID, ProductCategory.EARPHONE_HEADPHONE))
             .willReturn(listOf(productResponse()))
 
         mockMvc.perform(
             get("/api/recommended-products")
                 .param("category", "EARPHONE_HEADPHONE")
-                .with(authentication(UsernamePasswordAuthenticationToken(1L, null, emptyList()))),
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data[0].id").value(PRODUCT_ID))
             .andExpect(jsonPath("$.data[0].category").value("EARPHONE_HEADPHONE"))
+            .andExpect(jsonPath("$.data[0].wishId").value(WISH_ID))
+            .andExpect(jsonPath("$.data[0].fundingId").value(FUNDING_ID))
     }
 
     @Test
     fun `추천 상품 상세를 조회한다`() {
-        given(recommendedProductService.getRecommendedProduct(PRODUCT_ID)).willReturn(productResponse())
+        given(recommendedProductService.getRecommendedProduct(USER_ID, PRODUCT_ID)).willReturn(productResponse())
 
         mockMvc.perform(
             get("/api/recommended-products/$PRODUCT_ID")
-                .with(authentication(UsernamePasswordAuthenticationToken(1L, null, emptyList()))),
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.name").value("에어팟 프로 3"))
             .andExpect(jsonPath("$.data.sellerName").value("Apple 공식 브랜드관"))
+            .andExpect(jsonPath("$.data.wishId").value(WISH_ID))
+            .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
     }
 
     private fun productResponse(): RecommendedProductResponse =
@@ -62,6 +66,8 @@ class RecommendedProductControllerTest {
             sellerName = "Apple 공식 브랜드관",
             category = ProductCategory.EARPHONE_HEADPHONE,
             status = RecommendedProductStatus.ON_SALE,
+            wishId = WISH_ID,
+            fundingId = FUNDING_ID,
         )
 
     @Test
@@ -69,7 +75,7 @@ class RecommendedProductControllerTest {
         mockMvc.perform(
             get("/api/recommended-products")
                 .param("category", "UNKNOWN")
-                .with(authentication(UsernamePasswordAuthenticationToken(1L, null, emptyList()))),
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error.code").value("COMMON_001"))
@@ -77,5 +83,8 @@ class RecommendedProductControllerTest {
 
     companion object {
         private const val PRODUCT_ID = 1L
+        private const val USER_ID = 1L
+        private const val WISH_ID = 21L
+        private const val FUNDING_ID = 7L
     }
 }
