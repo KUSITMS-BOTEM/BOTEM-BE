@@ -66,6 +66,22 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         @Param("fundingId") fundingId: Long,
     ): Contribution?
 
+    // 여러 건을 함께 잠글 때 교착을 피하도록 항상 ID 순서로 잠근다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT contribution
+        FROM Contribution contribution
+        WHERE contribution.id IN :contributionIds
+          AND contribution.fundingId = :fundingId
+        ORDER BY contribution.id ASC
+        """,
+    )
+    fun findAllByIdInAndFundingIdForUpdate(
+        @Param("contributionIds") contributionIds: Collection<Long>,
+        @Param("fundingId") fundingId: Long,
+    ): List<Contribution>
+
     @Query(
         """
         SELECT COALESCE(SUM(contribution.amount), 0)

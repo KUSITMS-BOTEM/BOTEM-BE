@@ -1,6 +1,9 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.funding.dto.request.ContributionDecision
+import com.botem.domain.funding.dto.request.DecideContributionsRequest
+import com.botem.domain.funding.dto.request.UndoContributionDecisionsRequest
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
@@ -44,7 +47,7 @@ class DepositConfirmationServiceTest {
     )
 
     @Test
-    fun `확인 대기 목록은 이름과 참여 시각만 반환한다`() {
+    fun `확인 대기 목록은 이름과 참여 시각과 금액을 반환한다`() {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding()))
         given(
             contributionRepository.findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
@@ -60,6 +63,7 @@ class DepositConfirmationServiceTest {
         assertEquals(31L, response.contributions.single().contributionId)
         assertEquals("하린", response.contributions.single().participantName)
         assertEquals(NOW.minusDays(1), response.contributions.single().participatedAt)
+        assertEquals(10_000L, response.contributions.single().amount)
     }
 
     @Test
@@ -102,7 +106,7 @@ class DepositConfirmationServiceTest {
             }
         }
 
-        givenContribution(ContributionStatus.PENDING_CONFIRMATION).reject()
+        givenContribution(ContributionStatus.PENDING_CONFIRMATION).reject(NOW)
         assertErrorCode(FundingErrorCode.CONTRIBUTION_NOT_PENDING) {
             service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
         }
@@ -118,6 +122,7 @@ class DepositConfirmationServiceTest {
         val response = service.reject(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
 
         assertEquals(ContributionStatus.REJECTED, contribution.status)
+        assertEquals(NOW, contribution.rejectedAt)
         assertEquals(ContributionStatus.REJECTED, response.status)
     }
 
@@ -220,6 +225,124 @@ class DepositConfirmationServiceTest {
         }
     }
 
+    @Test
+    fun `선택한 확인 대기 참여를 한 번에 받았어요로 처리한다`() {
+        givenLockedFunding(funding())
+        val contributions = givenContributions(31L to ContributionStatus.PENDING_CONFIRMATION, 32L to ContributionStatus.PENDING_CONFIRMATION)
+        contributions[1].confirm(NOW.minusMinutes(5))
+        givenSummary(confirmedAmount = 20_000L)
+
+        val response = service.decide(OWNER_ID, FUNDING_ID, DecideContributionsRequest(listOf(31L, 32L, 31L), ContributionDecision.CONFIRM))
+
+        assertTrue(contributions.all { it.status == ContributionStatus.CONFIRMED })
+        assertEquals(NOW, contributions[0].confirmedAt)
+        assertEquals(NOW.minusMinutes(5), contributions[1].confirmedAt)
+        // 이미 확정돼 있던 32는 이번 요청으로 바뀌지 않았으므로 실행 취소 대상이 아니다
+        assertEquals(listOf(31L to true, 32L to false), response.contributions.map { it.contributionId to it.changed })
+        assertEquals(20, response.progress.confirmedPercentage)
+    }
+
+    @Test
+    fun `선택한 확인 대기 참여를 한 번에 못 받았어요로 처리한다`() {
+        givenLockedFunding(funding())
+        val contributions = givenContributions(31L to ContributionStatus.PENDING_CONFIRMATION, 32L to ContributionStatus.PENDING_CONFIRMATION)
+        givenSummary()
+
+        val response = service.decide(OWNER_ID, FUNDING_ID, DecideContributionsRequest(listOf(31L, 32L), ContributionDecision.REJECT))
+
+        assertTrue(contributions.all { it.status == ContributionStatus.REJECTED && it.rejectedAt == NOW })
+        assertTrue(response.contributions.all { it.status == ContributionStatus.REJECTED })
+    }
+
+    @Test
+    fun `선택한 참여 중 이 펀딩에 없는 참여가 있으면 처리하지 않는다`() {
+        givenLockedFunding(funding())
+        val found = contribution(id = 31L, status = ContributionStatus.PENDING_CONFIRMATION)
+        // 요청한 두 건 중 이 펀딩에 있는 한 건만 조회되는 상황
+        given(contributionRepository.findAllByIdInAndFundingIdForUpdate(setOf(31L, 99L), FUNDING_ID))
+            .willReturn(listOf(found))
+
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_NOT_FOUND) {
+            service.decide(OWNER_ID, FUNDING_ID, DecideContributionsRequest(listOf(31L, 99L), ContributionDecision.CONFIRM))
+        }
+        assertEquals(ContributionStatus.PENDING_CONFIRMATION, found.status)
+    }
+
+    @Test
+    fun `처리 직후에는 받았어요와 못 받았어요를 확인 대기로 되돌린다`() {
+        givenLockedFunding(funding())
+        val (confirmed, rejected, pending) = givenContributions(
+            31L to ContributionStatus.PENDING_CONFIRMATION,
+            32L to ContributionStatus.PENDING_CONFIRMATION,
+            33L to ContributionStatus.PENDING_CONFIRMATION,
+        )
+        confirmed.confirm(NOW.minusSeconds(10))
+        rejected.reject(NOW.minusSeconds(3))
+        givenSummary(pendingAmount = 30_000L, pendingCount = 3L)
+
+        val response = service.undo(OWNER_ID, FUNDING_ID, UndoContributionDecisionsRequest(listOf(31L, 32L, 33L)))
+
+        listOf(confirmed, rejected, pending).forEach {
+            assertEquals(ContributionStatus.PENDING_CONFIRMATION, it.status)
+            assertEquals(null, it.confirmedAt)
+            assertEquals(null, it.rejectedAt)
+        }
+        assertEquals(3L, response.progress.pendingContributionCount)
+        assertEquals(listOf(true, true, false), response.contributions.map { it.changed })
+    }
+
+    @Test
+    fun `실행 취소 시간이 지났거나 처리하지 않은 참여는 되돌리지 않는다`() {
+        givenLockedFunding(funding())
+        val (expired, fresh) = givenContributions(
+            31L to ContributionStatus.PENDING_CONFIRMATION,
+            32L to ContributionStatus.PENDING_CONFIRMATION,
+        )
+        expired.confirm(NOW.minusSeconds(11))
+        fresh.reject(NOW)
+
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_DECISION_UNDO_EXPIRED) {
+            service.undo(OWNER_ID, FUNDING_ID, UndoContributionDecisionsRequest(listOf(31L, 32L)))
+        }
+        assertEquals(ContributionStatus.CONFIRMED, expired.status)
+
+        givenContributions(41L to ContributionStatus.AWAITING_TRANSFER)
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_DECISION_NOT_UNDOABLE) {
+            service.undo(OWNER_ID, FUNDING_ID, UndoContributionDecisionsRequest(listOf(41L)))
+        }
+    }
+
+    @Test
+    fun `처리 시각이 없는 기존 못 받았어요는 되돌릴 수 없다`() {
+        givenLockedFunding(funding())
+        val legacy = givenContributions(31L to ContributionStatus.PENDING_CONFIRMATION).single()
+        legacy.reject(NOW)
+        setField(legacy, Contribution::class.java, "rejectedAt", null)
+
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_DECISION_UNDO_EXPIRED) {
+            service.undo(OWNER_ID, FUNDING_ID, UndoContributionDecisionsRequest(listOf(31L)))
+        }
+    }
+
+    @Test
+    fun `결과를 연 펀딩은 선택 처리와 실행 취소를 할 수 없다`() {
+        givenLockedFunding(funding().also { it.openResult(NOW.plusDays(5)) })
+
+        assertErrorCode(FundingErrorCode.FUNDING_RESULT_ALREADY_OPENED) {
+            service.decide(OWNER_ID, FUNDING_ID, DecideContributionsRequest(listOf(31L), ContributionDecision.REJECT))
+        }
+        assertErrorCode(FundingErrorCode.FUNDING_RESULT_ALREADY_OPENED) {
+            service.undo(OWNER_ID, FUNDING_ID, UndoContributionDecisionsRequest(listOf(31L)))
+        }
+    }
+
+    private fun givenContributions(vararg idAndStatuses: Pair<Long, ContributionStatus>): List<Contribution> {
+        val contributions = idAndStatuses.map { (id, status) -> contribution(id = id, status = status) }
+        given(contributionRepository.findAllByIdInAndFundingIdForUpdate(contributions.map { it.id }.toSet(), FUNDING_ID))
+            .willReturn(contributions)
+        return contributions
+    }
+
     private fun givenLockedFunding(funding: Funding) {
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
     }
@@ -295,7 +418,7 @@ class DepositConfirmationServiceTest {
         assertEquals(errorCode, assertFailsWith<BusinessException>(block = block).errorCode)
     }
 
-    private fun setField(target: Any, owner: Class<*>, fieldName: String, value: Any) {
+    private fun setField(target: Any, owner: Class<*>, fieldName: String, value: Any?) {
         owner.getDeclaredField(fieldName).apply {
             isAccessible = true
             set(target, value)

@@ -478,14 +478,30 @@ class ContributionServiceTest {
     }
 
     @Test
-    fun `거절된 참여는 송금 완료로 표시할 수 없다`() {
+    fun `못 받았어요 처리된 참여를 다시 보내면 같은 참여가 확인 대기로 돌아간다`() {
         val contribution = givenContribution(participantUserId = USER_ID)
         contribution.markTransferSent()
-        contribution.reject()
+        contribution.reject(NOW)
+
+        val response = service.markTransferSent(USER_ID, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest())
+
+        assertEquals(ContributionStatus.PENDING_CONFIRMATION, response.status)
+        assertEquals(null, contribution.rejectedAt)
+    }
+
+    @Test
+    fun `결과를 연 뒤에는 못 받았어요 처리된 참여를 다시 보낼 수 없다`() {
+        val contribution = givenContribution(participantUserId = USER_ID)
+        // givenContribution이 펀딩을 다시 등록하므로 그 뒤에 마감된 펀딩으로 바꾸고 결과를 연다
+        givenFunding(confirmedAmount = 0L, deadline = NOW.minusDays(1))
+        requireNotNull(fundingRepository.findByIdForUpdate(FUNDING_ID)).openResult(NOW)
+        contribution.markTransferSent()
+        contribution.reject(NOW.minusHours(1))
 
         assertErrorCode(FundingErrorCode.CONTRIBUTION_TRANSFER_NOT_MARKABLE) {
             service.markTransferSent(USER_ID, FUNDING_ID, CONTRIBUTION_ID, MarkTransferSentRequest())
         }
+        assertEquals(ContributionStatus.REJECTED, contribution.status)
     }
 
     @Test

@@ -23,7 +23,7 @@ interface MyContributionControllerDocs {
             보탬이 없으면 contributions는 빈 배열이며, 이 경우 보태기 버튼을, 있으면 '내 보탬 수정하기'를 안내합니다.
             editable은 메시지를 받을 수 있는 동안(마감일 전) true이며, 그동안 이름·메시지·편지지를 수정할 수 있습니다.
             생일 펀딩은 조기 마감해도 마감일까지 수정할 수 있고, 서프라이즈는 조기 마감하면 메시지와 함께 수정도 닫힙니다.
-            status가 REJECTED이면 개설자가 '못 받았어요'를 누른 보탬입니다.
+            status가 REJECTED이면 개설자가 '못 받았어요'를 누른 보탬('못 받았대요')이며, 송금 완료 표시 API로 다시 '보냈어요'를 누를 수 있습니다.
             각 보탬에는 롤링페이퍼의 메시지·편지지·스티커·사진·음성 정보가 포함됩니다.
             payoutAccount는 송금 전(AWAITING_TRANSFER)이거나 REJECTED인 보탬에만 반환하고, 그 외에는 null입니다.
             excludedFromResult는 개설자가 확인하지 않은 채 팡!(서프라이즈는 선물 준비 완료)을 열어 결과에서 빠진 확인 대기 보탬이면 true입니다.
