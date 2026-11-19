@@ -45,16 +45,15 @@ class FundingCreationService(
         validateActiveFundingCount(userId, now)
 
         val wish = resourceResolver.resolveWish(userId, request.wishId)
-        val payoutAccount = resourceResolver.resolvePayoutAccount(userId, request.payoutAccountId)
+        val payoutAccount = resourceResolver.resolveDirectPayoutAccount(request.bank, request.accountNumber)
         val funding = Funding.createBirthday(
             ownerId = userId,
-            title = request.title,
             targetAmount = request.targetAmount,
             deadline = request.deadline.atTime(LocalTime.MAX).truncatedTo(ChronoUnit.MICROS),
             story = request.story,
             promise = request.promise,
             product = wish.toSnapshot(),
-            payoutAccount = payoutAccount.toSnapshot(),
+            payoutAccount = payoutAccount,
             now = now,
         )
         val savedFunding = fundingRepository.save(funding)
