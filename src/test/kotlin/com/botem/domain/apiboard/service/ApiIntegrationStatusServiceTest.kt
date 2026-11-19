@@ -48,6 +48,20 @@ class ApiIntegrationStatusServiceTest {
     }
 
     @Test
+    fun `공백 담당자와 빈 메모는 미정으로 저장한다`() {
+        val status = ApiIntegrationStatus("DELETE", "/api/wishes/{wishId}")
+        given(repository.findByHttpMethodAndPath("DELETE", "/api/wishes/{wishId}")).willReturn(status)
+
+        val result = service.updateStatus(
+            UpdateApiIntegrationStatusRequest("DELETE", "/api/wishes/{wishId}", owner = "  ", integrated = true),
+        )
+
+        assertNull(result.owner)
+        assertNull(result.memo)
+        assertTrue(result.integrated)
+    }
+
+    @Test
     fun `스펙에 새로 생긴 API는 처음 수정할 때 상태를 만든다`() {
         given(repository.findByHttpMethodAndPath("POST", "/api/new")).willReturn(null)
         given(repository.save(any(ApiIntegrationStatus::class.java))).willAnswer { it.arguments[0] }

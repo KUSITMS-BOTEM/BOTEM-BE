@@ -65,6 +65,9 @@ class SwaggerSecurityTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.integrated").value(true))
+        mockMvc.perform(get("/api-board/statuses").header("Authorization", auth))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data[?(@.path == '/api/board-test')].owner").value("정푸름"))
         mockMvc.perform(get("/v3/api-docs").header("Authorization", auth))
             .andExpect(jsonPath("$.paths['/api-board/statuses']").doesNotExist())
     }
