@@ -16,6 +16,7 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.wish.entity.Wish
+import com.botem.domain.wish.exception.WishErrorCode
 import com.botem.domain.wish.repository.WishRepository
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
@@ -166,6 +167,41 @@ class FriendProfileServiceTest {
         assertNull(service.getFriendWish(VIEWER_ID, TARGET_ID, 11L).activeSurpriseFundingId)
     }
 
+    @Test
+    fun `다른 회원의 위시 ID로는 친구 위시 상세를 조회할 수 없다`() {
+        given(friendshipRepository.existsByUserIdAndFriendId(VIEWER_ID, TARGET_ID)).willReturn(true)
+        given(userRepository.findById(TARGET_ID)).willReturn(Optional.of(target()))
+        given(wishRepository.findByIdAndUserId(OTHER_USERS_WISH_ID, TARGET_ID)).willReturn(null)
+
+        val exception = assertFailsWith<BusinessException> {
+            service.getFriendWish(VIEWER_ID, TARGET_ID, OTHER_USERS_WISH_ID)
+        }
+
+        assertEquals(WishErrorCode.WISH_NOT_FOUND, exception.errorCode)
+    }
+
+    @Test
+    fun `이름·생일·위시·참여가 없으면 닉네임과 빈 값으로 프로필을 만든다`() {
+        val emptyTarget = User(
+            kakaoId = 5678L,
+            nickname = "카카오닉네임",
+            profileImageUrl = null,
+        ).also { setField(it, "id", TARGET_ID) }
+        given(friendshipRepository.existsByUserIdAndFriendId(VIEWER_ID, TARGET_ID)).willReturn(true)
+        given(userRepository.findById(TARGET_ID)).willReturn(Optional.of(emptyTarget))
+        given(fundingRepository.findProfileFundings(TARGET_ID, NOW, true)).willReturn(listOf(funding(id = 31L)))
+
+        val profile = service.getFriendProfile(VIEWER_ID, TARGET_ID)
+
+        assertEquals("카카오닉네임", profile.name)
+        assertNull(profile.birthday)
+        assertNull(profile.birthdayDday)
+        assertEquals(0, profile.wishCount)
+        assertEquals(0L, profile.fundings.single().participantCount)
+        assertNull(profile.fundings.single().firstParticipantName)
+        assertEquals(0, profile.fundings.single().confirmedPercentage)
+    }
+
     private fun givenWishProfileTarget() {
         given(userRepository.findByWishProfileKey(WISH_PROFILE_KEY)).willReturn(target())
         given(wishRepository.findAllByUserIdOrderByCreatedAtDesc(TARGET_ID)).willReturn(listOf(wish(11L)))
@@ -238,6 +274,7 @@ class FriendProfileServiceTest {
     companion object {
         private const val VIEWER_ID = 1L
         private const val TARGET_ID = 2L
+        private const val OTHER_USERS_WISH_ID = 99L
         private const val WISH_PROFILE_KEY = "8f0c6d779fae47f3a979302f2782d20f"
         private val NOW = LocalDateTime.of(2026, 10, 21, 9, 41)
         private val ENDED_STATUSES = setOf(FundingStatus.COMPLETED, FundingStatus.CANCELLED)
