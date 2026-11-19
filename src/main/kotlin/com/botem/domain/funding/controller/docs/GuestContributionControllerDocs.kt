@@ -65,6 +65,8 @@ interface GuestContributionControllerDocs {
             접근 토큰으로 참여자 이름과 롤링페이퍼의 메시지·편지지·스티커·사진·음성을 수정합니다.
             토큰에 기록된 펀딩과 요청 경로가 다르거나 다른 보탬에 사용하면 FUNDING_033을 반환합니다.
             이름을 바꿀 때 같은 펀딩의 다른 비회원 보탬이 사용 중인 이름은 선택할 수 없습니다.
+            일반 펀딩은 원래 마감일 전까지 수정할 수 있으며, 조기 마감했더라도 마감일 전이면 수정할 수 있습니다.
+            서프라이즈 펀딩은 조기 마감 후 수정할 수 없습니다.
             요청은 롤링페이퍼 콘텐츠 전체를 교체하므로 null로 전달한 기존 첨부는 제거됩니다.
             새 사진·음성은 롤링페이퍼 첨부 업로드 URL API로 먼저 업로드한 fileUrl만 사용할 수 있습니다.
             보탠 금액, 입금 상태와 비밀번호는 변경하지 않습니다.
@@ -100,8 +102,15 @@ interface GuestContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "다른 비회원 보탬이 사용 중인 이름",
-            content = [Content(examples = [ExampleObject(value = NAME_DUPLICATED_EXAMPLE)])],
+            description = "마감일이 지났거나 서프라이즈를 조기 마감했거나 다른 비회원 보탬이 사용 중인 이름",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_036", summary = "이름 중복", value = NAME_DUPLICATED_EXAMPLE),
+                        ExampleObject(name = "FUNDING_048", summary = "수정 불가 상태", value = NOT_EDITABLE_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
     )
     fun update(
@@ -227,6 +236,9 @@ interface GuestContributionControllerDocs {
         """
         private const val NAME_DUPLICATED_EXAMPLE = """
             { "success": false, "data": null, "error": { "code": "FUNDING_036", "message": "이미 사용 중인 참여자 이름으로 변경할 수 없습니다.", "detail": null } }
+        """
+        private const val NOT_EDITABLE_EXAMPLE = """
+            { "success": false, "data": null, "error": { "code": "FUNDING_048", "message": "현재 펀딩 상태에서는 보탬을 수정할 수 없습니다.", "detail": null } }
         """
         private const val NOT_CANCELLABLE_EXAMPLE = """
             { "success": false, "data": null, "error": { "code": "FUNDING_035", "message": "송금 확인 중이거나 확인된 보탬은 삭제할 수 없습니다.", "detail": null } }

@@ -89,8 +89,7 @@ class RollingPaperAttachmentService(
         }
         if (
             funding.status !in MESSAGE_ACCEPTABLE_STATUSES ||
-            !funding.deadline.isAfter(now) ||
-            funding.earlyClosedAt != null
+            !funding.deadline.isAfter(now)
         ) {
             throw BusinessException(FundingErrorCode.FUNDING_CLOSED)
         }

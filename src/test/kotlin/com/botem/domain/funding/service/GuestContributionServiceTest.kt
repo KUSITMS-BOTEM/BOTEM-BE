@@ -8,6 +8,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.RollingPaperAttachmentType
 import com.botem.domain.funding.entity.RollingPaperMessage
@@ -25,8 +26,10 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.util.ReflectionTestUtils.setField
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -46,6 +49,7 @@ class GuestContributionServiceTest {
         accessTokenProvider = accessTokenProvider,
         passwordVerifier = passwordVerifier,
         rollingPaperAttachmentService = rollingPaperAttachmentService,
+        clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
     @Test
@@ -199,6 +203,53 @@ class GuestContributionServiceTest {
                     voiceDurationSeconds = 0,
                 ),
             )
+        }
+    }
+
+    @Test
+    fun `비회원 보탬도 일반 펀딩은 마감 전까지만 수정할 수 있다`() {
+        val contribution = contribution()
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(contribution)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding(deadline = NOW))
+
+        assertError(FundingErrorCode.CONTRIBUTION_NOT_EDITABLE) {
+            service.update(FUNDING_ID, ACCESS_TOKEN, UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"))
+        }
+        verify(rollingPaperMessageRepository, never()).findByContributionId(CONTRIBUTION_ID)
+    }
+
+    @Test
+    fun `조기 마감한 일반 펀딩은 원래 마감일 전까지 비회원 보탬을 수정할 수 있다`() {
+        val contribution = contribution()
+        val earlyClosed = funding().also { it.closeEarly(NOW) }
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(earlyClosed)
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(contribution)
+        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(message())
+
+        val response = service.update(
+            FUNDING_ID,
+            ACCESS_TOKEN,
+            UpdateGuestContributionRequest("민지", "수정 메시지", "BLUE_DOT_GRID"),
+        )
+
+        assertEquals("수정 메시지", response.message)
+    }
+
+    @Test
+    fun `선물 준비 상태의 서프라이즈 펀딩에서는 비회원 보탬을 수정할 수 없다`() {
+        val contribution = contribution()
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID))
+            .willReturn(funding(status = FundingStatus.GIFT_PREPARING))
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(contribution)
+
+        assertError(FundingErrorCode.CONTRIBUTION_NOT_EDITABLE) {
+            service.update(FUNDING_ID, ACCESS_TOKEN, UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"))
         }
     }
 
@@ -364,19 +415,25 @@ class GuestContributionServiceTest {
             .willReturn(contribution)
     }
 
-    private fun funding() = Funding(
+    private fun funding(
+        deadline: LocalDateTime = NOW.plusDays(3),
+        status: FundingStatus = FundingStatus.FUNDING,
+    ) = Funding(
         ownerId = 1L,
         recipientId = null,
         type = FundingType.BIRTHDAY,
         title = "생일 펀딩",
         targetAmount = 100_000L,
-        deadline = NOW.plusDays(3),
+        deadline = deadline,
         revealAt = null,
         story = "사연",
         promise = null,
         product = FundingProductSnapshot(null, "에어팟", "https://example.com/p.jpg", 300_000L, "https://example.com/p"),
         payoutAccount = FundingPayoutAccountSnapshot(null, Bank.TOSS_BANK, "encrypted", "김지유"),
-    ).also { setField(it, "id", FUNDING_ID) }
+    ).also {
+        setField(it, "id", FUNDING_ID)
+        setField(it, "status", status)
+    }
 
     private fun contribution(
         id: Long = CONTRIBUTION_ID,

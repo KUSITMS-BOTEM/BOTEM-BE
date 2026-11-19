@@ -6,6 +6,7 @@ import com.botem.domain.funding.dto.response.GuestContributionResponse
 import com.botem.domain.funding.dto.response.UpdatedGuestContributionResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
+import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.RollingPaperAttachmentType
 import com.botem.domain.funding.entity.RollingPaperMessage
@@ -17,6 +18,8 @@ import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.LocalDateTime
 
 @Service
 class GuestContributionService(
@@ -26,6 +29,7 @@ class GuestContributionService(
     private val accessTokenProvider: GuestContributionAccessTokenProvider,
     private val passwordVerifier: GuestContributionPasswordVerifier,
     private val rollingPaperAttachmentService: RollingPaperAttachmentService,
+    private val clock: Clock,
 ) {
 
     // 인증 실패 횟수는 오류 응답을 반환해도 유지한다.
@@ -57,7 +61,9 @@ class GuestContributionService(
         accessToken: String,
         request: UpdateGuestContributionRequest,
     ): UpdatedGuestContributionResponse {
-        val contribution = authenticateAndLock(fundingId, accessToken)
+        val authenticated = authenticateAndLock(fundingId, accessToken)
+        val contribution = authenticated.contribution
+        validateEditable(authenticated.funding)
         val participantName = normalizeParticipantName(request.participantName)
         val message = normalizeOptional(request.message, MAX_MESSAGE_LENGTH, "축하 메시지는 460자 이하여야 합니다.")
         val paperTemplateCode = normalizeRequired(
@@ -105,7 +111,7 @@ class GuestContributionService(
 
     @Transactional
     fun cancel(fundingId: Long, accessToken: String) {
-        val contribution = authenticateAndLock(fundingId, accessToken)
+        val contribution = authenticateAndLock(fundingId, accessToken).contribution
         if (contribution.status !in CANCELLABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_CANCELLABLE)
         }
@@ -113,12 +119,12 @@ class GuestContributionService(
         contribution.cancel()
     }
 
-    private fun authenticateAndLock(fundingId: Long, accessToken: String): Contribution {
+    private fun authenticateAndLock(fundingId: Long, accessToken: String): AuthenticatedGuestContribution {
         val principal = accessTokenProvider.parse(accessToken)
         if (principal.fundingId != fundingId) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
         }
-        lockFunding(fundingId)
+        val funding = lockFunding(fundingId)
 
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(
             principal.contributionId,
@@ -127,7 +133,7 @@ class GuestContributionService(
         if (contribution.participantUserId != null || contribution.status == ContributionStatus.CANCELLED) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
         }
-        return contribution
+        return AuthenticatedGuestContribution(funding, contribution)
     }
 
     private fun validateParticipantNameAvailable(
@@ -147,10 +153,16 @@ class GuestContributionService(
         }
     }
 
-    private fun lockFunding(fundingId: Long) {
+    private fun lockFunding(fundingId: Long): Funding =
         fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
+
+    // 회원 보탬 수정과 같은 기준이다. 일반 펀딩은 조기 마감 뒤에도 원래 마감일까지 수정할 수 있다.
+    private fun validateEditable(funding: Funding) {
+        if (funding.status !in EDITABLE_FUNDING_STATUSES || !funding.deadline.isAfter(LocalDateTime.now(clock))) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_EDITABLE)
+        }
     }
 
     private fun findGuestContributions(
@@ -222,6 +234,11 @@ class GuestContributionService(
         }
     }
 
+    private data class AuthenticatedGuestContribution(
+        val funding: Funding,
+        val contribution: Contribution,
+    )
+
     companion object {
         private const val MAX_PARTICIPANT_NAME_LENGTH = 50
         private const val MAX_MESSAGE_LENGTH = 460
@@ -229,6 +246,7 @@ class GuestContributionService(
         private const val MAX_DECORATION_CODE_LENGTH = 50
         private const val MAX_URL_LENGTH = 2048
         private val GUEST_PASSWORD_REGEX = Regex("\\d{4}")
+        private val EDITABLE_FUNDING_STATUSES = setOf(FundingStatus.FUNDING, FundingStatus.CLOSED)
         private val CANCELLABLE_STATUSES = setOf(
             ContributionStatus.AWAITING_TRANSFER,
             ContributionStatus.MESSAGE_ONLY,

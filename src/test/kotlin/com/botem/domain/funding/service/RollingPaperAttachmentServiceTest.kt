@@ -103,13 +103,21 @@ class RollingPaperAttachmentServiceTest {
         listOf(
             funding(deadline = NOW),
             funding(status = FundingStatus.COMPLETED),
-            funding(earlyClosedAt = NOW.minusMinutes(1)),
         ).forEach { funding ->
             givenFunding(funding)
             assertError(FundingErrorCode.FUNDING_CLOSED) {
                 service.createUploadUrl(null, FUNDING_ID, RollingPaperAttachmentType.PHOTO, "image/jpeg", 1)
             }
         }
+    }
+
+    @Test
+    fun `조기 마감한 일반 펀딩도 원래 마감일 전에는 첨부를 올릴 수 있다`() {
+        givenFunding(funding(status = FundingStatus.CLOSED, earlyClosedAt = NOW.minusMinutes(1)))
+
+        val response = service.createUploadUrl(null, FUNDING_ID, RollingPaperAttachmentType.PHOTO, "image/jpeg", 1)
+
+        assertTrue(response.fileUrl.contains("/rolling-paper/$FUNDING_ID/photo/"))
     }
 
     @Test
