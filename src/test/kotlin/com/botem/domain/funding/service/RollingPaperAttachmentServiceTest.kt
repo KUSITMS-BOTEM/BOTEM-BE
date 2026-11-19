@@ -23,9 +23,13 @@ import org.mockito.Mockito.mock
 import org.springframework.test.util.ReflectionTestUtils.setField
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.core.ResponseBytes
 import software.amazon.awssdk.core.exception.SdkClientException
+import software.amazon.awssdk.core.sync.ResponseTransformer
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.GetObjectResponse
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import software.amazon.awssdk.services.s3.model.S3Exception
@@ -71,6 +75,7 @@ class RollingPaperAttachmentServiceTest {
         assertTrue(photo.fileUrl.matches(Regex("$PUBLIC_BASE_URL/rolling-paper/7/photo/.+\\.png")))
         assertTrue(photo.uploadUrl.startsWith(photo.fileUrl + "?"))
         assertTrue(photo.uploadUrl.contains("content-length"))
+        assertTrue(photo.uploadUrl.contains("if-none-match"))
         assertTrue(voice.fileUrl.matches(Regex("$PUBLIC_BASE_URL/rolling-paper/7/voice/.+\\.m4a")))
     }
 
@@ -137,14 +142,23 @@ class RollingPaperAttachmentServiceTest {
 
     @Test
     fun `업로드된 사진과 음성의 객체 메타데이터를 검증한다`() {
-        doReturn(HeadObjectResponse.builder().contentType("image/jpeg").contentLength(1024).build())
-            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+        givenS3Object("image/jpeg", 1024, byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte(), 0x00))
 
         service.validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.PHOTO, validPhotoUrl())
 
-        doReturn(HeadObjectResponse.builder().contentType("audio/webm").contentLength(2048).build())
-            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+        givenS3Object("audio/webm", 2048, byteArrayOf(0x1a, 0x45, 0xdf.toByte(), 0xa3.toByte()))
         service.validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.VOICE, validVoiceUrl())
+    }
+
+    @Test
+    fun `메타데이터와 실제 파일 형식이 다르면 첨부를 거부한다`() {
+        givenS3Object("image/jpeg", 1024, byteArrayOf(0x00))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.PHOTO, validPhotoUrl())
+        }
+
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
     }
 
     @Test
@@ -200,6 +214,17 @@ class RollingPaperAttachmentServiceTest {
 
     private fun givenFunding(funding: Funding) {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun givenS3Object(contentType: String, contentLength: Long, content: ByteArray) {
+        doReturn(HeadObjectResponse.builder().contentType(contentType).contentLength(contentLength).build())
+            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+        doReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), content))
+            .`when`(s3Client).getObject(
+                any(GetObjectRequest::class.java),
+                any<ResponseTransformer<GetObjectResponse, ResponseBytes<GetObjectResponse>>>(),
+            )
     }
 
     private fun funding(
