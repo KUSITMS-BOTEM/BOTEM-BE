@@ -1,5 +1,7 @@
 package com.botem.domain.account.service
 
+import com.botem.domain.account.exception.PayoutAccountErrorCode
+import com.botem.global.exception.BusinessException
 import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.springframework.stereotype.Component
 import java.security.SecureRandom
@@ -15,6 +17,20 @@ class AccountNumberCipher(
 
     private val secretKey = SecretKeySpec(Base64.getDecoder().decode(properties.key), ALGORITHM)
     private val secureRandom = SecureRandom()
+
+    // 숫자, 공백, 하이픈만 허용하고 숫자만 남긴 8~20자리를 암호화한다
+    fun normalizeAndEncrypt(accountNumber: String): String {
+        if (!accountNumber.matches(ACCOUNT_NUMBER_INPUT_REGEX)) {
+            throw BusinessException(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER)
+        }
+
+        val normalized = accountNumber.filter(Char::isDigit)
+        if (normalized.length !in ACCOUNT_NUMBER_LENGTH) {
+            throw BusinessException(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER)
+        }
+
+        return encrypt(normalized)
+    }
 
     fun encrypt(accountNumber: String): String {
         val iv = ByteArray(IV_LENGTH).also(secureRandom::nextBytes)
@@ -42,5 +58,7 @@ class AccountNumberCipher(
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val IV_LENGTH = 12
         private const val TAG_LENGTH = 128
+        private val ACCOUNT_NUMBER_LENGTH = 8..20
+        private val ACCOUNT_NUMBER_INPUT_REGEX = Regex("[0-9\\s-]+")
     }
 }

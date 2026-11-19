@@ -48,7 +48,7 @@ class PayoutAccountService(
             PayoutAccount(
                 userId = userId,
                 bank = request.bank,
-                encryptedAccountNumber = accountNumberCipher.encrypt(normalizeAccountNumber(request.accountNumber)),
+                encryptedAccountNumber = accountNumberCipher.normalizeAndEncrypt(request.accountNumber),
                 accountHolder = normalizeAccountHolder(request.accountHolder),
                 isDefault = accounts.isEmpty(),
             ),
@@ -70,7 +70,7 @@ class PayoutAccountService(
         validateDuplicateBank(accounts, request.bank, accountId)
         account.update(
             bank = request.bank,
-            encryptedAccountNumber = accountNumberCipher.encrypt(normalizeAccountNumber(request.accountNumber)),
+            encryptedAccountNumber = accountNumberCipher.normalizeAndEncrypt(request.accountNumber),
             accountHolder = normalizeAccountHolder(request.accountHolder),
         )
 
@@ -137,20 +137,5 @@ class PayoutAccountService(
     companion object {
         private const val MAX_ACCOUNT_COUNT = 2
         private const val MAX_ACCOUNT_HOLDER_LENGTH = 100
-        private val ACCOUNT_NUMBER_LENGTH = 8..20
-        private val ACCOUNT_NUMBER_INPUT_REGEX = Regex("[0-9\\s-]+")
-
-        fun normalizeAccountNumber(accountNumber: String): String {
-            if (!accountNumber.matches(ACCOUNT_NUMBER_INPUT_REGEX)) {
-                throw BusinessException(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER)
-            }
-
-            val normalized = accountNumber.filter(Char::isDigit)
-            if (normalized.length !in ACCOUNT_NUMBER_LENGTH) {
-                throw BusinessException(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER)
-            }
-
-            return normalized
-        }
     }
 }

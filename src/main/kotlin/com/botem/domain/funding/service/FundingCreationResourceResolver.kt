@@ -6,7 +6,6 @@ import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.account.exception.PayoutAccountErrorCode
 import com.botem.domain.account.repository.PayoutAccountRepository
 import com.botem.domain.account.service.AccountNumberCipher
-import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.FundingRepository
@@ -60,9 +59,7 @@ class FundingCreationResourceResolver(
         FundingPayoutAccountSnapshot(
             sourcePayoutAccountId = null,
             bank = bank,
-            encryptedAccountNumber = accountNumberCipher.encrypt(
-                PayoutAccountService.normalizeAccountNumber(accountNumber),
-            ),
+            encryptedAccountNumber = accountNumberCipher.normalizeAndEncrypt(accountNumber),
             accountHolder = null,
         )
 

@@ -40,12 +40,13 @@ class FundingCreationService(
         userId: Long,
         request: CreateBirthdayFundingRequest,
     ): CreateFundingResponse {
+        // 입력만으로 판단하는 계좌번호 검증은 잠금 전에 끝낸다
+        val payoutAccount = resourceResolver.resolveDirectPayoutAccount(request.bank, request.accountNumber)
         lockUser(userId)
         val now = LocalDateTime.now(clock)
         validateActiveFundingCount(userId, now)
 
         val wish = resourceResolver.resolveWish(userId, request.wishId)
-        val payoutAccount = resourceResolver.resolveDirectPayoutAccount(request.bank, request.accountNumber)
         val funding = Funding.createBirthday(
             ownerId = userId,
             targetAmount = request.targetAmount,
