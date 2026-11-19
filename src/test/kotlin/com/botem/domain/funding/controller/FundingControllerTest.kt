@@ -217,6 +217,35 @@ class FundingControllerTest {
     }
 
     @Test
+    fun `일반 펀딩 개설 요청에 은행이나 계좌번호가 없으면 400을 반환한다`() {
+        listOf(
+            """"accountNumber": "100159014821"""",
+            """"bank": "TOSS_BANK", "accountNumber": " """",
+        ).forEach { account ->
+            mockMvc.perform(
+                post("/api/fundings")
+                    .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                    .with(csrf())
+                    .contentType("application/json")
+                    .content(
+                        """
+                        {
+                          "wishId": 2,
+                          $account,
+                          "targetAmount": 100000,
+                          "deadline": "2026-11-30",
+                          "story": "새 헤드폰이 필요해요"
+                        }
+                        """.trimIndent(),
+                    ),
+            )
+                .andExpect(status().isBadRequest)
+        }
+
+        verifyNoInteractions(fundingCreationService)
+    }
+
+    @Test
     fun `로그인한 개설자가 펀딩 결과를 조회한다`() {
         given(fundingResultService.getResult(USER_ID, FUNDING_ID)).willReturn(resultResponse(resultOpenedAt = null))
 
