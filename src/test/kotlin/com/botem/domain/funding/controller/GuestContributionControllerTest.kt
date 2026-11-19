@@ -65,6 +65,8 @@ class GuestContributionControllerTest {
             .andExpect(jsonPath("$.data.contributionId").value(CONTRIBUTION_ID))
             .andExpect(jsonPath("$.data.accessToken").value(ACCESS_TOKEN))
             .andExpect(jsonPath("$.data.message").value("생일 축하해!"))
+            .andExpect(jsonPath("$.data.decorationCode").value("PARTY_POPPER"))
+            .andExpect(jsonPath("$.data.photoUrl").value(PHOTO_URL))
     }
 
     @Test
@@ -83,7 +85,13 @@ class GuestContributionControllerTest {
 
     @Test
     fun `전용 접근 토큰 헤더로 비회원 보탬을 수정한다`() {
-        val request = UpdateGuestContributionRequest("민지", "수정한 메시지", "BLACK_CONFETTI")
+        val request = UpdateGuestContributionRequest(
+            participantName = "민지",
+            message = "수정한 메시지",
+            paperTemplateCode = "BLACK_CONFETTI",
+            voiceUrl = VOICE_URL,
+            voiceDurationSeconds = 12,
+        )
         given(guestContributionService.update(FUNDING_ID, ACCESS_TOKEN, request)).willReturn(updateResponse())
 
         mockMvc.perform(
@@ -96,7 +104,9 @@ class GuestContributionControllerTest {
                     {
                       "participantName": "민지",
                       "message": "수정한 메시지",
-                      "paperTemplateCode": "BLACK_CONFETTI"
+                      "paperTemplateCode": "BLACK_CONFETTI",
+                      "voiceUrl": "$VOICE_URL",
+                      "voiceDurationSeconds": 12
                     }
                     """.trimIndent(),
                 ),
@@ -104,6 +114,8 @@ class GuestContributionControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.message").value("수정한 메시지"))
             .andExpect(jsonPath("$.data.paperTemplateCode").value("BLACK_CONFETTI"))
+            .andExpect(jsonPath("$.data.voiceUrl").value(VOICE_URL))
+            .andExpect(jsonPath("$.data.voiceDurationSeconds").value(12))
     }
 
     @Test
@@ -143,6 +155,10 @@ class GuestContributionControllerTest {
         status = ContributionStatus.AWAITING_TRANSFER,
         message = "생일 축하해!",
         paperTemplateCode = "BLUE_DOT_GRID",
+        decorationCode = "PARTY_POPPER",
+        photoUrl = PHOTO_URL,
+        voiceUrl = null,
+        voiceDurationSeconds = null,
         accessToken = ACCESS_TOKEN,
         accessTokenExpiresAt = Instant.parse("2026-11-18T03:10:00Z"),
     )
@@ -154,11 +170,19 @@ class GuestContributionControllerTest {
         status = ContributionStatus.AWAITING_TRANSFER,
         message = "수정한 메시지",
         paperTemplateCode = "BLACK_CONFETTI",
+        decorationCode = null,
+        photoUrl = null,
+        voiceUrl = VOICE_URL,
+        voiceDurationSeconds = 12,
     )
 
     companion object {
         private const val FUNDING_ID = 12L
         private const val CONTRIBUTION_ID = 31L
         private const val ACCESS_TOKEN = "guest-access-token"
+        private const val PHOTO_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/12/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg"
+        private const val VOICE_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/12/voice/8a7b6c5d-4e3f-2a1b-9c8d-7e6f5a4b3c2d.m4a"
     }
 }

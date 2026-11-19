@@ -47,6 +47,7 @@ class MyContributionControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.editable").value(true))
             .andExpect(jsonPath("$.data.contributions[0].status").value("PENDING_CONFIRMATION"))
+            .andExpect(jsonPath("$.data.contributions[0].photoUrl").value(PHOTO_URL))
         mockMvc.perform(
             patch("/api/fundings/$FUNDING_ID/contributions/$CONTRIBUTION_ID")
                 .with(loggedIn())
@@ -81,6 +82,10 @@ class MyContributionControllerTest {
             excludedFromResult = false,
             message = "진짜 축하해!",
             paperTemplateCode = "BLUE_DOT_GRID",
+            decorationCode = "PARTY_POPPER",
+            photoUrl = PHOTO_URL,
+            voiceUrl = null,
+            voiceDurationSeconds = null,
             participatedAt = LocalDateTime.of(2026, 10, 13, 11, 20),
             payoutAccount = null,
         )
@@ -91,5 +96,6 @@ class MyContributionControllerTest {
         private const val USER_ID = 1L
         private const val FUNDING_ID = 10L
         private const val CONTRIBUTION_ID = 21L
+        private const val PHOTO_URL = "https://image.example.com/photo.jpg"
     }
 }

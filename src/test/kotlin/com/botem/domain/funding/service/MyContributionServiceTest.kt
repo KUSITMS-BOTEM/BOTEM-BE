@@ -59,7 +59,18 @@ class MyContributionServiceTest {
         val confirmed = contribution(3L, ContributionStatus.PENDING_CONFIRMATION).also { it.confirm(NOW) }
         givenContributions(funding, awaiting, rejected, confirmed)
         given(rollingPaperMessageRepository.findAllByContributionIdIn(listOf(1L, 2L, 3L)))
-            .willReturn(listOf(message(2L, "생일 축하해!")))
+            .willReturn(
+                listOf(
+                    message(
+                        contributionId = 2L,
+                        content = "생일 축하해!",
+                        decorationCode = "PARTY_POPPER",
+                        photoUrl = "https://image.example.com/photo.jpg",
+                        voiceUrl = "https://cdn.example.com/voice.m4a",
+                        voiceDurationSeconds = 12,
+                    ),
+                ),
+            )
 
         val response = service.getMyContributions(USER_ID, FUNDING_ID)
 
@@ -68,6 +79,10 @@ class MyContributionServiceTest {
         assertEquals(Bank.TOSS_BANK, response.contributions[1].payoutAccount?.bank)
         assertNull(response.contributions[2].payoutAccount)
         assertEquals("생일 축하해!", response.contributions[1].message)
+        assertEquals("PARTY_POPPER", response.contributions[1].decorationCode)
+        assertEquals("https://image.example.com/photo.jpg", response.contributions[1].photoUrl)
+        assertEquals("https://cdn.example.com/voice.m4a", response.contributions[1].voiceUrl)
+        assertEquals(12, response.contributions[1].voiceDurationSeconds)
         assertNull(response.contributions[0].message)
         assertFalse(response.contributions.any { it.excludedFromResult })
     }
@@ -253,8 +268,23 @@ class MyContributionServiceTest {
             setField(it, "createdAt", NOW.minusDays(1))
         }
 
-    private fun message(contributionId: Long, content: String): RollingPaperMessage =
-        RollingPaperMessage(contributionId = contributionId, content = content, paperTemplateCode = "LIME_DOT_GRID")
+    private fun message(
+        contributionId: Long,
+        content: String,
+        decorationCode: String? = null,
+        photoUrl: String? = null,
+        voiceUrl: String? = null,
+        voiceDurationSeconds: Int? = null,
+    ): RollingPaperMessage =
+        RollingPaperMessage(
+            contributionId = contributionId,
+            content = content,
+            paperTemplateCode = "LIME_DOT_GRID",
+            decorationCode = decorationCode,
+            photoUrl = photoUrl,
+            voiceUrl = voiceUrl,
+            voiceDurationSeconds = voiceDurationSeconds,
+        )
 
     private fun birthday(deadline: LocalDateTime): Funding =
         funding(FundingType.BIRTHDAY, null, deadline, null)

@@ -11,6 +11,7 @@ import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.RollingPaperAttachmentType
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
@@ -28,6 +29,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import java.time.Clock
 import java.time.Instant
@@ -46,6 +48,7 @@ class ContributionServiceTest {
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val guestPasswordVerifier = mock(GuestContributionPasswordVerifier::class.java)
+    private val rollingPaperAttachmentService = mock(RollingPaperAttachmentService::class.java)
     private val cipher = AccountNumberCipher(
         PayoutAccountEncryptionProperties(key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="),
     )
@@ -56,6 +59,7 @@ class ContributionServiceTest {
         userRepository = userRepository,
         accountNumberCipher = cipher,
         guestPasswordVerifier = guestPasswordVerifier,
+        rollingPaperAttachmentService = rollingPaperAttachmentService,
         clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -82,6 +86,70 @@ class ContributionServiceTest {
         assertEquals("토스뱅크", response.payoutAccount.bankName)
         assertEquals(ACCOUNT_NUMBER, response.payoutAccount.accountNumber)
         assertEquals("김지유", response.payoutAccount.accountHolder)
+    }
+
+    @Test
+    fun `사진과 음성을 검증하고 롤링페이퍼에 저장한다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+
+        service.contribute(
+            null,
+            FUNDING_ID,
+            request(
+                decorationCode = "PARTY_POPPER",
+                photoUrl = PHOTO_URL,
+                voiceUrl = VOICE_URL,
+                voiceDurationSeconds = 12,
+            ),
+        )
+
+        verify(rollingPaperAttachmentService).validateUploadedAttachment(
+            FUNDING_ID,
+            RollingPaperAttachmentType.PHOTO,
+            PHOTO_URL,
+        )
+        verify(rollingPaperAttachmentService).validateUploadedAttachment(
+            FUNDING_ID,
+            RollingPaperAttachmentType.VOICE,
+            VOICE_URL,
+        )
+        val captor = ArgumentCaptor.forClass(RollingPaperMessage::class.java)
+        verify(rollingPaperMessageRepository).save(captor.capture())
+        assertEquals("PARTY_POPPER", captor.value.decorationCode)
+        assertEquals(PHOTO_URL, captor.value.photoUrl)
+        assertEquals(VOICE_URL, captor.value.voiceUrl)
+        assertEquals(12, captor.value.voiceDurationSeconds)
+    }
+
+    @Test
+    fun `텍스트 없이 스티커만으로 메시지 보태기를 만들 수 있다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+
+        service.leaveMessage(
+            null,
+            FUNDING_ID,
+            messageRequest(message = null, decorationCode = "HEART"),
+        )
+
+        val captor = ArgumentCaptor.forClass(RollingPaperMessage::class.java)
+        verify(rollingPaperMessageRepository).save(captor.capture())
+        assertNull(captor.value.content)
+        assertEquals("HEART", captor.value.decorationCode)
+    }
+
+    @Test
+    fun `음성 URL과 재생 시간은 함께 입력해야 한다`() {
+        givenFunding(confirmedAmount = 0L)
+
+        assertInvalidInput {
+            service.contribute(null, FUNDING_ID, request(voiceUrl = VOICE_URL))
+        }
+        assertInvalidInput {
+            service.contribute(null, FUNDING_ID, request(voiceDurationSeconds = 12))
+        }
+        verifyNoInteractions(rollingPaperAttachmentService)
     }
 
     @Test
@@ -218,6 +286,7 @@ class ContributionServiceTest {
         assertEquals(existing.amount, response.amount)
         assertEquals(ContributionStatus.AWAITING_TRANSFER, response.status)
         verify(contributionRepository, never()).save(any(Contribution::class.java))
+        verifyNoInteractions(rollingPaperAttachmentService)
     }
 
     @Test
@@ -497,8 +566,12 @@ class ContributionServiceTest {
     private fun request(
         participantName: String? = "민지",
         amount: Long = 10_000L,
-        message: String = "생일 축하해!",
+        message: String? = "생일 축하해!",
         paperTemplateCode: String = "BLUE_DOT_GRID",
+        decorationCode: String? = null,
+        photoUrl: String? = null,
+        voiceUrl: String? = null,
+        voiceDurationSeconds: Int? = null,
         guestPassword: String? = "1234",
     ) = CreateContributionRequest(
         requestKey = REQUEST_KEY,
@@ -506,18 +579,30 @@ class ContributionServiceTest {
         amount = amount,
         message = message,
         paperTemplateCode = paperTemplateCode,
+        decorationCode = decorationCode,
+        photoUrl = photoUrl,
+        voiceUrl = voiceUrl,
+        voiceDurationSeconds = voiceDurationSeconds,
         guestPassword = guestPassword,
     )
 
     private fun messageRequest(
         participantName: String? = "민지",
-        message: String = "다 모였네! 축하해",
+        message: String? = "다 모였네! 축하해",
+        decorationCode: String? = null,
+        photoUrl: String? = null,
+        voiceUrl: String? = null,
+        voiceDurationSeconds: Int? = null,
         guestPassword: String? = "1234",
     ) = CreateMessageContributionRequest(
         requestKey = REQUEST_KEY,
         participantName = participantName,
         message = message,
         paperTemplateCode = "BLUE_DOT_GRID",
+        decorationCode = decorationCode,
+        photoUrl = photoUrl,
+        voiceUrl = voiceUrl,
+        voiceDurationSeconds = voiceDurationSeconds,
         guestPassword = guestPassword,
     )
 
@@ -537,6 +622,10 @@ class ContributionServiceTest {
         private const val TARGET_AMOUNT = 100_000L
         private const val REQUEST_KEY = "7f1c2a9e-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
         private const val ACCOUNT_NUMBER = "100012345678"
+        private const val PHOTO_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/10/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg"
+        private const val VOICE_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/10/voice/8a7b6c5d-4e3f-2a1b-9c8d-7e6f5a4b3c2d.m4a"
         private val NOW = LocalDateTime.of(2026, 11, 18, 12, 0)
     }
 }

@@ -6,6 +6,7 @@ import org.hibernate.Length
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class SurpriseMessageEntityTest {
 
@@ -64,6 +65,49 @@ class SurpriseMessageEntityTest {
                 voiceUrl = "https://cdn.example.com/voice.m4a",
                 voiceDurationSeconds = 0,
             )
+        }
+    }
+
+    @Test
+    fun `롤링페이퍼 첨부를 교체하고 텍스트 수정에서는 기존 첨부를 유지한다`() {
+        val message = RollingPaperMessage(
+            contributionId = 1L,
+            content = "축하해!",
+            paperTemplateCode = "LIME_DOT_GRID",
+            photoUrl = "https://image.example.com/old.jpg",
+        )
+
+        message.updateContent(
+            content = null,
+            paperTemplateCode = "BLACK_CONFETTI",
+            decorationCode = "HEART",
+            photoUrl = null,
+            voiceUrl = "https://cdn.example.com/voice.m4a",
+            voiceDurationSeconds = 12,
+        )
+
+        assertNull(message.content)
+        assertNull(message.photoUrl)
+        assertEquals("HEART", message.decorationCode)
+        assertEquals(12, message.voiceDurationSeconds)
+
+        message.updateTextContent("새 메시지", "BLUE_DOT_GRID")
+        assertEquals("새 메시지", message.content)
+        assertEquals("https://cdn.example.com/voice.m4a", message.voiceUrl)
+    }
+
+    @Test
+    fun `수정 후에도 롤링페이퍼 내용 규칙을 지킨다`() {
+        val message = RollingPaperMessage(1L, "축하해!", "LIME_DOT_GRID")
+
+        assertFailsWith<IllegalArgumentException> {
+            message.updateContent(null, "LIME_DOT_GRID", null, null, null, null)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            message.updateContent("축하해!", " ", null, null, null, null)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            message.updateContent("축하해!", "LIME_DOT_GRID", null, null, "voice.m4a", null)
         }
     }
 
