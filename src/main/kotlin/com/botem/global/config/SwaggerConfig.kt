@@ -48,7 +48,7 @@ class SwaggerConfig(
         )
         .addSecurityItem(SecurityRequirement().addList(BEARER_AUTH))
 
-    // JWT 필터 체인보다 먼저 Swagger 경로만 처리
+    // JWT 필터 체인보다 먼저 Swagger·API 연동 현황 보드 경로만 처리
     @Bean
     @Order(1)
     fun swaggerSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -85,6 +85,8 @@ class SwaggerConfig(
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
+            "/api-board",
+            "/api-board/**",
         )
     }
 }
