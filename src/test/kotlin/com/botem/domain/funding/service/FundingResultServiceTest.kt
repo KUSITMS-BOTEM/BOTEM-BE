@@ -1,17 +1,23 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
+import com.botem.domain.funding.entity.ContributionThankCard
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
+import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
+import com.botem.domain.user.entity.User
+import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -32,10 +38,14 @@ class FundingResultServiceTest {
     private val fundingRepository = mock(FundingRepository::class.java)
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
+    private val contributionThankCardRepository = mock(ContributionThankCardRepository::class.java)
+    private val userRepository = mock(UserRepository::class.java)
     private val service = FundingResultService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
+        contributionThankCardRepository = contributionThankCardRepository,
+        userRepository = userRepository,
         fundingContributionCloser = FundingContributionCloser(contributionRepository),
         clock = Clock.fixed(Instant.parse("2026-11-14T15:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
@@ -250,6 +260,69 @@ class FundingResultServiceTest {
         assertFalse(result.pendingCleanupRequired)
     }
 
+    @Test
+    fun `결과에 취소를 뺀 보탬마다 메시지 종류와 감사카드 발송 여부를 담는다`() {
+        val funding = funding()
+        val member = contribution(id = 21L, userId = MEMBER_ID, name = "서준", status = ContributionStatus.CONFIRMED)
+        val guest = contribution(id = 22L, userId = null, name = "서아", status = ContributionStatus.MESSAGE_ONLY)
+        val cancelled = contribution(id = 23L, userId = null, name = "도윤", status = ContributionStatus.CANCELLED)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(FUNDING_ID))
+            .willReturn(listOf(member, guest, cancelled))
+        given(rollingPaperMessageRepository.findAllByContributionIdIn(listOf(21L, 22L))).willReturn(
+            listOf(
+                RollingPaperMessage(
+                    contributionId = 21L,
+                    content = "생일 축하해",
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                    photoUrl = "https://image.example.com/photo.jpg",
+                ),
+                RollingPaperMessage(contributionId = 22L, content = "  ", paperTemplateCode = "BLUE_DOT_GRID", decorationCode = "CAKE"),
+            ),
+        )
+        given(contributionThankCardRepository.findAllByContributionIdIn(listOf(21L, 22L))).willReturn(
+            listOf(ContributionThankCard(contributionId = 21L, senderUserId = USER_ID, message = "고마워", sentAt = NOW)),
+        )
+        given(userRepository.findAllById(setOf(MEMBER_ID))).willReturn(
+            listOf(
+                User(kakaoId = 7L, nickname = "서준", profileImageUrl = "https://image.example.com/profile.jpg")
+                    .also { setField(it, "id", MEMBER_ID) },
+            ),
+        )
+
+        val contributions = service.getResult(USER_ID, FUNDING_ID).contributions
+
+        assertEquals(listOf(21L, 22L), contributions.map { it.contributionId })
+        val first = contributions[0]
+        assertEquals("서준", first.name)
+        assertEquals("https://image.example.com/profile.jpg", first.profileImageUrl)
+        assertEquals(ContributionStatus.CONFIRMED, first.status)
+        assertEquals(NOW.minusDays(3), first.participatedAt)
+        assertTrue(first.hasMessage)
+        assertTrue(first.hasPhoto)
+        assertFalse(first.hasVoice)
+        assertTrue(first.thankCardSent)
+        val second = contributions[1]
+        assertEquals(null, second.profileImageUrl)
+        assertFalse(second.hasMessage)
+        assertFalse(second.hasPhoto)
+        assertFalse(second.thankCardSent)
+    }
+
+    private fun contribution(id: Long, userId: Long?, name: String, status: ContributionStatus): Contribution =
+        Contribution(
+            fundingId = FUNDING_ID,
+            participantUserId = userId,
+            participantName = name,
+            amount = 10_000L,
+            status = ContributionStatus.AWAITING_TRANSFER,
+            guestPasswordHash = null,
+        ).also {
+            setField(it, "id", id)
+            setField(it, "status", status)
+            setField(it, "createdAt", NOW.minusDays(3))
+        }
+
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,
         deadline: LocalDateTime = NOW.minusHours(1),
@@ -296,16 +369,20 @@ class FundingResultServiceTest {
             participantCount = participantCount,
         )
 
+    // createdAt처럼 상위 클래스에 선언된 필드도 찾는다
     private fun setField(target: Any, fieldName: String, value: Any) {
-        target.javaClass.getDeclaredField(fieldName).apply {
-            isAccessible = true
-            set(target, value)
-        }
+        generateSequence<Class<*>>(target.javaClass) { it.superclass }
+            .firstNotNullOf { type -> type.declaredFields.firstOrNull { it.name == fieldName } }
+            .apply {
+                isAccessible = true
+                set(target, value)
+            }
     }
 
     companion object {
         private const val USER_ID = 1L
         private const val FUNDING_ID = 12L
+        private const val MEMBER_ID = 7L
         private val NOW = LocalDateTime.of(2026, 11, 15, 0, 0)
     }
 }
