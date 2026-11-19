@@ -136,6 +136,8 @@ class FundingControllerTest {
         val request = CreateSurpriseFundingRequest(
             recipientId = 5L,
             wishId = 2L,
+            bank = Bank.TOSS_BANK,
+            accountNumber = "1001-5901-4821",
             targetAmount = 39_000L,
             deadline = LocalDate.of(2026, 12, 12),
             revealAt = LocalDateTime.of(2026, 12, 13, 0, 0),
@@ -154,6 +156,8 @@ class FundingControllerTest {
                     {
                       "recipientId": 5,
                       "wishId": 2,
+                      "bank": "TOSS_BANK",
+                      "accountNumber": "1001-5901-4821",
                       "targetAmount": 39000,
                       "deadline": "2026-12-12",
                       "revealAt": "2026-12-13T00:00:00"
@@ -169,25 +173,21 @@ class FundingControllerTest {
     }
 
     @Test
-    fun `서프라이즈 펀딩 개설 요청의 값이 올바르지 않으면 400을 반환한다`() {
-        mockMvc.perform(
-            post("/api/fundings/surprise")
-                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
-                .with(csrf())
-                .contentType("application/json")
-                .content(
-                    """
-                    {
-                      "recipientId": 0,
-                      "wishId": 2,
-                      "targetAmount": 10000001,
-                      "deadline": "2026-12-12",
-                      "revealAt": "2026-12-13T00:00:00"
-                    }
-                    """.trimIndent(),
-                ),
-        )
-            .andExpect(status().isBadRequest)
+    fun `서프라이즈 펀딩 개설 요청의 값이나 계좌가 올바르지 않으면 400을 반환한다`() {
+        listOf(
+            """"recipientId": 0, "bank": "TOSS_BANK", "accountNumber": "100159014821", "targetAmount": 10000001""",
+            """"recipientId": 5, "accountNumber": "100159014821", "targetAmount": 39000""",
+            """"recipientId": 5, "bank": "TOSS_BANK", "accountNumber": " ", "targetAmount": 39000""",
+        ).forEach { fields ->
+            mockMvc.perform(
+                post("/api/fundings/surprise")
+                    .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                    .with(csrf())
+                    .contentType("application/json")
+                    .content("""{ $fields, "wishId": 2, "deadline": "2026-12-12", "revealAt": "2026-12-13T00:00:00" }"""),
+            )
+                .andExpect(status().isBadRequest)
+        }
 
         verifyNoInteractions(fundingCreationService)
     }

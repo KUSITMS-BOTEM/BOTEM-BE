@@ -1,10 +1,6 @@
 package com.botem.domain.funding.service
 
-import com.botem.domain.account.entity.AccountVerificationStatus
 import com.botem.domain.account.entity.Bank
-import com.botem.domain.account.entity.PayoutAccount
-import com.botem.domain.account.exception.PayoutAccountErrorCode
-import com.botem.domain.account.repository.PayoutAccountRepository
 import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingStatus
@@ -18,7 +14,6 @@ import org.springframework.stereotype.Component
 @Component
 class FundingCreationResourceResolver(
     private val wishRepository: WishRepository,
-    private val payoutAccountRepository: PayoutAccountRepository,
     private val fundingRepository: FundingRepository,
     private val accountNumberCipher: AccountNumberCipher,
 ) {
@@ -39,21 +34,6 @@ class FundingCreationResourceResolver(
         return wish
     }
 
-    fun resolvePayoutAccount(userId: Long, payoutAccountId: Long?): PayoutAccount {
-        val payoutAccount = if (payoutAccountId == null) {
-            payoutAccountRepository.findDefaultByUserIdForUpdate(userId)
-        } else {
-            payoutAccountRepository.findByIdAndUserIdForUpdate(payoutAccountId, userId)
-        }
-            ?: throw BusinessException(PayoutAccountErrorCode.PAYOUT_ACCOUNT_NOT_FOUND)
-
-        if (payoutAccount.verificationStatus !in AVAILABLE_ACCOUNT_STATUSES) {
-            throw BusinessException(PayoutAccountErrorCode.PAYOUT_ACCOUNT_NOT_AVAILABLE)
-        }
-
-        return payoutAccount
-    }
-
     // 입력한 계좌는 내 계좌 목록에 등록하지 않고 펀딩 스냅샷으로만 저장한다
     fun resolveDirectPayoutAccount(bank: Bank, accountNumber: String): FundingPayoutAccountSnapshot =
         FundingPayoutAccountSnapshot(
@@ -67,10 +47,6 @@ class FundingCreationResourceResolver(
         private val ENDED_FUNDING_STATUSES = setOf(
             FundingStatus.COMPLETED,
             FundingStatus.CANCELLED,
-        )
-        private val AVAILABLE_ACCOUNT_STATUSES = setOf(
-            AccountVerificationStatus.UNVERIFIED,
-            AccountVerificationStatus.VERIFIED,
         )
     }
 }
