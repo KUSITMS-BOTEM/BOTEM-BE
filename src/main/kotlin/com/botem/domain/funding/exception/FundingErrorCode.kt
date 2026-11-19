@@ -198,4 +198,14 @@ enum class FundingErrorCode(
         "FUNDING_050",
         "감사 카드를 찾을 수 없습니다.",
     ),
+    ROLLING_PAPER_ATTACHMENT_NOT_UPLOADED(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_051",
+        "업로드된 롤링페이퍼 첨부 파일을 찾을 수 없습니다.",
+    ),
+    ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "FUNDING_052",
+        "롤링페이퍼 첨부 파일 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    ),
 }

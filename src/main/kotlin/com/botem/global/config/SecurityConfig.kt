@@ -84,6 +84,7 @@ class SecurityConfig(
             "/api/fundings/{fundingId:\\d+}/contributions/message-only",
             "/api/fundings/{fundingId:\\d+}/contributions/{contributionId:\\d+}/transfer-sent",
             "/api/fundings/{fundingId:\\d+}/contributions/guest/access",
+            "/api/fundings/{fundingId:\\d+}/rolling-paper-attachments/upload-url",
         )
 
         private const val GUEST_CONTRIBUTION_URI =
