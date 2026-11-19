@@ -3,6 +3,10 @@ package com.botem.domain.friend.controller
 import com.botem.domain.friend.dto.response.FriendListResponse
 import com.botem.domain.friend.dto.response.FriendResponse
 import com.botem.domain.friend.exception.FriendErrorCode
+import com.botem.domain.friend.dto.response.FriendProfileResponse
+import com.botem.domain.friend.dto.response.FriendProfileWishResponse
+import com.botem.domain.friend.dto.response.FriendWishResponse
+import com.botem.domain.friend.service.FriendProfileService
 import com.botem.domain.friend.service.FriendService
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
@@ -33,6 +37,9 @@ class FriendControllerTest {
 
     @MockitoBean
     private lateinit var friendService: FriendService
+
+    @MockitoBean
+    private lateinit var friendProfileService: FriendProfileService
 
     @Test
     fun `위시 프로필 키로 친구를 맺는다`() {
@@ -99,6 +106,34 @@ class FriendControllerTest {
         mockMvc.perform(delete("/api/friends/$FRIEND_ID").with(loggedIn()).with(csrf()))
             .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.error.code").value("FRIEND_002"))
+    }
+
+    @Test
+    fun `친구 프로필과 친구 위시 상세를 조회한다`() {
+        given(friendProfileService.getFriendProfile(USER_ID, FRIEND_ID)).willReturn(
+            FriendProfileResponse(
+                userId = FRIEND_ID,
+                name = "지유",
+                profileImageUrl = null,
+                birthday = MonthDay.of(10, 24),
+                birthdayDday = 3L,
+                fundings = emptyList(),
+                wishesVisible = true,
+                wishCount = 1,
+                wishes = listOf(FriendProfileWishResponse(11L, "모자", "https://image.example.com/cap.jpg", 429_000L)),
+            ),
+        )
+        given(friendProfileService.getFriendWish(USER_ID, FRIEND_ID, 11L)).willReturn(
+            FriendWishResponse(11L, "모자", "https://image.example.com/cap.jpg", 429_000L, "https://shop.example.com", null, 31L),
+        )
+
+        mockMvc.perform(get("/api/friends/$FRIEND_ID/profile").with(loggedIn()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.birthday").value("10-24"))
+            .andExpect(jsonPath("$.data.wishes[0].wishId").value(11))
+        mockMvc.perform(get("/api/friends/$FRIEND_ID/wishes/11").with(loggedIn()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.activeSurpriseFundingId").value(31))
     }
 
     private fun loggedIn() = authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))

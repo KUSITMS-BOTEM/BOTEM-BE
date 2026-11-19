@@ -40,6 +40,7 @@ class SecurityConfig(
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/fundings/{fundingId:\\d+}").permitAll()
+                it.requestMatchers(HttpMethod.GET, "/api/wish-profiles/*").permitAll()
                 it.requestMatchers(HttpMethod.POST, *GUEST_ALLOWED_POST_URIS).access(REJECT_INVALID_TOKEN)
                 it.requestMatchers(HttpMethod.PATCH, GUEST_CONTRIBUTION_URI).access(REJECT_INVALID_TOKEN)
                 it.requestMatchers(HttpMethod.DELETE, GUEST_CONTRIBUTION_URI).access(REJECT_INVALID_TOKEN)

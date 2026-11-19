@@ -3,6 +3,9 @@ package com.botem.domain.friend.controller
 import com.botem.domain.friend.controller.docs.FriendControllerDocs
 import com.botem.domain.friend.dto.request.AddFriendRequest
 import com.botem.domain.friend.dto.response.FriendListResponse
+import com.botem.domain.friend.dto.response.FriendProfileResponse
+import com.botem.domain.friend.dto.response.FriendWishResponse
+import com.botem.domain.friend.service.FriendProfileService
 import com.botem.domain.friend.service.FriendService
 import com.botem.global.response.ApiResponse
 import jakarta.validation.Valid
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/friends")
 class FriendController(
     private val friendService: FriendService,
+    private val friendProfileService: FriendProfileService,
 ) : FriendControllerDocs {
 
     @PostMapping
@@ -36,6 +40,21 @@ class FriendController(
         @AuthenticationPrincipal userId: Long,
     ): ApiResponse<FriendListResponse> =
         ApiResponse.success(friendService.getFriends(userId))
+
+    @GetMapping("/{friendId}/profile")
+    override fun getFriendProfile(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable friendId: Long,
+    ): ApiResponse<FriendProfileResponse> =
+        ApiResponse.success(friendProfileService.getFriendProfile(userId, friendId))
+
+    @GetMapping("/{friendId}/wishes/{wishId}")
+    override fun getFriendWish(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable friendId: Long,
+        @PathVariable wishId: Long,
+    ): ApiResponse<FriendWishResponse> =
+        ApiResponse.success(friendProfileService.getFriendWish(userId, friendId, wishId))
 
     @DeleteMapping("/{friendId}")
     override fun deleteFriend(

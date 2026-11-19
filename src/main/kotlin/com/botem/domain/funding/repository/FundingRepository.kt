@@ -79,6 +79,51 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         @Param("now") now: LocalDateTime,
     ): Long
 
+    // 위시 프로필의 진행 중 펀딩: 본인 생일 펀딩과, 받는 사람 프로필 노출에 동의한 서프라이즈.
+    // 서프라이즈는 받는 사람 본인이나 비로그인 방문자에게 드러나지 않도록 호출하는 쪽에서 includeSurprise로 제외한다
+    @Query(
+        """
+        SELECT funding
+        FROM Funding funding
+        WHERE (
+            funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+            AND funding.ownerId = :userId
+            AND funding.status IN (
+              com.botem.domain.funding.entity.FundingStatus.FUNDING,
+              com.botem.domain.funding.entity.FundingStatus.CLOSED
+            )
+            AND funding.deadline > :now
+          )
+          OR (
+            :includeSurprise = TRUE
+            AND funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
+            AND funding.recipientId = :userId
+            AND funding.showOnRecipientProfile = TRUE
+            AND funding.status IN (
+              com.botem.domain.funding.entity.FundingStatus.FUNDING,
+              com.botem.domain.funding.entity.FundingStatus.CLOSED,
+              com.botem.domain.funding.entity.FundingStatus.GIFT_PREPARING,
+              com.botem.domain.funding.entity.FundingStatus.WAITING_REVEAL
+            )
+            AND funding.revealAt > :now
+          )
+        ORDER BY funding.deadline ASC, funding.id ASC
+        """,
+    )
+    fun findProfileFundings(
+        @Param("userId") userId: Long,
+        @Param("now") now: LocalDateTime,
+        @Param("includeSurprise") includeSurprise: Boolean,
+    ): List<Funding>
+
+    // 친구당 진행 중 서프라이즈는 1개이므로 첫 건만 조회한다 (공개 시각 전 + 끝나지 않은 상태)
+    fun findFirstByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
+        recipientId: Long,
+        type: FundingType,
+        now: LocalDateTime,
+        statuses: Collection<FundingStatus>,
+    ): Funding?
+
     // 홈의 진행 중 기준과 맞춰, 생일은 마감일 경과 또는 조기 마감, 서프라이즈는 공개 시각 경과를 마감으로 본다
     @Query(
         """
