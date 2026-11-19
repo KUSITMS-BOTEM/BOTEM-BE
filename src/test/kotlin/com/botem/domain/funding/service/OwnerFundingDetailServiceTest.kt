@@ -4,6 +4,7 @@ import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.response.FundingManagementState
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
+import com.botem.domain.funding.entity.ContributionThankCard
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
@@ -92,6 +93,33 @@ class OwnerFundingDetailServiceTest {
         assertEquals(NOW.minusDays(1), response.participants[0].participatedAt)
         assertEquals(2, response.participantCount)
         assertEquals(FundingManagementState.IN_PROGRESS, response.managementState)
+    }
+
+    @Test
+    fun `참여자별 감사카드 발송 여부와 발송 시각을 반환한다`() {
+        givenFunding(funding())
+        givenContributions(
+            contribution(id = 1L, userId = MEMBER_ID, name = "하린", amount = 10_000L, confirmed = true),
+            contribution(id = 2L, name = "도윤", amount = 10_000L, confirmed = true),
+        )
+        given(userRepository.findAllById(anyIterable())).willReturn(emptyList())
+        given(contributionThankCardRepository.findAllByContributionIdIn(listOf(1L, 2L))).willReturn(
+            listOf(
+                ContributionThankCard(
+                    contributionId = 1L,
+                    senderUserId = OWNER_ID,
+                    message = "고마워",
+                    sentAt = NOW.minusHours(1),
+                ),
+            ),
+        )
+
+        val response = service.getManagementDetail(OWNER_ID, FUNDING_ID)
+
+        assertTrue(response.participants[0].thankCardSent)
+        assertEquals(NOW.minusHours(1), response.participants[0].thankCardSentAt)
+        assertFalse(response.participants[1].thankCardSent)
+        assertNull(response.participants[1].thankCardSentAt)
     }
 
     @Test
