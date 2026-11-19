@@ -26,6 +26,7 @@ interface HomeControllerDocs {
             참여자 수는 취소된 참여를 제외하며, 로그인 참여자는 계정 기준으로 중복을 제거합니다.
             참여자 미리보기는 참여 시각이 빠른 순서로 카드당 최대 3명까지 반환합니다.
             비로그인 참여자와 프로필 이미지가 없는 회원의 profileImageUrl은 null이며, 기본 이미지는 프론트엔드에서 표시합니다.
+            recipientName은 서프라이즈 카드 제목에 쓰는 받는 사람 이름(이름이 없으면 닉네임)이며, 생일 펀딩은 null입니다.
         """,
     )
     @ApiResponses(
@@ -185,7 +186,8 @@ interface HomeControllerDocs {
                     "remainingDays": null,
                     "confirmedPercentage": 100,
                     "pendingPercentage": 0,
-                    "pendingContributionCount": 0
+                    "pendingContributionCount": 0,
+                    "recipientName": null
                   },
                   {
                     "fundingId": 15,
@@ -208,7 +210,8 @@ interface HomeControllerDocs {
                     "remainingDays": 7,
                     "confirmedPercentage": 55,
                     "pendingPercentage": 15,
-                    "pendingContributionCount": 2
+                    "pendingContributionCount": 2,
+                    "recipientName": "서준"
                   }
                 ],
                 "activeFundingCount": 1,
