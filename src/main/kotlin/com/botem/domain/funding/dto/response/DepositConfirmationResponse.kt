@@ -23,7 +23,8 @@ data class ContributionDecisionResponse(
     val progress: FundingProgressResponse,
 )
 
-// 선택 처리와 실행 취소는 요청한 보탬마다 처리 후 상태를 돌려준다
+// 선택 처리와 실행 취소는 요청한 보탬마다 처리 후 상태와 이번 요청으로 바뀌었는지를 돌려준다.
+// 실행 취소에는 changed가 true인 보탬만 넘겨야 이전에 처리한 보탬 때문에 실패하지 않는다
 data class ContributionDecisionsResponse(
     val contributions: List<ContributionDecisionResult>,
     val progress: FundingProgressResponse,
@@ -32,6 +33,7 @@ data class ContributionDecisionsResponse(
 data class ContributionDecisionResult(
     val contributionId: Long,
     val status: ContributionStatus,
+    val changed: Boolean,
 )
 
 data class ConfirmAllContributionsResponse(

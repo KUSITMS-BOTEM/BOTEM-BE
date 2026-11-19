@@ -101,6 +101,7 @@ class DepositConfirmationService(
     fun decide(userId: Long, fundingId: Long, request: DecideContributionsRequest): ContributionDecisionsResponse {
         val funding = lockChangeableFunding(userId, fundingId)
         val contributions = lockContributions(fundingId, request.contributionIds)
+        val statusesBefore = contributions.associate { it.id to it.status }
         val now = LocalDateTime.now(clock)
 
         val progress = when (request.decision) {
@@ -114,7 +115,7 @@ class DepositConfirmationService(
             }
         }
 
-        return ContributionDecisionsResponse(contributions.map(::toResult), progress)
+        return ContributionDecisionsResponse(contributions.map { toResult(it, statusesBefore) }, progress)
     }
 
     // 토스트의 실행 취소는 처리 직후에만 허용한다. 허용 시간은 토스트(5초)보다 길게 두어 네트워크 지연을 흡수한다
@@ -122,11 +123,15 @@ class DepositConfirmationService(
     fun undo(userId: Long, fundingId: Long, request: UndoContributionDecisionsRequest): ContributionDecisionsResponse {
         val funding = lockChangeableFunding(userId, fundingId)
         val contributions = lockContributions(fundingId, request.contributionIds)
+        val statusesBefore = contributions.associate { it.id to it.status }
         val now = LocalDateTime.now(clock)
 
         contributions.forEach { it.undoDecision(now, now.minus(UNDO_WINDOW)) }
 
-        return ContributionDecisionsResponse(contributions.map(::toResult), progressOf(funding))
+        return ContributionDecisionsResponse(
+            contributions.map { toResult(it, statusesBefore) },
+            progressOf(funding),
+        )
     }
 
     // 펀딩을 잠가 같은 펀딩의 확인·미입금·전체 확인 요청과 새 보태기를 직렬화한다
@@ -166,8 +171,15 @@ class DepositConfirmationService(
         return contributions
     }
 
-    private fun toResult(contribution: Contribution): ContributionDecisionResult =
-        ContributionDecisionResult(contribution.id, contribution.status)
+    private fun toResult(
+        contribution: Contribution,
+        statusesBefore: Map<Long, ContributionStatus>,
+    ): ContributionDecisionResult =
+        ContributionDecisionResult(
+            contributionId = contribution.id,
+            status = contribution.status,
+            changed = statusesBefore[contribution.id] != contribution.status,
+        )
 
     private fun findPendingContributions(fundingId: Long): List<Contribution> =
         contributionRepository.findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
