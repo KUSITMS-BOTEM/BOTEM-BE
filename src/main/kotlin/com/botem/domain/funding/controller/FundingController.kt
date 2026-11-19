@@ -12,6 +12,7 @@ import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
+import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
 import com.botem.domain.funding.service.FundingCreationService
 import com.botem.domain.funding.service.FundingDetailService
 import com.botem.domain.funding.service.FundingEarlyCloseService
@@ -19,6 +20,7 @@ import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.OwnerFundingDetailService
+import com.botem.domain.funding.service.SurpriseGiftPreparationService
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.ErrorCode
 import com.botem.global.jwt.JwtAuthenticationFilter
@@ -47,6 +49,7 @@ class FundingController(
     private val fundingExtensionService: FundingExtensionService,
     private val fundingEarlyCloseService: FundingEarlyCloseService,
     private val fundingProductChangeService: FundingProductChangeService,
+    private val surpriseGiftPreparationService: SurpriseGiftPreparationService,
 ) : FundingControllerDocs {
 
     @PostMapping
@@ -129,4 +132,21 @@ class FundingController(
         @RequestParam(defaultValue = "false") excludePendingContributions: Boolean,
     ): ApiResponse<FundingResultResponse> =
         ApiResponse.success(fundingResultService.openResult(userId, fundingId, excludePendingContributions))
+
+    @GetMapping("/{fundingId}/surprise/gift-preparation")
+    override fun getSurpriseGiftPreparation(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+    ): ApiResponse<SurpriseGiftPreparationResponse> =
+        ApiResponse.success(surpriseGiftPreparationService.getPreparation(userId, fundingId))
+
+    @PostMapping("/{fundingId}/surprise/gift-preparation/complete")
+    override fun completeSurpriseGiftPreparation(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+        @RequestParam(defaultValue = "false") excludePendingContributions: Boolean,
+    ): ApiResponse<SurpriseGiftPreparationResponse> =
+        ApiResponse.success(
+            surpriseGiftPreparationService.prepare(userId, fundingId, excludePendingContributions),
+        )
 }

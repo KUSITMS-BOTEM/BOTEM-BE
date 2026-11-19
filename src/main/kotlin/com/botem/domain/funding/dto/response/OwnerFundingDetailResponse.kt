@@ -24,6 +24,8 @@ data class OwnerFundingDetailResponse(
     val targetReached: Boolean,
     val extended: Boolean,
     val earlyClosedAt: LocalDateTime?,
+    // 서프라이즈 주최자가 선물 준비를 완료한 시각. 마감 · 선물 준비와 준비 완료 · 공유 화면 분기에 쓴다
+    val giftPreparedAt: LocalDateTime?,
     val participantCount: Int,
     val participants: List<OwnerFundingParticipantResponse>,
     val messageCount: Long,

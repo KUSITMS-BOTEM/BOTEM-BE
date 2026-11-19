@@ -11,6 +11,7 @@ import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
+import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
 import com.botem.global.exception.ErrorCode
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -200,6 +201,7 @@ interface FundingControllerDocs {
             Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
             title은 서프라이즈 펀딩에서는 null입니다.
             서프라이즈를 받는 사람이 로그인 상태로 공개 시각 전에 조회하면 403(FUNDING_046)을 반환합니다.
+            공개 시각이 지났더라도 주최자가 선물 준비를 완료하기 전이면 같은 403(FUNDING_046)을 반환합니다.
         """,
     )
     @ApiResponses(
@@ -242,6 +244,7 @@ interface FundingControllerDocs {
             messageCount는 도착한 롤링페이퍼 메시지 개수이며 메시지 내용은 마감 전까지 반환하지 않습니다.
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
             revealAt은 서프라이즈 펀딩의 공개 시각이며 생일 펀딩은 null입니다.
+            giftPreparedAt은 서프라이즈 주최자가 선물 준비를 완료한 시각이며, 준비 전이거나 생일 펀딩은 null입니다.
             managementState는 NO_PARTICIPANTS(참여자 0명), IN_PROGRESS(진행 중), TARGET_REACHED(확정 금액 100% 도달),
             CLOSED(마감) 중 하나이며, extended는 기간을 연장한 적이 있으면 true입니다.
             productChanged와 productChangedAt으로 상품 변경 여부를, earlyClosedAt으로 조기 마감 여부를 확인할 수 있습니다.
@@ -279,7 +282,8 @@ interface FundingControllerDocs {
             최초 조기 마감 시각과 현재 펀딩 상태를 반환합니다.
             송금하지 않은 보탬은 금액을 제외하고 메시지만 유지하며, 이후 추가 금액 보태기는 차단됩니다.
             일반 생일 펀딩은 기존 마감일까지 메시지만 추가로 받을 수 있습니다.
-            서프라이즈 펀딩은 메시지 참여도 종료하고 WAITING_REVEAL 상태가 되며 기존 공개 시각은 유지합니다.
+            서프라이즈 펀딩은 메시지 참여도 종료하고 GIFT_PREPARING 상태가 되며 기존 공개 시각은 유지합니다.
+            이후 선물 준비 완료 API를 호출해야 WAITING_REVEAL 상태가 됩니다.
         """,
     )
     @ApiResponses(
@@ -599,6 +603,113 @@ interface FundingControllerDocs {
         excludePendingContributions: Boolean,
     ): ApiResponse<FundingResultResponse>
 
+    @Operation(
+        summary = "서프라이즈 마감 · 선물 준비 조회",
+        description = """
+            주최자가 마감된 서프라이즈의 선물 준비 화면 데이터를 조회합니다. 마감일이 지났거나 조기 마감한 경우에만 조회할 수 있습니다.
+            처음 조회할 때 보태기를 마감하고, 송금하지 않은 보탬은 메시지 전용으로 바꿉니다.
+            목표 금액에 못 미쳐도 실패로 처리하지 않으며, confirmedAmount(확정 금액)만큼 선물을 준비합니다.
+            pendingCleanupRequired가 true면 확인 대기 참여를 처리하거나 제외해야 선물 준비를 완료할 수 있습니다.
+            선물 준비를 완료한 뒤에도 같은 API로 준비 완료 · 공유 화면 데이터를 조회할 수 있습니다.
+            recipientName은 받는 사람의 이름이며, 이름이 없으면 닉네임을 반환합니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_GIFT_PREPARATION_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "서프라이즈 펀딩이 아님",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_FUNDING_REQUIRED_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "서프라이즈 주최자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "마감 전",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_ENDED_EXAMPLE)])],
+        ),
+    )
+    fun getSurpriseGiftPreparation(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+    ): ApiResponse<SurpriseGiftPreparationResponse>
+
+    @Operation(
+        summary = "서프라이즈 선물 준비 완료",
+        description = """
+            주최자가 마감된 서프라이즈의 선물 준비를 완료합니다. giftPreparedAt을 저장하고 WAITING_REVEAL 상태로 전환합니다.
+            공개 시각(revealAt)이 지나면 받는 사람 홈 공개 카드와 서프라이즈 공개 API의 대상이 됩니다.
+            준비를 완료하지 않은 서프라이즈는 공개 시각이 지나도 받는 사람에게 공개 카드가 노출되지 않습니다.
+            입금 확인 대기 참여가 남아 있으면 FUNDING_007을 반환합니다. 확인 대기는 자동으로 확정하지 않습니다.
+            excludePendingContributions=true로 요청하면 남은 확인 대기를 확정 금액에서 제외하고 완료합니다.
+            이미 준비를 완료한 서프라이즈에 다시 요청하면 상태를 변경하지 않고 기존 결과를 반환합니다.
+            자동 알림은 보내지 않으며, 공유는 응답 데이터로 화면에서 처리합니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "선물 준비 완료 또는 이미 완료된 결과 반환",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_GIFT_PREPARED_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "서프라이즈 펀딩이 아님",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_FUNDING_REQUIRED_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "서프라이즈 주최자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "마감 전, 선물 준비 불가 상태 또는 입금 확인 대기 참여 존재",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_005", summary = "마감 전", value = FUNDING_NOT_ENDED_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_047",
+                            summary = "선물 준비 불가 상태",
+                            value = SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_007",
+                            summary = "입금 확인 대기 참여 존재",
+                            value = PENDING_CONTRIBUTION_EXISTS_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    fun completeSurpriseGiftPreparation(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "남은 확인 대기를 확정 금액에서 제외하고 완료할지 여부 (기본 false)")
+        excludePendingContributions: Boolean,
+    ): ApiResponse<SurpriseGiftPreparationResponse>
+
     companion object {
         private const val CREATE_SURPRISE_FUNDING_REQUEST_EXAMPLE = """
             {
@@ -853,6 +964,7 @@ interface FundingControllerDocs {
                 "targetReached": false,
                 "extended": false,
                 "earlyClosedAt": null,
+                "giftPreparedAt": null,
                 "participantCount": 3,
                 "participants": [
                   {
@@ -1146,6 +1258,80 @@ interface FundingControllerDocs {
               "error": {
                 "code": "FUNDING_043",
                 "message": "현재 상태에서는 펀딩 상품을 변경할 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val SURPRISE_GIFT_PREPARATION_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 21,
+                "recipientName": "지유",
+                "productName": "소니 WH-1000XM5",
+                "productImageUrl": "https://image.example.com/product.jpg",
+                "productUrl": "https://shop.example.com/product",
+                "targetAmount": 459000,
+                "confirmedAmount": 420000,
+                "achievementPercentage": 91,
+                "targetReached": false,
+                "participantCount": 7,
+                "messageCount": 6,
+                "pendingContributionCount": 1,
+                "pendingCleanupRequired": true,
+                "fundingStartedAt": "2026-10-31T10:00:00",
+                "deadline": "2026-11-15T23:59:59.999999",
+                "earlyClosedAt": null,
+                "revealAt": "2026-11-17T00:00:00",
+                "giftPreparedAt": null
+              },
+              "error": null
+            }
+        """
+        private const val SURPRISE_GIFT_PREPARED_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 21,
+                "recipientName": "지유",
+                "productName": "소니 WH-1000XM5",
+                "productImageUrl": "https://image.example.com/product.jpg",
+                "productUrl": "https://shop.example.com/product",
+                "targetAmount": 459000,
+                "confirmedAmount": 420000,
+                "achievementPercentage": 91,
+                "targetReached": false,
+                "participantCount": 7,
+                "messageCount": 6,
+                "pendingContributionCount": 0,
+                "pendingCleanupRequired": false,
+                "fundingStartedAt": "2026-10-31T10:00:00",
+                "deadline": "2026-11-15T23:59:59.999999",
+                "earlyClosedAt": null,
+                "revealAt": "2026-11-17T00:00:00",
+                "giftPreparedAt": "2026-11-16T10:30:00"
+              },
+              "error": null
+            }
+        """
+        private const val SURPRISE_FUNDING_REQUIRED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_014",
+                "message": "서프라이즈 펀딩에서만 사용할 수 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_047",
+                "message": "현재 상태에서는 서프라이즈 선물 준비를 진행할 수 없습니다.",
                 "detail": null
               }
             }

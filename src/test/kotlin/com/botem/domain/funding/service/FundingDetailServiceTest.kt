@@ -264,13 +264,27 @@ class FundingDetailServiceTest {
     }
 
     @Test
-    fun `서프라이즈를 받는 사람은 공개 시각부터 조회할 수 있다`() {
-        givenFunding(funding(deadline = NOW.minusDays(1), type = FundingType.SURPRISE))
+    fun `서프라이즈를 받는 사람은 선물 준비가 끝났으면 공개 시각부터 조회할 수 있다`() {
+        givenFunding(
+            funding(deadline = NOW.minusDays(1), status = FundingStatus.WAITING_REVEAL, type = FundingType.SURPRISE),
+        )
         givenContributions()
 
         val result = service.getDetail(PARTICIPANT_ID, FUNDING_ID)
 
         assertEquals(FundingType.SURPRISE, result.type)
+    }
+
+    @Test
+    fun `선물 준비 전인 서프라이즈는 공개 시각이 지나도 받는 사람에게 내려주지 않는다`() {
+        givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.CLOSED, type = FundingType.SURPRISE))
+
+        val exception = assertFailsWith<BusinessException> {
+            service.getDetail(PARTICIPANT_ID, FUNDING_ID)
+        }
+
+        assertEquals(FundingErrorCode.SURPRISE_NOT_REVEALED, exception.errorCode)
+        verifyNoInteractions(contributionRepository)
     }
 
     @Test

@@ -109,7 +109,7 @@ enum class FundingErrorCode(
     FUNDING_RESULT_ALREADY_OPENED(
         HttpStatus.CONFLICT,
         "FUNDING_031",
-        "결과를 연 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
+        "결과를 확정한 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
     ),
     CONTRIBUTION_GUEST_IDENTITY_DUPLICATED(
         HttpStatus.CONFLICT,
@@ -182,4 +182,9 @@ enum class FundingErrorCode(
         "이미 이 친구를 위한 공개 전 서프라이즈 펀딩이 있습니다.",
     ),
     SURPRISE_NOT_REVEALED(HttpStatus.FORBIDDEN, "FUNDING_046", "아직 공개되지 않은 서프라이즈입니다."),
+    SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_047",
+        "현재 상태에서는 서프라이즈 선물 준비를 진행할 수 없습니다.",
+    ),
 }

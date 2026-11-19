@@ -142,11 +142,34 @@ class Funding(
         }
 
         earlyClosedAt = closedAt
+        // 서프라이즈는 메시지 참여도 함께 닫고, 주최자가 선물 준비를 완료해야 공개 대기로 넘어간다
         status = when (type) {
             FundingType.BIRTHDAY -> FundingStatus.CLOSED
-            FundingType.SURPRISE -> FundingStatus.WAITING_REVEAL
+            FundingType.SURPRISE -> FundingStatus.GIFT_PREPARING
         }
     }
+
+    // 목표 미달이어도 실패 없이 확정 금액만큼 준비한다. 이미 준비를 완료했으면 그대로 둔다
+    fun prepareSurpriseGift(preparedAt: LocalDateTime) {
+        if (isSurpriseGiftPrepared()) {
+            return
+        }
+        if (type != FundingType.SURPRISE) {
+            throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_REQUIRED)
+        }
+        if (!isContributionClosed(preparedAt)) {
+            throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
+        }
+        if (status !in SURPRISE_GIFT_PREPARABLE_STATUSES) {
+            throw BusinessException(FundingErrorCode.SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE)
+        }
+
+        giftPreparedAt = preparedAt
+        status = FundingStatus.WAITING_REVEAL
+    }
+
+    fun isContributionClosed(now: LocalDateTime): Boolean =
+        earlyClosedAt != null || !deadline.isAfter(now)
 
     fun changeProduct(
         newProduct: FundingProductSnapshot,
@@ -253,8 +276,15 @@ class Funding(
         }
     }
 
+    // 공개 시각이 지나도 주최자가 선물 준비를 완료하기 전까지는 받는 사람에게 숨긴다
     fun isHiddenFromRecipient(viewerId: Long?, now: LocalDateTime): Boolean =
-        type == FundingType.SURPRISE && viewerId == recipientId && revealAt?.isAfter(now) != false
+        type == FundingType.SURPRISE &&
+            viewerId == recipientId &&
+            (revealAt?.isAfter(now) != false || !isSurpriseGiftPrepared())
+
+    // 준비 완료 이전 데이터에는 giftPreparedAt이 없을 수 있어 상태로 판단한다
+    fun isSurpriseGiftPrepared(): Boolean =
+        type == FundingType.SURPRISE && status in SURPRISE_REVEAL_VIEWABLE_STATUSES
 
     fun validateSurpriseRevealAccess(userId: Long, now: LocalDateTime) {
         if (type != FundingType.SURPRISE) {
@@ -433,6 +463,11 @@ class Funding(
         private val PRODUCT_CHANGEABLE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
+        )
+        private val SURPRISE_GIFT_PREPARABLE_STATUSES = setOf(
+            FundingStatus.FUNDING,
+            FundingStatus.CLOSED,
+            FundingStatus.GIFT_PREPARING,
         )
         private val SURPRISE_REVEAL_VIEWABLE_STATUSES = setOf(
             FundingStatus.WAITING_REVEAL,

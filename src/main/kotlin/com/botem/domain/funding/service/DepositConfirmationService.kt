@@ -95,7 +95,8 @@ class DepositConfirmationService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
         validateOwner(funding, userId)
-        if (funding.resultOpenedAt != null) {
+        // 결과를 열었거나 서프라이즈 선물 준비를 마친 뒤에는 확정 금액이 바뀌지 않도록 막는다
+        if (funding.resultOpenedAt != null || funding.isSurpriseGiftPrepared()) {
             throw BusinessException(FundingErrorCode.FUNDING_RESULT_ALREADY_OPENED)
         }
 

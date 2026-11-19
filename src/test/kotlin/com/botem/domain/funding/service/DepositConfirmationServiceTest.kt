@@ -193,6 +193,18 @@ class DepositConfirmationServiceTest {
     }
 
     @Test
+    fun `선물 준비를 완료한 서프라이즈는 입금 확인 상태를 바꿀 수 없다`() {
+        givenLockedFunding(funding(status = FundingStatus.WAITING_REVEAL, type = FundingType.SURPRISE))
+
+        assertErrorCode(FundingErrorCode.FUNDING_RESULT_ALREADY_OPENED) {
+            service.reject(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
+        }
+        assertErrorCode(FundingErrorCode.FUNDING_RESULT_ALREADY_OPENED) {
+            service.confirmAll(OWNER_ID, FUNDING_ID)
+        }
+    }
+
+    @Test
     fun `개설자가 아니거나 취소된 펀딩이거나 다른 펀딩의 참여면 처리할 수 없다`() {
         givenLockedFunding(funding())
         assertErrorCode(FundingErrorCode.FUNDING_OWNER_ONLY) {
@@ -247,15 +259,18 @@ class DepositConfirmationServiceTest {
         }
     }
 
-    private fun funding(status: FundingStatus = FundingStatus.FUNDING): Funding =
+    private fun funding(
+        status: FundingStatus = FundingStatus.FUNDING,
+        type: FundingType = FundingType.BIRTHDAY,
+    ): Funding =
         Funding(
             ownerId = OWNER_ID,
-            recipientId = null,
-            type = FundingType.BIRTHDAY,
+            recipientId = if (type == FundingType.SURPRISE) OTHER_USER_ID else null,
+            type = type,
             title = "지유의 생일",
             targetAmount = 100_000L,
             deadline = NOW.plusDays(3),
-            revealAt = null,
+            revealAt = if (type == FundingType.SURPRISE) NOW.plusDays(4) else null,
             story = "새 헤드폰이 필요해요",
             promise = null,
             product = FundingProductSnapshot(

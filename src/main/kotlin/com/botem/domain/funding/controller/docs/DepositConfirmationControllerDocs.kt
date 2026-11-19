@@ -53,8 +53,8 @@ interface DepositConfirmationControllerDocs {
             확인 대기 중인 참여를 CONFIRMED로 확정하고 확인 시각을 저장합니다.
             확정 금액이 목표 금액을 넘더라도 이미 송금된 참여이므로 확정합니다.
             결과를 열기 전이라면 이미 확정된 참여에 다시 요청해도 상태를 바꾸지 않고 현재 결과를 반환합니다.
-            결과를 연 뒤에는 참여 상태와 관계없이 FUNDING_031을 반환합니다.
-            확인 대기가 아닌 참여(송금 전, 미입금 처리, 메시지만 남긴 참여)는 FUNDING_030, 결과를 연 펀딩은 FUNDING_031을 반환합니다.
+            결과를 열었거나 서프라이즈 선물 준비를 완료한 뒤에는 참여 상태와 관계없이 FUNDING_031을 반환합니다.
+            확인 대기가 아닌 참여(송금 전, 미입금 처리, 메시지만 남긴 참여)는 FUNDING_030, 결과를 확정한 펀딩은 FUNDING_031을 반환합니다.
             응답의 progress는 처리 후 확정·대기 달성률과 남은 확인 대기 건수입니다.
         """,
     )
@@ -88,14 +88,14 @@ interface DepositConfirmationControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "확인 대기가 아닌 참여 또는 결과를 연 펀딩",
+            description = "확인 대기가 아닌 참여 또는 결과를 확정한 펀딩",
             content = [
                 Content(
                     examples = [
                         ExampleObject(name = "FUNDING_030", summary = "확인 대기 아님", value = NOT_PENDING_EXAMPLE),
                         ExampleObject(
                             name = "FUNDING_031",
-                            summary = "결과를 연 펀딩",
+                            summary = "결과를 확정한 펀딩",
                             value = RESULT_ALREADY_OPENED_EXAMPLE,
                         ),
                     ],
@@ -114,8 +114,8 @@ interface DepositConfirmationControllerDocs {
         description = """
             확인 대기 중인 참여를 REJECTED로 바꿉니다. 미입금 처리된 참여는 달성률에 반영되지 않습니다.
             결과를 열기 전이라면 이미 미입금 처리된 참여에 다시 요청해도 상태를 바꾸지 않고 현재 결과를 반환합니다.
-            결과를 연 뒤에는 참여 상태와 관계없이 FUNDING_031을 반환합니다.
-            확인 대기가 아닌 참여는 FUNDING_030, 결과를 연 펀딩은 FUNDING_031을 반환합니다.
+            결과를 열었거나 서프라이즈 선물 준비를 완료한 뒤에는 참여 상태와 관계없이 FUNDING_031을 반환합니다.
+            확인 대기가 아닌 참여는 FUNDING_030, 결과를 확정한 펀딩은 FUNDING_031을 반환합니다.
         """,
     )
     @ApiResponses(
@@ -137,14 +137,14 @@ interface DepositConfirmationControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "확인 대기가 아닌 참여 또는 결과를 연 펀딩",
+            description = "확인 대기가 아닌 참여 또는 결과를 확정한 펀딩",
             content = [
                 Content(
                     examples = [
                         ExampleObject(name = "FUNDING_030", summary = "확인 대기 아님", value = NOT_PENDING_EXAMPLE),
                         ExampleObject(
                             name = "FUNDING_031",
-                            summary = "결과를 연 펀딩",
+                            summary = "결과를 확정한 펀딩",
                             value = RESULT_ALREADY_OPENED_EXAMPLE,
                         ),
                     ],
@@ -162,7 +162,7 @@ interface DepositConfirmationControllerDocs {
         summary = "전체 입금 확인 (모두 받았어요)",
         description = """
             확인 대기 중인 참여를 모두 확정합니다. confirmedCount는 이번 요청으로 확정한 건수이며,
-            확인 대기가 없으면 0을 반환합니다. 결과를 연 펀딩은 FUNDING_031을 반환합니다.
+            확인 대기가 없으면 0을 반환합니다. 결과를 확정한 펀딩은 FUNDING_031을 반환합니다.
         """,
     )
     @ApiResponses(
@@ -184,7 +184,7 @@ interface DepositConfirmationControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "결과를 연 펀딩",
+            description = "결과를 확정한 펀딩",
             content = [Content(examples = [ExampleObject(value = RESULT_ALREADY_OPENED_EXAMPLE)])],
         ),
     )
@@ -314,7 +314,7 @@ interface DepositConfirmationControllerDocs {
               "data": null,
               "error": {
                 "code": "FUNDING_031",
-                "message": "결과를 연 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
+                "message": "결과를 확정한 펀딩은 입금 확인 상태를 바꿀 수 없습니다.",
                 "detail": null
               }
             }

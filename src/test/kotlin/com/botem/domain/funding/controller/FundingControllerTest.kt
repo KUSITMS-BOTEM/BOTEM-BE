@@ -14,6 +14,7 @@ import com.botem.domain.funding.dto.response.FundingManagementState
 import com.botem.domain.funding.dto.response.FundingResultResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
+import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.service.FundingCreationService
@@ -23,6 +24,7 @@ import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.OwnerFundingDetailService
+import com.botem.domain.funding.service.SurpriseGiftPreparationService
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
@@ -68,6 +70,9 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var fundingProductChangeService: FundingProductChangeService
+
+    @MockitoBean
+    private lateinit var surpriseGiftPreparationService: SurpriseGiftPreparationService
 
     @Test
     fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
@@ -247,6 +252,42 @@ class FundingControllerTest {
     }
 
     @Test
+    fun `로그인한 주최자가 서프라이즈 선물 준비 화면을 조회한다`() {
+        given(surpriseGiftPreparationService.getPreparation(USER_ID, FUNDING_ID))
+            .willReturn(surpriseGiftPreparationResponse(giftPreparedAt = null))
+
+        mockMvc.perform(
+            get("/api/fundings/{fundingId}/surprise/gift-preparation", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.confirmedAmount").value(80_000))
+            .andExpect(jsonPath("$.data.giftPreparedAt").isEmpty)
+
+        verify(surpriseGiftPreparationService).getPreparation(USER_ID, FUNDING_ID)
+    }
+
+    @Test
+    fun `로그인한 주최자가 확인 대기를 제외하고 서프라이즈 선물 준비를 완료한다`() {
+        given(surpriseGiftPreparationService.prepare(USER_ID, FUNDING_ID, true))
+            .willReturn(surpriseGiftPreparationResponse(giftPreparedAt = OPENED_AT))
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/surprise/gift-preparation/complete", FUNDING_ID)
+                .param("excludePendingContributions", "true")
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf()),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.recipientName").value("지유"))
+            .andExpect(jsonPath("$.data.giftPreparedAt").value("2026-11-15T00:00:00"))
+
+        verify(surpriseGiftPreparationService).prepare(USER_ID, FUNDING_ID, true)
+    }
+
+    @Test
     fun `로그인한 개설자가 펀딩 관리 상세를 조회한다`() {
         given(ownerFundingDetailService.getManagementDetail(USER_ID, FUNDING_ID)).willReturn(
             OwnerFundingDetailResponse(
@@ -273,6 +314,7 @@ class FundingControllerTest {
                 targetReached = false,
                 extended = false,
                 earlyClosedAt = null,
+                giftPreparedAt = null,
                 participantCount = 0,
                 participants = emptyList(),
                 messageCount = 0L,
@@ -455,6 +497,28 @@ class FundingControllerTest {
             pendingContributionCount = 0L,
             pendingCleanupRequired = false,
             resultOpenedAt = resultOpenedAt,
+        )
+
+    private fun surpriseGiftPreparationResponse(giftPreparedAt: LocalDateTime?): SurpriseGiftPreparationResponse =
+        SurpriseGiftPreparationResponse(
+            fundingId = FUNDING_ID,
+            recipientName = "지유",
+            productName = "무선 헤드폰",
+            productImageUrl = "https://image.example.com/product.jpg",
+            productUrl = "https://shop.example.com/product",
+            targetAmount = 100_000L,
+            confirmedAmount = 80_000L,
+            achievementPercentage = 80,
+            targetReached = false,
+            participantCount = 4L,
+            messageCount = 3L,
+            pendingContributionCount = 0L,
+            pendingCleanupRequired = false,
+            fundingStartedAt = OPENED_AT.minusDays(10),
+            deadline = OPENED_AT.minusHours(1),
+            earlyClosedAt = null,
+            revealAt = OPENED_AT.plusDays(1),
+            giftPreparedAt = giftPreparedAt,
         )
 
     companion object {
