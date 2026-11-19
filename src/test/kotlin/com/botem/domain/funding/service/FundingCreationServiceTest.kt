@@ -1,7 +1,6 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
-import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.entity.Funding
@@ -114,7 +113,7 @@ class FundingCreationServiceTest {
     }
 
     @Test
-    fun `받는 사람의 위시와 내 계좌를 스냅샷으로 저장해 서프라이즈 펀딩을 개설한다`() {
+    fun `받는 사람의 위시와 입력한 계좌를 스냅샷으로 저장해 서프라이즈 펀딩을 개설한다`() {
         givenSurpriseCreatable()
         given(fundingRepository.save(any(Funding::class.java))).willAnswer { invocation ->
             (invocation.arguments[0] as Funding).also { setField(it, "id", FUNDING_ID) }
@@ -132,7 +131,7 @@ class FundingCreationServiceTest {
         assertNull(saved.value.title)
         assertNull(saved.value.story)
         assertEquals(WISH_ID, saved.value.product.sourceWishId)
-        assertEquals(ACCOUNT_ID, saved.value.payoutAccount.sourcePayoutAccountId)
+        assertEquals(SURPRISE_PAYOUT_ACCOUNT, saved.value.payoutAccount)
         assertEquals(LocalDateTime.of(2026, 11, 30, 23, 59, 59, 999_999_000), saved.value.deadline)
         assertEquals(LocalDateTime.of(2026, 12, 1, 0, 0), saved.value.revealAt)
         assertFalse(saved.value.showOnRecipientProfile)
@@ -224,7 +223,8 @@ class FundingCreationServiceTest {
             ),
         ).willReturn(surpriseExists)
         given(resourceResolver.resolveWish(RECIPIENT_ID, WISH_ID)).willReturn(wish())
-        given(resourceResolver.resolvePayoutAccount(USER_ID, null)).willReturn(payoutAccount())
+        given(resourceResolver.resolveDirectPayoutAccount(Bank.TOSS_BANK, ACCOUNT_NUMBER))
+            .willReturn(SURPRISE_PAYOUT_ACCOUNT)
     }
 
     private fun surpriseRequest(
@@ -234,6 +234,8 @@ class FundingCreationServiceTest {
         CreateSurpriseFundingRequest(
             recipientId = recipientId,
             wishId = WISH_ID,
+            bank = Bank.TOSS_BANK,
+            accountNumber = ACCOUNT_NUMBER,
             targetAmount = 100_000L,
             deadline = LocalDate.of(2026, 11, 30),
             revealAt = revealAt,
@@ -269,16 +271,6 @@ class FundingCreationServiceTest {
         )
             .also { setField(it, "id", WISH_ID) }
 
-    private fun payoutAccount(): PayoutAccount =
-        PayoutAccount(
-            userId = USER_ID,
-            bank = Bank.KAKAO_BANK,
-            encryptedAccountNumber = "encrypted-account-number",
-            accountHolder = "지유",
-            isDefault = true,
-        )
-            .also { setField(it, "id", ACCOUNT_ID) }
-
     private fun setField(target: Any, fieldName: String, value: Any?) {
         target.javaClass.getDeclaredField(fieldName).apply {
             isAccessible = true
@@ -290,9 +282,10 @@ class FundingCreationServiceTest {
         private const val ACCOUNT_NUMBER = "100159014821"
         private const val USER_ID = 1L
         private const val WISH_ID = 2L
-        private const val ACCOUNT_ID = 3L
         private const val FUNDING_ID = 4L
         private const val RECIPIENT_ID = 5L
         private val NOW = LocalDateTime.of(2026, 11, 17, 12, 0)
+        private val SURPRISE_PAYOUT_ACCOUNT =
+            FundingPayoutAccountSnapshot(null, Bank.TOSS_BANK, "encrypted-account-number", null)
     }
 }
