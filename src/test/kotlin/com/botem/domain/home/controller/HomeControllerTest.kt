@@ -107,6 +107,7 @@ class HomeControllerTest {
             .andExpect(jsonPath("$.data.fundingCards[0].remainingDays").value(7L))
             .andExpect(jsonPath("$.data.fundingCards[0].confirmedPercentage").value(55))
             .andExpect(jsonPath("$.data.fundingCards[0].pendingPercentage").value(15))
+            .andExpect(jsonPath("$.data.fundingCards[0].recipientName").isEmpty)
             .andExpect(jsonPath("$.data.activeFundingCount").value(1))
             .andExpect(jsonPath("$.data.canOpenFunding").value(true))
 
