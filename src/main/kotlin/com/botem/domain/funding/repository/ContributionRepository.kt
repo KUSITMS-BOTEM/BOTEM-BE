@@ -38,6 +38,12 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         @Param("status") status: ContributionStatus,
     ): List<Contribution>
 
+    fun findAllByFundingIdAndParticipantUserIdAndStatusNotOrderByCreatedAtAscIdAsc(
+        fundingId: Long,
+        participantUserId: Long,
+        status: ContributionStatus,
+    ): List<Contribution>
+
     fun findByFundingIdAndRequestKey(fundingId: Long, requestKey: String): Contribution?
 
     fun findAllByFundingIdAndParticipantUserIdIsNullAndParticipantNameAndStatusNot(

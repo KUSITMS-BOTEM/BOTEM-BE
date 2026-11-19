@@ -188,7 +188,7 @@ interface ContributionThankCardControllerDocs {
               "success": false,
               "data": null,
               "error": {
-                "code": "FUNDING_048",
+                "code": "FUNDING_049",
                 "message": "입금이 확인된 보탬에만 감사 카드를 보낼 수 있습니다.",
                 "detail": null
               }
@@ -199,7 +199,7 @@ interface ContributionThankCardControllerDocs {
               "success": false,
               "data": null,
               "error": {
-                "code": "FUNDING_049",
+                "code": "FUNDING_050",
                 "message": "감사 카드를 찾을 수 없습니다.",
                 "detail": null
               }

@@ -21,7 +21,7 @@ class ContributionThankCardSecurityTest {
     fun `로그인하지 않아도 공유 감사카드를 조회할 수 있다`() {
         mockMvc.perform(get("/api/thank-cards/{shareKey}", MISSING_SHARE_KEY))
             .andExpect(status().isNotFound)
-            .andExpect(jsonPath("$.error.code").value("FUNDING_049"))
+            .andExpect(jsonPath("$.error.code").value("FUNDING_050"))
     }
 
     @Test

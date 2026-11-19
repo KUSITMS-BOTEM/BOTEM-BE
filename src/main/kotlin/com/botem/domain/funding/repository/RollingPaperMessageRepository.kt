@@ -10,6 +10,8 @@ interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Lon
 
     fun findByContributionId(contributionId: Long): RollingPaperMessage?
 
+    fun findAllByContributionIdIn(contributionIds: Collection<Long>): List<RollingPaperMessage>
+
     @Query(
         """
         SELECT new com.botem.domain.funding.repository.projection.RollingPaperMessageProjection(
