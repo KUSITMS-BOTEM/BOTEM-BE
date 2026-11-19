@@ -44,7 +44,7 @@ class SurpriseGiftPreparationService(
         val now = LocalDateTime.now(clock)
         val funding = lockPreparationAccessibleFunding(userId, fundingId, now)
 
-        if (funding.giftPreparedAt == null) {
+        if (!funding.isSurpriseGiftPrepared()) {
             if (!excludePendingContributions && summaryOf(funding).pendingCount > 0) {
                 throw BusinessException(FundingErrorCode.PENDING_CONTRIBUTION_EXISTS)
             }
@@ -68,7 +68,7 @@ class SurpriseGiftPreparationService(
             throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
         }
 
-        if (funding.giftPreparedAt == null) {
+        if (!funding.isSurpriseGiftPrepared()) {
             fundingContributionCloser.close(funding, now)
         }
 

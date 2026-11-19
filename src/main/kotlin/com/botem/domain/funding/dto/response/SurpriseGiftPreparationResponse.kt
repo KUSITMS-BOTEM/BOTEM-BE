@@ -46,7 +46,7 @@ data class SurpriseGiftPreparationResponse(
                 participantCount = summary.participantCount,
                 messageCount = messageCount,
                 pendingContributionCount = summary.pendingCount,
-                pendingCleanupRequired = funding.giftPreparedAt == null && summary.pendingCount > 0,
+                pendingCleanupRequired = !funding.isSurpriseGiftPrepared() && summary.pendingCount > 0,
                 fundingStartedAt = funding.createdAt,
                 deadline = funding.deadline,
                 earlyClosedAt = funding.earlyClosedAt,

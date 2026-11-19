@@ -151,7 +151,7 @@ class Funding(
 
     // 목표 미달이어도 실패 없이 확정 금액만큼 준비한다. 이미 준비를 완료했으면 그대로 둔다
     fun prepareSurpriseGift(preparedAt: LocalDateTime) {
-        if (giftPreparedAt != null) {
+        if (isSurpriseGiftPrepared()) {
             return
         }
         if (type != FundingType.SURPRISE) {
