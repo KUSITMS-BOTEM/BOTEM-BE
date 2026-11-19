@@ -14,9 +14,16 @@ data class FriendResponse(
     val birthday: MonthDay?,
     val birthdayDday: Long?,
     val wishCount: Long,
+    val fundingInProgress: Boolean,
+    val surpriseFundingInProgress: Boolean,
 ) {
     companion object {
-        fun from(friend: FriendProjection, today: LocalDate): FriendResponse =
+        fun from(
+            friend: FriendProjection,
+            today: LocalDate,
+            fundingInProgress: Boolean,
+            surpriseFundingInProgress: Boolean,
+        ): FriendResponse =
             FriendResponse(
                 userId = friend.userId,
                 // 홈·서프라이즈 카드와 같이 이름을 우선하고 온보딩 전이면 카카오 닉네임
@@ -25,6 +32,8 @@ data class FriendResponse(
                 birthday = friend.birthday,
                 birthdayDday = friend.birthday?.daysUntilNextBirthday(today),
                 wishCount = friend.wishCount,
+                fundingInProgress = fundingInProgress,
+                surpriseFundingInProgress = surpriseFundingInProgress,
             )
     }
 }

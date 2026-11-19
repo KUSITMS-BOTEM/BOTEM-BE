@@ -3,6 +3,7 @@ package com.botem.domain.funding.repository
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.repository.projection.ProfileFundingTypeProjection
 import com.botem.domain.funding.repository.projection.RevealedSurpriseCardProjection
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
@@ -115,6 +116,45 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         @Param("now") now: LocalDateTime,
         @Param("includeSurprise") includeSurprise: Boolean,
     ): List<Funding>
+
+    // 친구 목록 배지용. 조건은 findProfileFundings(서프라이즈 포함)와 같아야 친구 프로필과 배지가 어긋나지 않는다
+    @Query(
+        """
+        SELECT DISTINCT new com.botem.domain.funding.repository.projection.ProfileFundingTypeProjection(
+            CASE
+                WHEN funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY THEN funding.ownerId
+                ELSE funding.recipientId
+            END,
+            funding.type
+        )
+        FROM Funding funding
+        WHERE (
+            funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+            AND funding.ownerId IN :userIds
+            AND funding.status IN (
+              com.botem.domain.funding.entity.FundingStatus.FUNDING,
+              com.botem.domain.funding.entity.FundingStatus.CLOSED
+            )
+            AND funding.deadline > :now
+          )
+          OR (
+            funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
+            AND funding.recipientId IN :userIds
+            AND funding.showOnRecipientProfile = TRUE
+            AND funding.status IN (
+              com.botem.domain.funding.entity.FundingStatus.FUNDING,
+              com.botem.domain.funding.entity.FundingStatus.CLOSED,
+              com.botem.domain.funding.entity.FundingStatus.GIFT_PREPARING,
+              com.botem.domain.funding.entity.FundingStatus.WAITING_REVEAL
+            )
+            AND funding.revealAt > :now
+          )
+        """,
+    )
+    fun findProfileFundingTypes(
+        @Param("userIds") userIds: Collection<Long>,
+        @Param("now") now: LocalDateTime,
+    ): List<ProfileFundingTypeProjection>
 
     // 친구당 진행 중 서프라이즈는 1개이므로 첫 건만 조회한다 (공개 시각 전 + 끝나지 않은 상태)
     fun findFirstByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
