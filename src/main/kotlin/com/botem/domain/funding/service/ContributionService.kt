@@ -272,12 +272,7 @@ class ContributionService(
     }
 
     private fun payoutAccountOf(funding: Funding): ContributionPayoutAccountResponse =
-        ContributionPayoutAccountResponse(
-            bank = funding.payoutAccount.bank,
-            bankName = funding.payoutAccount.bank.displayName,
-            accountNumber = accountNumberCipher.decrypt(funding.payoutAccount.encryptedAccountNumber),
-            accountHolder = funding.payoutAccount.accountHolder,
-        )
+        ContributionPayoutAccountResponse.of(funding, accountNumberCipher)
 
     private fun String?.normalizeOptional(): String? =
         this?.trim { it.isWhitespace() || Character.isSpaceChar(it) }?.takeIf(String::isNotEmpty)

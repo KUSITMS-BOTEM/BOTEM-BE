@@ -1,8 +1,10 @@
 package com.botem.domain.funding.dto.response
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
+import com.botem.domain.funding.entity.Funding
 
 data class ContributionResponse(
     val contributionId: Long,
@@ -28,7 +30,17 @@ data class ContributionPayoutAccountResponse(
     val bankName: String,
     val accountNumber: String,
     val accountHolder: String?,
-)
+) {
+    companion object {
+        fun of(funding: Funding, accountNumberCipher: AccountNumberCipher): ContributionPayoutAccountResponse =
+            ContributionPayoutAccountResponse(
+                bank = funding.payoutAccount.bank,
+                bankName = funding.payoutAccount.bank.displayName,
+                accountNumber = accountNumberCipher.decrypt(funding.payoutAccount.encryptedAccountNumber),
+                accountHolder = funding.payoutAccount.accountHolder,
+            )
+    }
+}
 
 data class TransferSentResponse(
     val contributionId: Long,
