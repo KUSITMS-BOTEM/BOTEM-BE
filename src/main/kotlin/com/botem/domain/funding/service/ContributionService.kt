@@ -132,7 +132,7 @@ class ContributionService(
         request: MarkTransferSentRequest,
     ): TransferSentResponse {
         // 접근 API와 같은 순서로 펀딩부터 잠가 비밀번호 실패 기록을 함께 직렬화한다.
-        lockFunding(fundingId)
+        val funding = lockFunding(fundingId)
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
 
@@ -145,6 +145,12 @@ class ContributionService(
             guestPasswordVerifier.authenticate(request.guestPassword, listOf(contribution))
         }
 
+        // 결과를 확정한 뒤에는 '못 받았대요' 보탬을 다시 확인 대기로 올려도 개설자가 처리할 수 없으므로 막는다
+        if (contribution.status == ContributionStatus.REJECTED &&
+            (funding.resultOpenedAt != null || funding.isSurpriseGiftPrepared())
+        ) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_TRANSFER_NOT_MARKABLE)
+        }
         contribution.markTransferSent()
 
         return TransferSentResponse(contribution.id, contribution.status)
