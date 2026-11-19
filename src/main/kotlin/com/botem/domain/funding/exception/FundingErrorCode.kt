@@ -187,4 +187,9 @@ enum class FundingErrorCode(
         "FUNDING_047",
         "현재 상태에서는 서프라이즈 선물 준비를 진행할 수 없습니다.",
     ),
+    CONTRIBUTION_THANK_CARD_CONFIRMED_ONLY(
+        HttpStatus.CONFLICT,
+        "FUNDING_048",
+        "입금이 확인된 보탬에만 감사 카드를 보낼 수 있습니다.",
+    ),
 }
