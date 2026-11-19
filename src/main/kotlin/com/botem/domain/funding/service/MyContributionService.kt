@@ -37,10 +37,7 @@ class MyContributionService(
         val funding = fundingRepository.findById(fundingId).orElse(null)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        // 공개 전 서프라이즈를 받는 사람에게는 펀딩이 있다는 사실도 드러내지 않는다
-        if (funding.isHiddenFromRecipient(userId, now)) {
-            throw BusinessException(FundingErrorCode.SURPRISE_NOT_REVEALED)
-        }
+        validateVisibleTo(funding, userId, now)
 
         val contributions = contributionRepository.findAllByFundingIdAndParticipantUserIdAndStatusNotOrderByCreatedAtAscIdAsc(
             fundingId,
@@ -82,13 +79,16 @@ class MyContributionService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
+        val now = LocalDateTime.now(clock)
+        // 보탬 존재 여부에 따라 오류가 달라지기 전에 막아, 받는 사람이 오류 차이로 서프라이즈를 알아채지 못하게 한다
+        validateVisibleTo(funding, userId, now)
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?.takeIf { it.status != ContributionStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
         if (contribution.participantUserId != userId) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_PARTICIPANT_ONLY)
         }
-        if (!isEditable(funding, LocalDateTime.now(clock))) {
+        if (!isEditable(funding, now)) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_EDITABLE)
         }
 
@@ -104,6 +104,13 @@ class MyContributionService(
             )
 
         return toResponse(contribution, message, funding, payoutAccount = null)
+    }
+
+    // 공개 전 서프라이즈를 받는 사람에게는 펀딩이 있다는 사실도 드러내지 않는다
+    private fun validateVisibleTo(funding: Funding, userId: Long, now: LocalDateTime) {
+        if (funding.isHiddenFromRecipient(userId, now)) {
+            throw BusinessException(FundingErrorCode.SURPRISE_NOT_REVEALED)
+        }
     }
 
     // 메시지로 보태기와 같은 기준으로 연다. 생일은 조기 마감해도 마감일까지 메시지를 받고,
