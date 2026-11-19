@@ -252,6 +252,23 @@ class FundingControllerTest {
     }
 
     @Test
+    fun `로그인한 주최자가 서프라이즈 선물 준비 화면을 조회한다`() {
+        given(surpriseGiftPreparationService.getPreparation(USER_ID, FUNDING_ID))
+            .willReturn(surpriseGiftPreparationResponse(giftPreparedAt = null))
+
+        mockMvc.perform(
+            get("/api/fundings/{fundingId}/surprise/gift-preparation", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.confirmedAmount").value(80_000))
+            .andExpect(jsonPath("$.data.giftPreparedAt").isEmpty)
+
+        verify(surpriseGiftPreparationService).getPreparation(USER_ID, FUNDING_ID)
+    }
+
+    @Test
     fun `로그인한 주최자가 확인 대기를 제외하고 서프라이즈 선물 준비를 완료한다`() {
         given(surpriseGiftPreparationService.prepare(USER_ID, FUNDING_ID, true))
             .willReturn(surpriseGiftPreparationResponse(giftPreparedAt = OPENED_AT))

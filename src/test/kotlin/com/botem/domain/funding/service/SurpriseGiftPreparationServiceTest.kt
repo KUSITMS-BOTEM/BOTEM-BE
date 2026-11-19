@@ -119,6 +119,20 @@ class SurpriseGiftPreparationServiceTest {
     }
 
     @Test
+    fun `준비 시각 없이 공개 대기인 기존 서프라이즈 재요청은 오류 없이 기존 결과를 반환한다`() {
+        val funding = funding(status = FundingStatus.WAITING_REVEAL)
+        givenFunding(funding)
+        givenSummary(confirmedAmount = 80_000L, participantCount = 4L, pendingCount = 1L)
+
+        val response = service.prepare(OWNER_ID, FUNDING_ID, excludePendingContributions = false)
+
+        assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
+        assertNull(response.giftPreparedAt)
+        assertFalse(response.pendingCleanupRequired)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+    }
+
+    @Test
     fun `주최자가 아니거나 마감 전이거나 생일 펀딩이면 선물 준비에 접근할 수 없다`() {
         givenFunding(funding())
         val notOwner = assertFailsWith<BusinessException> { service.getPreparation(OWNER_ID + 1, FUNDING_ID) }

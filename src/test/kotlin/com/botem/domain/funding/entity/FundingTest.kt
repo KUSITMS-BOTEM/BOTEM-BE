@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class FundingTest {
 
@@ -499,7 +500,7 @@ class FundingTest {
     }
 
     @Test
-    fun `마감 전이거나 생일 펀딩이거나 이미 공개된 서프라이즈는 선물 준비를 완료할 수 없다`() {
+    fun `마감 전이거나 생일 펀딩이거나 취소된 서프라이즈는 선물 준비를 완료할 수 없다`() {
         val beforeDeadline = funding(
             type = FundingType.SURPRISE,
             deadline = OPENED_AT.plusSeconds(1),
@@ -512,14 +513,29 @@ class FundingTest {
         val notSurprise = assertFailsWith<BusinessException> { birthday.prepareSurpriseGift(OPENED_AT) }
         assertEquals(FundingErrorCode.SURPRISE_FUNDING_REQUIRED, notSurprise.errorCode)
 
+        val cancelled = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusHours(1),
+        )
+        setField(cancelled, "status", FundingStatus.CANCELLED)
+        val notAvailable = assertFailsWith<BusinessException> { cancelled.prepareSurpriseGift(OPENED_AT) }
+        assertEquals(FundingErrorCode.SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE, notAvailable.errorCode)
+    }
+
+    @Test
+    fun `준비 시각 없이 이미 공개된 서프라이즈의 선물 준비 재요청은 상태를 바꾸지 않는다`() {
         val revealed = funding(
             type = FundingType.SURPRISE,
             deadline = OPENED_AT.minusDays(1),
             revealAt = OPENED_AT.minusHours(1),
         )
         setField(revealed, "status", FundingStatus.REVEALED)
-        val notAvailable = assertFailsWith<BusinessException> { revealed.prepareSurpriseGift(OPENED_AT) }
-        assertEquals(FundingErrorCode.SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE, notAvailable.errorCode)
+
+        revealed.prepareSurpriseGift(OPENED_AT)
+
+        assertEquals(FundingStatus.REVEALED, revealed.status)
+        assertNull(revealed.giftPreparedAt)
     }
 
     @Test
