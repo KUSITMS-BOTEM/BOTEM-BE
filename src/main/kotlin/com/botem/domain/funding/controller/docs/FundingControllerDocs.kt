@@ -502,6 +502,10 @@ interface FundingControllerDocs {
             정리하지 않고 열려면 excludePendingContributions=true로 요청해 확인 대기를 결과에서 제외합니다.
             이 API는 결과 열람 상태를 변경하지 않으며, resultOpenedAt이 null이면 아직 팡을 열지 않은 상태입니다.
             기간을 연장하면 기존 결과 열람 상태가 초기화되며, 새 마감일 전에는 결과를 조회할 수 없습니다.
+            contributions는 '고마운 친구들' 목록으로, 취소를 제외한 보탬을 참여 순서대로 한 건마다 한 줄씩 반환합니다.
+            같은 회원이 여러 번 보태면 여러 줄이 되며, 금액은 반환하지 않습니다.
+            감사카드는 contributionId로 보내며, status가 CONFIRMED이고 thankCardSent가 false인 보탬에만 보낼 수 있습니다.
+            hasMessage·hasPhoto·hasVoice는 롤링페이퍼에 글·사진·음성이 있는지 여부이고, thankCardSent는 감사카드를 이미 보냈는지 여부입니다.
         """,
     )
     @ApiResponses(
@@ -557,6 +561,7 @@ interface FundingControllerDocs {
             제외된 참여는 상태를 그대로 유지해 참여자에게는 '확인 중'으로 보입니다.
             이미 결과를 연 펀딩에 다시 요청하면 상태를 변경하지 않고 기존 결과를 반환합니다.
             단, 기간을 연장한 펀딩은 기존 결과 열람 상태가 초기화되므로 새 마감일 이후 다시 열어야 합니다.
+            응답의 contributions는 결과 조회 API와 같습니다.
         """,
     )
     @ApiResponses(
@@ -1095,7 +1100,31 @@ interface FundingControllerDocs {
                 "messageCount": 7,
                 "pendingContributionCount": 2,
                 "pendingCleanupRequired": true,
-                "resultOpenedAt": null
+                "resultOpenedAt": null,
+                "contributions": [
+                  {
+                    "contributionId": 31,
+                    "name": "서준",
+                    "profileImageUrl": "https://image.example.com/profile.jpg",
+                    "status": "CONFIRMED",
+                    "participatedAt": "2026-11-10T14:20:00",
+                    "hasMessage": true,
+                    "hasPhoto": true,
+                    "hasVoice": false,
+                    "thankCardSent": false
+                  },
+                  {
+                    "contributionId": 32,
+                    "name": "서아",
+                    "profileImageUrl": null,
+                    "status": "PENDING_CONFIRMATION",
+                    "participatedAt": "2026-11-12T09:05:00",
+                    "hasMessage": false,
+                    "hasPhoto": false,
+                    "hasVoice": false,
+                    "thankCardSent": false
+                  }
+                ]
               },
               "error": null
             }
@@ -1115,7 +1144,20 @@ interface FundingControllerDocs {
                 "messageCount": 7,
                 "pendingContributionCount": 0,
                 "pendingCleanupRequired": false,
-                "resultOpenedAt": "2026-11-15T00:00:00"
+                "resultOpenedAt": "2026-11-15T00:00:00",
+                "contributions": [
+                  {
+                    "contributionId": 31,
+                    "name": "서준",
+                    "profileImageUrl": "https://image.example.com/profile.jpg",
+                    "status": "CONFIRMED",
+                    "participatedAt": "2026-11-10T14:20:00",
+                    "hasMessage": true,
+                    "hasPhoto": true,
+                    "hasVoice": false,
+                    "thankCardSent": true
+                  }
+                ]
               },
               "error": null
             }
