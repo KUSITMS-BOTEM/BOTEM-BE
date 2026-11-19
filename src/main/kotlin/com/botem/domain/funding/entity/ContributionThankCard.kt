@@ -44,7 +44,7 @@ class ContributionThankCard(
 
     init {
         require(message.isNotBlank()) { "감사 메시지는 비어 있을 수 없습니다" }
-        require(message.length <= MAX_MESSAGE_LENGTH) { "감사 메시지는 ${MAX_MESSAGE_LENGTH}자 이하여야 합니다" }
+        require(hasValidMessageLength(message)) { "감사 메시지는 ${MAX_MESSAGE_LENGTH}자 이하여야 합니다" }
         require(SHARE_KEY_REGEX.matches(shareKey)) { "감사 카드 공유 키 형식이 올바르지 않습니다" }
     }
 
@@ -58,5 +58,8 @@ class ContributionThankCard(
         private val SHARE_KEY_REGEX = Regex("[0-9a-f]{$SHARE_KEY_LENGTH}")
 
         fun generateShareKey(): String = UUID.randomUUID().toString().replace("-", "")
+
+        fun hasValidMessageLength(message: String): Boolean =
+            message.codePointCount(0, message.length) <= MAX_MESSAGE_LENGTH
     }
 }

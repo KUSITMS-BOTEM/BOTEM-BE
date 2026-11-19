@@ -114,7 +114,7 @@ class ContributionThankCardService(
 
     private fun normalizeMessage(message: String): String {
         val normalized = message.trim { it.isWhitespace() || Character.isSpaceChar(it) }
-        if (normalized.isEmpty() || normalized.length > ContributionThankCard.MAX_MESSAGE_LENGTH) {
+        if (normalized.isEmpty() || !ContributionThankCard.hasValidMessageLength(normalized)) {
             throw BusinessException(
                 CommonErrorCode.INVALID_INPUT_VALUE,
                 "message: ${ContributionThankCard.MAX_MESSAGE_LENGTH}자 이내로 입력해 주세요",

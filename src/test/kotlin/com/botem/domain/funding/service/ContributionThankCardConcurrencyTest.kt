@@ -31,6 +31,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
@@ -87,21 +88,32 @@ class ContributionThankCardConcurrencyTest {
 
         val start = CountDownLatch(1)
         val executor = Executors.newFixedThreadPool(2)
-        val futures = (1..2).map {
-            executor.submit<ContributionThankCardResponse> {
-                start.await()
-                service.send(
-                    owner.id,
-                    funding.id,
-                    contribution.id,
-                    SendContributionThankCardRequest("고마워"),
-                )
+        val futures = mutableListOf<Future<ContributionThankCardResponse>>()
+        val responses = try {
+            repeat(2) {
+                futures += executor.submit<ContributionThankCardResponse> {
+                    start.await()
+                    service.send(
+                        owner.id,
+                        funding.id,
+                        contribution.id,
+                        SendContributionThankCardRequest("고마워"),
+                    )
+                }
+            }
+            start.countDown()
+            futures.map { it.get(10, TimeUnit.SECONDS) }
+        } finally {
+            futures.filterNot { it.isDone }
+                .forEach { it.cancel(true) }
+            executor.shutdown()
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow()
+                check(executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    "감사카드 동시성 테스트 실행 풀이 종료되지 않았습니다"
+                }
             }
         }
-
-        start.countDown()
-        val responses = futures.map { it.get(10, TimeUnit.SECONDS) }
-        executor.shutdown()
 
         assertEquals(1L, thankCardRepository.count())
         assertEquals(1, responses.map { it.thankCardId }.toSet().size)

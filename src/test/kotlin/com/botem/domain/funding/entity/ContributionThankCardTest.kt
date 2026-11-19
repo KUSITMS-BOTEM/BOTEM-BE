@@ -9,8 +9,8 @@ import kotlin.test.assertTrue
 class ContributionThankCardTest {
 
     @Test
-    fun `공유 키를 자동 생성하고 50자 메시지를 허용한다`() {
-        val message = "가".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH)
+    fun `공유 키를 자동 생성하고 이모지 50자 메시지를 허용한다`() {
+        val message = "😀".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH)
 
         val thankCard = ContributionThankCard(
             contributionId = 1L,
@@ -25,7 +25,7 @@ class ContributionThankCardTest {
 
     @Test
     fun `공백이거나 50자를 넘는 메시지는 거부한다`() {
-        listOf(" ", "가".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH + 1)).forEach { message ->
+        listOf(" ", "😀".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH + 1)).forEach { message ->
             assertFailsWith<IllegalArgumentException> {
                 ContributionThankCard(1L, 2L, message, sentAt = NOW)
             }

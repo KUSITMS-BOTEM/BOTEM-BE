@@ -75,6 +75,25 @@ class ContributionThankCardServiceTest {
     }
 
     @Test
+    fun `이모지는 Unicode 코드 포인트 한 글자로 계산한다`() {
+        givenSendableFundingAndContribution()
+        given(thankCardRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(null)
+        given(thankCardRepository.save(any(ContributionThankCard::class.java))).willAnswer { invocation ->
+            (invocation.arguments[0] as ContributionThankCard).withId(THANK_CARD_ID)
+        }
+        val message = "😀".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH)
+
+        val response = service.send(
+            OWNER_ID,
+            FUNDING_ID,
+            CONTRIBUTION_ID,
+            SendContributionThankCardRequest(message),
+        )
+
+        assertEquals(message, response.message)
+    }
+
+    @Test
     fun `같은 보탬에 다시 보내면 최초 감사카드를 그대로 반환한다`() {
         givenSendableFundingAndContribution()
         val existing = thankCard(message = "최초 메시지", sentAt = NOW.minusMinutes(1))
@@ -145,7 +164,7 @@ class ContributionThankCardServiceTest {
         givenSendableFundingAndContribution()
         given(thankCardRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(null)
 
-        listOf(" ", "가".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH + 1)).forEach { message ->
+        listOf(" ", "😀".repeat(ContributionThankCard.MAX_MESSAGE_LENGTH + 1)).forEach { message ->
             val exception = assertFailsWith<BusinessException> {
                 service.send(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID, SendContributionThankCardRequest(message))
             }
