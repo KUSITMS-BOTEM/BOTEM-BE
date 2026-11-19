@@ -23,6 +23,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -97,6 +98,18 @@ class MyContributionServiceTest {
         val exception = assertFailsWith<BusinessException> { service.getMyContributions(RECIPIENT_ID, FUNDING_ID) }
 
         assertEquals(FundingErrorCode.SURPRISE_NOT_REVEALED, exception.errorCode)
+    }
+
+    @Test
+    fun `공개 전 서프라이즈를 받는 사람은 보탬 존재와 상관없이 같은 오류로 수정이 막힌다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(surprise())
+
+        val exception = assertFailsWith<BusinessException> {
+            service.updateMyContribution(RECIPIENT_ID, FUNDING_ID, 1L, request())
+        }
+
+        assertEquals(FundingErrorCode.SURPRISE_NOT_REVEALED, exception.errorCode)
+        verifyNoInteractions(contributionRepository)
     }
 
     @Test
