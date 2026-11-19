@@ -55,6 +55,9 @@ interface FriendControllerDocs {
             friends: 전체 친구를 이름 가나다순으로 담고, totalCount는 전체 친구 수입니다.
             name은 회원 이름이며 온보딩 전이라 이름이 없으면 카카오 닉네임입니다.
             birthdayDday는 다음 생일까지 남은 일수(오늘이 생일이면 0)이며 생일이 없으면 null입니다.
+            fundingInProgress는 친구가 연 생일 펀딩이 진행 중이면 true입니다('펀딩 중' 배지).
+            surpriseFundingInProgress는 친구가 받는 사람이고 프로필 노출에 동의한 공개 전 서프라이즈가 있으면 true입니다('서프라이즈 펀딩중' 배지).
+            두 값은 친구 프로필 조회의 fundings와 같은 기준이며, 친구가 나에게 여는 서프라이즈는 반영하지 않습니다.
         """,
     )
     @ApiResponses(
@@ -164,7 +167,9 @@ interface FriendControllerDocs {
                     "profileImageUrl": "https://example.com/minji.jpg",
                     "birthday": "10-24",
                     "birthdayDday": 3,
-                    "wishCount": 3
+                    "wishCount": 3,
+                    "fundingInProgress": true,
+                    "surpriseFundingInProgress": false
                   }
                 ],
                 "friends": [
@@ -174,7 +179,9 @@ interface FriendControllerDocs {
                     "profileImageUrl": "https://example.com/minji.jpg",
                     "birthday": "10-24",
                     "birthdayDday": 3,
-                    "wishCount": 3
+                    "wishCount": 3,
+                    "fundingInProgress": true,
+                    "surpriseFundingInProgress": false
                   },
                   {
                     "userId": 3,
@@ -182,7 +189,9 @@ interface FriendControllerDocs {
                     "profileImageUrl": null,
                     "birthday": null,
                     "birthdayDday": null,
-                    "wishCount": 0
+                    "wishCount": 0,
+                    "fundingInProgress": false,
+                    "surpriseFundingInProgress": true
                   }
                 ]
               },

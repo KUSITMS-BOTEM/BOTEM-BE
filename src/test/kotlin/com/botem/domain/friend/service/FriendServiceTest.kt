@@ -1,7 +1,13 @@
 package com.botem.domain.friend.service
 
+import com.botem.domain.account.entity.Bank
 import com.botem.domain.friend.exception.FriendErrorCode
 import com.botem.domain.friend.repository.FriendshipRepository
+import com.botem.domain.funding.entity.Funding
+import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
+import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.user.service.UserWithdrawnEvent
@@ -44,6 +50,9 @@ class FriendServiceTest {
 
     @Autowired
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    private lateinit var fundingRepository: FundingRepository
 
     @Test
     fun `위시 프로필 키로 서로 친구가 되고 다시 맺어도 중복 저장하지 않는다`() {
@@ -148,6 +157,80 @@ class FriendServiceTest {
         assertEquals(2, friendshipRepository.count())
     }
 
+    @Test
+    fun `친구 프로필과 같은 기준으로 진행 중 펀딩과 서프라이즈 배지를 붙인다`() {
+        val me = saveUser(kakaoId = 1L, name = "나")
+        val birthdayFriend = saveUser(kakaoId = 2L, name = "가영")
+        val surpriseFriend = saveUser(kakaoId = 3L, name = "나연")
+        val hiddenSurpriseFriend = saveUser(kakaoId = 4L, name = "다은")
+        val organizerFriend = saveUser(kakaoId = 5L, name = "라희")
+        val endedFriend = saveUser(kakaoId = 6L, name = "마루")
+        listOf(birthdayFriend, surpriseFriend, hiddenSurpriseFriend, organizerFriend, endedFriend)
+            .forEach { befriend(me, it) }
+        fundingRepository.saveAll(
+            listOf(
+                funding(ownerId = birthdayFriend.id, deadline = NOW.plusDays(3)),
+                funding(ownerId = me.id, recipientId = surpriseFriend.id, deadline = NOW.plusDays(3)),
+                // 받는 사람 프로필에 알리지 않기로 한 서프라이즈는 배지도 숨긴다
+                funding(ownerId = me.id, recipientId = hiddenSurpriseFriend.id, deadline = NOW.plusDays(3), showOnRecipientProfile = false),
+                // 친구가 나에게 여는 서프라이즈는 나에게 드러나면 안 된다
+                funding(ownerId = organizerFriend.id, recipientId = me.id, deadline = NOW.plusDays(3)),
+                funding(ownerId = endedFriend.id, deadline = NOW.minusDays(1)),
+            ),
+        )
+
+        val badges = friendService.getFriends(me.id).friends
+            .associate { it.name to (it.fundingInProgress to it.surpriseFundingInProgress) }
+
+        assertEquals(true to false, badges["가영"])
+        assertEquals(false to true, badges["나연"])
+        assertEquals(false to false, badges["다은"])
+        assertEquals(false to false, badges["라희"])
+        assertEquals(false to false, badges["마루"])
+    }
+
+    @Test
+    fun `친구가 없으면 빈 목록을 반환한다`() {
+        val me = saveUser(kakaoId = 1L)
+
+        val response = friendService.getFriends(me.id)
+
+        assertEquals(0, response.totalCount)
+        assertTrue(response.friends.isEmpty())
+    }
+
+    private fun funding(
+        ownerId: Long,
+        deadline: LocalDateTime,
+        recipientId: Long? = null,
+        showOnRecipientProfile: Boolean = true,
+    ): Funding =
+        Funding(
+            ownerId = ownerId,
+            recipientId = recipientId,
+            type = if (recipientId == null) FundingType.BIRTHDAY else FundingType.SURPRISE,
+            title = null,
+            targetAmount = 100_000L,
+            deadline = deadline,
+            revealAt = recipientId?.let { deadline.plusDays(1) },
+            story = null,
+            promise = null,
+            product = FundingProductSnapshot(
+                sourceWishId = null,
+                name = "향수",
+                imageUrl = "https://example.com/perfume.jpg",
+                price = 100_000L,
+                url = "https://example.com/perfume",
+            ),
+            payoutAccount = FundingPayoutAccountSnapshot(
+                sourcePayoutAccountId = null,
+                bank = Bank.KAKAO_BANK,
+                encryptedAccountNumber = "encrypted",
+                accountHolder = null,
+            ),
+            showOnRecipientProfile = showOnRecipientProfile,
+        )
+
     private fun befriend(user: User, friend: User) {
         friendService.addFriend(user.id, checkNotNull(friend.wishProfileKey))
     }
@@ -170,6 +253,10 @@ class FriendServiceTest {
             price = 10_000,
             productUrl = "https://example.com/perfume",
         )
+
+    companion object {
+        private val NOW = LocalDateTime.of(2026, 11, 12, 12, 0)
+    }
 
     @TestConfiguration
     class FixedClockConfig {

@@ -5,6 +5,8 @@ import com.botem.domain.friend.dto.response.FriendResponse
 import com.botem.domain.friend.entity.Friendship
 import com.botem.domain.friend.exception.FriendErrorCode
 import com.botem.domain.friend.repository.FriendshipRepository
+import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.user.service.UserWithdrawnEvent
@@ -15,13 +17,14 @@ import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import java.text.Collator
 import java.time.Clock
-import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.Locale
 
 @Service
 class FriendService(
     private val friendshipRepository: FriendshipRepository,
     private val userRepository: UserRepository,
+    private val fundingRepository: FundingRepository,
     private val clock: Clock,
 ) {
 
@@ -56,10 +59,26 @@ class FriendService(
     // ponytail: 페이징 없이 전체 조회. 친구 수가 수백 명 단위로 늘면 전체 목록에 페이징 추가
     @Transactional(readOnly = true)
     fun getFriends(userId: Long): FriendListResponse {
-        val today = LocalDate.now(clock)
+        val now = LocalDateTime.now(clock)
         val koreanOrder = Collator.getInstance(Locale.KOREAN)
-        val friends = friendshipRepository.findFriends(userId)
-            .map { FriendResponse.from(it, today) }
+        val friendProjections = friendshipRepository.findFriends(userId)
+        // 친구 프로필과 같은 기준으로 배지를 붙인다. 목록을 보는 사람은 친구 본인이 아니므로 서프라이즈도 포함한다
+        val fundingTypesByFriendId = if (friendProjections.isEmpty()) {
+            emptyMap()
+        } else {
+            fundingRepository.findProfileFundingTypes(friendProjections.map { it.userId }, now)
+                .groupBy({ it.userId }, { it.type })
+        }
+        val friends = friendProjections
+            .map { friend ->
+                val fundingTypes = fundingTypesByFriendId[friend.userId].orEmpty()
+                FriendResponse.from(
+                    friend = friend,
+                    today = now.toLocalDate(),
+                    fundingInProgress = FundingType.BIRTHDAY in fundingTypes,
+                    surpriseFundingInProgress = FundingType.SURPRISE in fundingTypes,
+                )
+            }
             .sortedWith(compareBy(koreanOrder) { it.name })
 
         val upcomingBirthdayFriends = friends

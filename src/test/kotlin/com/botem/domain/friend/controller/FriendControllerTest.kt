@@ -80,6 +80,8 @@ class FriendControllerTest {
             birthday = MonthDay.of(10, 24),
             birthdayDday = 3,
             wishCount = 2,
+            fundingInProgress = true,
+            surpriseFundingInProgress = false,
         )
         given(friendService.getFriends(USER_ID)).willReturn(
             FriendListResponse(totalCount = 1, upcomingBirthdayFriends = listOf(friend), friends = listOf(friend)),
@@ -92,6 +94,8 @@ class FriendControllerTest {
             .andExpect(jsonPath("$.data.friends[0].name").value("민지"))
             .andExpect(jsonPath("$.data.friends[0].birthday").value("10-24"))
             .andExpect(jsonPath("$.data.friends[0].wishCount").value(2))
+            .andExpect(jsonPath("$.data.friends[0].fundingInProgress").value(true))
+            .andExpect(jsonPath("$.data.friends[0].surpriseFundingInProgress").value(false))
     }
 
     @Test
