@@ -205,6 +205,7 @@ interface DepositConfirmationControllerDocs {
             개별 선택 또는 전체 선택한 확인 대기 참여를 한 번에 받았어요(CONFIRM) 또는 못 받았어요(REJECT)로 처리합니다.
             요청한 참여는 모두 함께 처리되며, 하나라도 이 펀딩에 없거나 처리할 수 없으면 아무것도 바뀌지 않습니다.
             이미 같은 결과로 처리된 참여는 그대로 둡니다. 한 번에 최대 100건까지 요청할 수 있습니다.
+            응답의 changed는 이번 요청으로 상태가 바뀌었는지 여부입니다. 실행 취소에는 changed가 true인 참여만 보내야 합니다.
             받았어요로 확정 금액이 목표에 닿으면 단건 확인과 같이 보태기를 마감합니다.
             처리 직후 10초 안에는 실행 취소 API로 되돌릴 수 있습니다.
         """,
@@ -258,7 +259,8 @@ interface DepositConfirmationControllerDocs {
         summary = "입금 처리 실행 취소",
         description = """
             받았어요·못 받았어요로 처리한 참여를 확인 대기(PENDING_CONFIRMATION)로 되돌립니다. 토스트의 '실행 취소' 버튼에 사용합니다.
-            처리한 지 10초가 지난 참여가 하나라도 있으면 FUNDING_056을 반환하고 아무것도 되돌리지 않습니다.
+            처리한 지 10초가 지난 참여가 하나라도 있으면 FUNDING_056을 반환하고 아무것도 되돌리지 않으므로,
+            선택 처리 응답에서 changed가 true인 참여만 보내야 합니다.
             이미 확인 대기인 참여는 그대로 둡니다. 받았어요·못 받았어요가 아닌 참여는 FUNDING_055를 반환합니다.
             결과를 열었거나 서프라이즈 선물 준비를 완료한 뒤에는 FUNDING_031을 반환합니다.
             받았어요로 목표에 닿아 보태기가 마감된 경우, 실행 취소해도 마감과 송금 전 보탬의 메시지 전용 전환은 되돌리지 않습니다.
@@ -327,8 +329,8 @@ interface DepositConfirmationControllerDocs {
               "success": true,
               "data": {
                 "contributions": [
-                  { "contributionId": 31, "status": "CONFIRMED" },
-                  { "contributionId": 32, "status": "CONFIRMED" }
+                  { "contributionId": 31, "status": "CONFIRMED", "changed": true },
+                  { "contributionId": 32, "status": "CONFIRMED", "changed": false }
                 ],
                 "progress": {
                   "confirmedPercentage": 70,
@@ -345,8 +347,8 @@ interface DepositConfirmationControllerDocs {
               "success": true,
               "data": {
                 "contributions": [
-                  { "contributionId": 31, "status": "PENDING_CONFIRMATION" },
-                  { "contributionId": 32, "status": "PENDING_CONFIRMATION" }
+                  { "contributionId": 31, "status": "PENDING_CONFIRMATION", "changed": true },
+                  { "contributionId": 32, "status": "PENDING_CONFIRMATION", "changed": true }
                 ],
                 "progress": {
                   "confirmedPercentage": 40,
