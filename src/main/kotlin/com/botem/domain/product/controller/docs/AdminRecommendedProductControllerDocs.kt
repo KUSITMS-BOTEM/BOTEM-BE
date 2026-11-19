@@ -70,7 +70,9 @@ interface AdminRecommendedProductControllerDocs {
                 "price": 429000,
                 "sellerName": "쿠팡 Apple 공식 브랜드관",
                 "category": "EARPHONE_HEADPHONE",
-                "status": "ON_SALE"
+                "status": "ON_SALE",
+                "wishId": null,
+                "fundingId": null
               },
               "error": null
             }
