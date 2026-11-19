@@ -1,6 +1,9 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.funding.dto.request.ContributionDecision
+import com.botem.domain.funding.dto.request.DecideContributionsRequest
+import com.botem.domain.funding.dto.request.UndoContributionDecisionsRequest
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
@@ -88,6 +91,34 @@ class DepositConfirmationPersistenceTest {
         assertEquals(ContributionStatus.MESSAGE_ONLY, converted.status)
         assertEquals(0L, converted.amount)
         assertEquals(FundingStatus.CLOSED, fundingRepository.findById(funding.id).orElseThrow().status)
+    }
+
+    @Test
+    fun `선택 처리와 실행 취소는 요청한 보탬만 잠가 바꾼다`() {
+        val owner = userRepository.save(User(kakaoId = 1L, nickname = "지유", profileImageUrl = null))
+        val funding = saveFunding(owner.id)
+        val first = savePendingContribution(funding.id, 30_000L)
+        val second = savePendingContribution(funding.id, 20_000L)
+        val untouched = savePendingContribution(funding.id, 10_000L)
+
+        val rejected = service.decide(
+            owner.id,
+            funding.id,
+            DecideContributionsRequest(listOf(second.id, first.id), ContributionDecision.REJECT),
+        )
+        assertEquals(listOf(first.id, second.id), rejected.contributions.map { it.contributionId })
+        assertEquals(1L, rejected.progress.pendingContributionCount)
+
+        val undone = service.undo(owner.id, funding.id, UndoContributionDecisionsRequest(listOf(first.id, second.id)))
+        entityManager.flush()
+        entityManager.clear()
+
+        assertEquals(3L, undone.progress.pendingContributionCount)
+        assertEquals(
+            ContributionStatus.PENDING_CONFIRMATION,
+            contributionRepository.findById(untouched.id).orElseThrow().status,
+        )
+        assertEquals(null, contributionRepository.findById(first.id).orElseThrow().rejectedAt)
     }
 
     private fun savePendingContribution(fundingId: Long, amount: Long): Contribution =

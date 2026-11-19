@@ -1,6 +1,11 @@
 package com.botem.domain.funding.controller
 
+import com.botem.domain.funding.dto.request.ContributionDecision
+import com.botem.domain.funding.dto.request.DecideContributionsRequest
+import com.botem.domain.funding.dto.request.UndoContributionDecisionsRequest
 import com.botem.domain.funding.dto.response.ConfirmAllContributionsResponse
+import com.botem.domain.funding.dto.response.ContributionDecisionResult
+import com.botem.domain.funding.dto.response.ContributionDecisionsResponse
 import com.botem.domain.funding.dto.response.ContributionDecisionResponse
 import com.botem.domain.funding.dto.response.FundingProgressResponse
 import com.botem.domain.funding.dto.response.PendingContributionListResponse
@@ -80,6 +85,64 @@ class DepositConfirmationControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.confirmedCount").value(2))
     }
+
+    @Test
+    fun `개설자가 선택한 보탬을 한 번에 처리하고 실행 취소한다`() {
+        given(
+            depositConfirmationService.decide(
+                USER_ID,
+                FUNDING_ID,
+                DecideContributionsRequest(listOf(31L, 32L), ContributionDecision.REJECT),
+            ),
+        ).willReturn(decisions(ContributionStatus.REJECTED))
+        given(depositConfirmationService.undo(USER_ID, FUNDING_ID, UndoContributionDecisionsRequest(listOf(31L, 32L))))
+            .willReturn(decisions(ContributionStatus.PENDING_CONFIRMATION))
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/decisions", FUNDING_ID)
+                .with(loggedIn())
+                .with(csrf())
+                .contentType("application/json")
+                .content("""{ "contributionIds": [31, 32], "decision": "REJECT" }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.contributions[1].status").value("REJECTED"))
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions/decisions/undo", FUNDING_ID)
+                .with(loggedIn())
+                .with(csrf())
+                .contentType("application/json")
+                .content("""{ "contributionIds": [31, 32] }"""),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.contributions[0].status").value("PENDING_CONFIRMATION"))
+    }
+
+    @Test
+    fun `선택한 보탬이 없으면 처리하지 않는다`() {
+        listOf(
+            "/api/fundings/{fundingId}/contributions/decisions" to """{ "contributionIds": [], "decision": "CONFIRM" }""",
+            "/api/fundings/{fundingId}/contributions/decisions/undo" to """{ "contributionIds": [] }""",
+        ).forEach { (url, body) ->
+            mockMvc.perform(
+                post(url, FUNDING_ID)
+                    .with(loggedIn())
+                    .with(csrf())
+                    .contentType("application/json")
+                    .content(body),
+            )
+                .andExpect(status().isBadRequest)
+        }
+
+        verifyNoInteractions(depositConfirmationService)
+    }
+
+    private fun decisions(status: ContributionStatus): ContributionDecisionsResponse =
+        ContributionDecisionsResponse(
+            listOf(ContributionDecisionResult(31L, status), ContributionDecisionResult(32L, status)),
+            progress(),
+        )
 
     @Test
     fun `로그인하지 않으면 입금 확인 API를 사용할 수 없다`() {
