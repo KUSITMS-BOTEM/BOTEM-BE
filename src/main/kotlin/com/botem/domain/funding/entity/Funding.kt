@@ -70,7 +70,7 @@ class Funding(
     var status: FundingStatus = FundingStatus.FUNDING
         protected set
 
-    // 서프라이즈 펀딩은 제목 없이 개설한다
+    // 펀딩은 제목 없이 개설한다. 제목 입력이 있던 시기에 개설된 일반 펀딩만 값을 가진다
     @Column(length = 20)
     var title: String? = title
         protected set
@@ -326,7 +326,6 @@ class Funding(
     }
 
     companion object {
-        private const val MAX_TITLE_LENGTH = 20
         private const val MAX_TARGET_AMOUNT = 10_000_000L
         private const val MAX_STORY_LENGTH = 300
         private const val MAX_PROMISE_LENGTH = 300
@@ -335,7 +334,6 @@ class Funding(
 
         fun createBirthday(
             ownerId: Long,
-            title: String,
             targetAmount: Long,
             deadline: LocalDateTime,
             story: String,
@@ -344,11 +342,9 @@ class Funding(
             payoutAccount: FundingPayoutAccountSnapshot,
             now: LocalDateTime,
         ): Funding {
-            val normalizedTitle = title.normalizeRequired("펀딩 제목")
             val normalizedStory = story.normalizeRequired("펀딩 사연")
             val normalizedPromise = promise.normalizeOptional()
 
-            validateLength(normalizedTitle, MAX_TITLE_LENGTH, "펀딩 제목")
             validateLength(normalizedStory, MAX_STORY_LENGTH, "펀딩 사연")
             normalizedPromise?.let { validateLength(it, MAX_PROMISE_LENGTH, "공약") }
             validateTargetAmount(targetAmount)
@@ -358,7 +354,7 @@ class Funding(
                 ownerId = ownerId,
                 recipientId = null,
                 type = FundingType.BIRTHDAY,
-                title = normalizedTitle,
+                title = null,
                 targetAmount = targetAmount,
                 deadline = deadline,
                 revealAt = null,

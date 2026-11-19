@@ -3,6 +3,7 @@ package com.botem.domain.funding.service
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
@@ -17,6 +18,7 @@ import com.botem.domain.wish.repository.WishRepository
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
+import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -117,8 +119,8 @@ class FundingCreationConcurrencyTest {
     private fun request(wishId: Long): CreateBirthdayFundingRequest =
         CreateBirthdayFundingRequest(
             wishId = wishId,
-            payoutAccountId = null,
-            title = "생일 선물 펀딩",
+            bank = Bank.TOSS_BANK,
+            accountNumber = "100159014821",
             targetAmount = 100_000L,
             deadline = LocalDate.of(2026, 11, 30),
             story = "새 선물이 필요해요",
@@ -174,6 +176,10 @@ class FundingCreationConcurrencyTest {
         @Bean
         fun fundingShareProperties(): FundingShareProperties =
             FundingShareProperties("https://botem.me/fundings")
+
+        @Bean
+        fun accountNumberCipher(): AccountNumberCipher =
+            AccountNumberCipher(PayoutAccountEncryptionProperties(key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="))
     }
 
     companion object {

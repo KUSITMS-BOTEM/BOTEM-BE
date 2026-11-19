@@ -5,6 +5,7 @@ import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.entity.Funding
+import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
@@ -48,13 +49,12 @@ class FundingCreationServiceTest {
     )
 
     @Test
-    fun `위시와 기본 계좌를 스냅샷으로 저장해 일반 펀딩을 개설한다`() {
-        val wish = wish()
-        val account = payoutAccount()
+    fun `위시와 입력한 계좌를 스냅샷으로 저장해 일반 펀딩을 개설한다`() {
+        val snapshot = FundingPayoutAccountSnapshot(null, Bank.TOSS_BANK, "encrypted-account-number", null)
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user())
         given(fundingRepository.countActiveFundings(USER_ID, NOW)).willReturn(4L)
-        given(resourceResolver.resolveWish(USER_ID, WISH_ID)).willReturn(wish)
-        given(resourceResolver.resolvePayoutAccount(USER_ID, null)).willReturn(account)
+        given(resourceResolver.resolveWish(USER_ID, WISH_ID)).willReturn(wish())
+        given(resourceResolver.resolveDirectPayoutAccount(Bank.TOSS_BANK, ACCOUNT_NUMBER)).willReturn(snapshot)
         given(fundingRepository.save(any(Funding::class.java))).willAnswer { invocation ->
             (invocation.arguments[0] as Funding).also { setField(it, "id", FUNDING_ID) }
         }
@@ -69,23 +69,9 @@ class FundingCreationServiceTest {
         verify(fundingRepository).save(saved.capture())
         assertEquals(WISH_ID, saved.value.product.sourceWishId)
         assertEquals("무선 헤드폰", saved.value.product.name)
-        assertEquals(ACCOUNT_ID, saved.value.payoutAccount.sourcePayoutAccountId)
-        assertEquals("encrypted-account-number", saved.value.payoutAccount.encryptedAccountNumber)
+        assertEquals(snapshot, saved.value.payoutAccount)
+        assertNull(saved.value.title)
         assertEquals(LocalDateTime.of(2026, 11, 30, 23, 59, 59, 999_999_000), saved.value.deadline)
-    }
-
-    @Test
-    fun `선택 계좌 ID를 리소스 조회에 전달한다`() {
-        val request = request(payoutAccountId = ACCOUNT_ID)
-        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user())
-        given(fundingRepository.countActiveFundings(USER_ID, NOW)).willReturn(0L)
-        given(resourceResolver.resolveWish(USER_ID, WISH_ID)).willReturn(wish())
-        given(resourceResolver.resolvePayoutAccount(USER_ID, ACCOUNT_ID)).willReturn(payoutAccount())
-        given(fundingRepository.save(any(Funding::class.java))).willAnswer { it.arguments[0] as Funding }
-
-        service.createBirthdayFunding(USER_ID, request)
-
-        verify(resourceResolver).resolvePayoutAccount(USER_ID, ACCOUNT_ID)
     }
 
     @Test
@@ -254,11 +240,11 @@ class FundingCreationServiceTest {
             showOnRecipientProfile = false,
         )
 
-    private fun request(payoutAccountId: Long? = null): CreateBirthdayFundingRequest =
+    private fun request(): CreateBirthdayFundingRequest =
         CreateBirthdayFundingRequest(
             wishId = WISH_ID,
-            payoutAccountId = payoutAccountId,
-            title = "생일 선물 펀딩",
+            bank = Bank.TOSS_BANK,
+            accountNumber = ACCOUNT_NUMBER,
             targetAmount = 100_000L,
             deadline = LocalDate.of(2026, 11, 30),
             story = "새 헤드폰이 필요해요",
@@ -301,6 +287,7 @@ class FundingCreationServiceTest {
     }
 
     companion object {
+        private const val ACCOUNT_NUMBER = "100159014821"
         private const val USER_ID = 1L
         private const val WISH_ID = 2L
         private const val ACCOUNT_ID = 3L

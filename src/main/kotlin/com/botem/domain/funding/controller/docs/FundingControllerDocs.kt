@@ -30,7 +30,9 @@ interface FundingControllerDocs {
         summary = "일반 생일 펀딩 개설",
         description = """
             로그인 사용자의 위시 상품과 받을 계좌를 스냅샷으로 저장하여 일반 생일 펀딩을 개설합니다.
-            payoutAccountId를 생략하면 기본 계좌를 사용합니다. 마감일은 선택한 날짜의 마지막 시각으로 저장됩니다.
+            받을 계좌는 bank(지원 은행 코드)와 accountNumber로 받으며, 대표계좌를 사용하는 경우에도 같은 방식으로 보냅니다.
+            계좌번호는 숫자, 공백, 하이픈만 허용하고 숫자 8~20자리여야 합니다. 입력한 계좌는 내 계좌 목록에 등록되지 않습니다.
+            마감일은 선택한 날짜의 마지막 시각으로 저장됩니다.
             진행 중인 일반 펀딩과 공개 대기 중인 서프라이즈를 합쳐 최대 5개까지 개설할 수 있습니다.
         """,
     )
@@ -46,38 +48,33 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "400",
-            description = "제목, 목표 금액, 마감일, 사연 또는 공약 입력 오류",
-            content = [Content(examples = [ExampleObject(value = INVALID_INPUT_EXAMPLE)])],
-        ),
-        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
-        SwaggerApiResponse(
-            responseCode = "404",
-            description = "위시 또는 받을 계좌 없음",
+            description = "목표 금액, 마감일, 사연, 공약 또는 계좌번호 입력 오류",
             content = [
                 Content(
                     examples = [
-                        ExampleObject(name = "WISH_002", summary = "위시 없음", value = WISH_NOT_FOUND_EXAMPLE),
+                        ExampleObject(name = "COMMON_001", summary = "입력값 오류", value = INVALID_INPUT_EXAMPLE),
                         ExampleObject(
-                            name = "PAYOUT_ACCOUNT_001",
-                            summary = "받을 계좌 없음",
-                            value = PAYOUT_ACCOUNT_NOT_FOUND_EXAMPLE,
+                            name = "PAYOUT_ACCOUNT_004",
+                            summary = "계좌번호 형식 오류",
+                            value = INVALID_ACCOUNT_NUMBER_EXAMPLE,
                         ),
                     ],
                 ),
             ],
         ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "위시 없음",
+            content = [Content(examples = [ExampleObject(value = WISH_NOT_FOUND_EXAMPLE)])],
+        ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "사용 중인 위시, 사용할 수 없는 계좌 또는 진행 중 펀딩 개수 초과",
+            description = "사용 중인 위시 또는 진행 중 펀딩 개수 초과",
             content = [
                 Content(
                     examples = [
                         ExampleObject(name = "WISH_003", summary = "사용 중인 위시", value = WISH_IN_FUNDING_EXAMPLE),
-                        ExampleObject(
-                            name = "PAYOUT_ACCOUNT_005",
-                            summary = "사용할 수 없는 계좌",
-                            value = PAYOUT_ACCOUNT_NOT_AVAILABLE_EXAMPLE,
-                        ),
                         ExampleObject(
                             name = "FUNDING_019",
                             summary = "진행 중 펀딩 5개",
@@ -199,7 +196,7 @@ interface FundingControllerDocs {
             giftVerification은 선물 인증을 마친 경우(COMPLETED)에만 사진, 감사 메시지, 완료 시각을 반환하고 그 외에는 null입니다.
             thankCard는 서프라이즈 펀딩에서 받는 사람이 감사 카드를 보낸 경우에만 반환하고 그 외에는 null입니다.
             Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
-            title은 서프라이즈 펀딩에서는 null입니다.
+            title은 제목 입력이 없어진 뒤 개설된 펀딩과 서프라이즈 펀딩에서는 null입니다.
             서프라이즈를 받는 사람이 로그인 상태로 공개 시각 전에 조회하면 403(FUNDING_046)을 반환합니다.
             공개 시각이 지났더라도 주최자가 선물 준비를 완료하기 전이면 같은 403(FUNDING_046)을 반환합니다.
         """,
@@ -236,6 +233,7 @@ interface FundingControllerDocs {
         summary = "개설자용 펀딩 관리 상세 조회",
         description = """
             펀딩 개설자가 진행률, 확인 대기 건수, 참여자와 메시지 현황을 확인합니다. 개설자 본인만 조회할 수 있습니다.
+            title은 제목 입력이 없어진 뒤 개설된 펀딩과 서프라이즈 펀딩에서는 null입니다.
             확정·대기 달성률은 홈 펀딩 카드와 같은 기준(소수점 버림)이며, 참여자별 금액은 반환하지 않습니다.
             participants는 입금 대조를 위해 취소를 제외한 참여 기록마다 한 줄씩 참여 시각 순으로 반환합니다.
             order는 사람 기준 첫 참여 순서(1부터)로 역할 배지에 쓰며, 같은 회원이 여러 번 보태면 같은 order를 가집니다.
@@ -793,8 +791,8 @@ interface FundingControllerDocs {
         private const val CREATE_FUNDING_REQUEST_EXAMPLE = """
             {
               "wishId": 3,
-              "payoutAccountId": 2,
-              "title": "생일에 에어팟 받고 싶어요",
+              "bank": "TOSS_BANK",
+              "accountNumber": "100159014821",
               "targetAmount": 350000,
               "deadline": "2026-11-30",
               "story": "올해 생일에는 오래 사용한 이어폰을 바꾸고 싶어요.",
@@ -842,6 +840,17 @@ interface FundingControllerDocs {
               "error": {
                 "code": "WISH_002",
                 "message": "위시를 찾을 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val INVALID_ACCOUNT_NUMBER_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "PAYOUT_ACCOUNT_004",
+                "message": "계좌번호 형식이 올바르지 않습니다.",
                 "detail": null
               }
             }

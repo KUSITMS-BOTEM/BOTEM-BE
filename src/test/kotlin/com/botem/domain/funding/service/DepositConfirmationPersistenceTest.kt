@@ -107,7 +107,6 @@ class DepositConfirmationPersistenceTest {
         fundingRepository.saveAndFlush(
             Funding.createBirthday(
                 ownerId = ownerId,
-                title = "지유의 생일",
                 targetAmount = 100_000L,
                 deadline = NOW.plusDays(3),
                 story = "새 헤드폰이 필요해요",

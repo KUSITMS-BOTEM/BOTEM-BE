@@ -5,27 +5,34 @@ import com.botem.domain.account.entity.Bank
 import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.account.exception.PayoutAccountErrorCode
 import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.wish.entity.Wish
 import com.botem.domain.wish.exception.WishErrorCode
 import com.botem.domain.wish.repository.WishRepository
 import com.botem.global.exception.BusinessException
+import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class FundingCreationResourceResolverTest {
 
     private val wishRepository = mock(WishRepository::class.java)
     private val payoutAccountRepository = mock(PayoutAccountRepository::class.java)
     private val fundingRepository = mock(FundingRepository::class.java)
+    private val cipher = AccountNumberCipher(
+        PayoutAccountEncryptionProperties(key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="),
+    )
     private val resolver = FundingCreationResourceResolver(
         wishRepository = wishRepository,
         payoutAccountRepository = payoutAccountRepository,
         fundingRepository = fundingRepository,
+        accountNumberCipher = cipher,
     )
 
     @Test
@@ -79,6 +86,24 @@ class FundingCreationResourceResolverTest {
             resolver.resolvePayoutAccount(USER_ID, ACCOUNT_ID)
         }
         assertEquals(PayoutAccountErrorCode.PAYOUT_ACCOUNT_NOT_AVAILABLE, notAvailable.errorCode)
+    }
+
+    @Test
+    fun `직접 입력한 계좌를 정규화하고 암호화해 스냅샷으로 반환한다`() {
+        val snapshot = resolver.resolveDirectPayoutAccount(Bank.TOSS_BANK, "1001-5901-4821")
+
+        assertNull(snapshot.sourcePayoutAccountId)
+        assertEquals(Bank.TOSS_BANK, snapshot.bank)
+        assertEquals("100159014821", cipher.decrypt(snapshot.encryptedAccountNumber))
+        assertNull(snapshot.accountHolder)
+    }
+
+    @Test
+    fun `직접 입력 계좌번호 형식이 맞지 않으면 거부한다`() {
+        val invalidNumber = assertFailsWith<BusinessException> {
+            resolver.resolveDirectPayoutAccount(Bank.TOSS_BANK, "1234")
+        }
+        assertEquals(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER, invalidNumber.errorCode)
     }
 
     private fun wish(): Wish =
