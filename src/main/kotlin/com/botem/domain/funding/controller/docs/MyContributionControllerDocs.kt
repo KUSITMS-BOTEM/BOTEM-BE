@@ -24,6 +24,7 @@ interface MyContributionControllerDocs {
             editable은 메시지를 받을 수 있는 동안(마감일 전) true이며, 그동안 이름·메시지·편지지를 수정할 수 있습니다.
             생일 펀딩은 조기 마감해도 마감일까지 수정할 수 있고, 서프라이즈는 조기 마감하면 메시지와 함께 수정도 닫힙니다.
             status가 REJECTED이면 개설자가 '못 받았어요'를 누른 보탬입니다.
+            각 보탬에는 롤링페이퍼의 메시지·편지지·스티커·사진·음성 정보가 포함됩니다.
             payoutAccount는 송금 전(AWAITING_TRANSFER)이거나 REJECTED인 보탬에만 반환하고, 그 외에는 null입니다.
             excludedFromResult는 개설자가 확인하지 않은 채 팡!(서프라이즈는 선물 준비 완료)을 열어 결과에서 빠진 확인 대기 보탬이면 true입니다.
             비회원 보탬은 비회원 보탬 조회 API를 사용합니다.
@@ -137,6 +138,10 @@ interface MyContributionControllerDocs {
                     "excludedFromResult": false,
                     "message": "지유야 생일 축하해!",
                     "paperTemplateCode": "LIME_DOT_GRID",
+                    "decorationCode": "PARTY_POPPER",
+                    "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
+                    "voiceUrl": null,
+                    "voiceDurationSeconds": null,
                     "participatedAt": "2026-10-13T11:20:00",
                     "payoutAccount": {
                       "bank": "TOSS_BANK",
@@ -168,6 +173,10 @@ interface MyContributionControllerDocs {
                 "excludedFromResult": false,
                 "message": "지유야 생일 진짜 축하해!",
                 "paperTemplateCode": "BLUE_DOT_GRID",
+                "decorationCode": "PARTY_POPPER",
+                "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
+                "voiceUrl": null,
+                "voiceDurationSeconds": null,
                 "participatedAt": "2026-10-13T11:20:00",
                 "payoutAccount": null
               },

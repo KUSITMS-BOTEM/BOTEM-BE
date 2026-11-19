@@ -27,7 +27,9 @@ interface ContributionControllerDocs {
             새로 만들지 않고 기존 참여를 그대로 반환합니다. 같은 키로 금액이 다르거나 다른 참여자가 요청하면 FUNDING_027을 반환합니다.
             participantName은 비로그인 시 필수이고, 로그인 시 생략하면 회원 닉네임을 사용합니다.
             guestPassword는 비로그인 시 숫자 4자리로 필수이며 해시로 저장합니다. 로그인 시에는 저장하지 않습니다.
-            message(축하 메시지, 최대 460자)와 paperTemplateCode(편지지)는 필수이며 롤링페이퍼로 함께 저장합니다.
+            paperTemplateCode(편지지)는 필수이며 message(최대 460자), decorationCode, photoUrl, voiceUrl 중 하나 이상을 전달합니다.
+            사진·음성은 롤링페이퍼 첨부 업로드 URL API로 먼저 업로드한 fileUrl만 사용할 수 있습니다.
+            voiceUrl과 voiceDurationSeconds는 함께 전달해야 하며, 전달된 파일이 S3에 없으면 저장하지 않습니다.
             amount는 0원보다 크고 남은 목표 금액(목표 금액 − 입금 확인 완료 금액) 이하여야 합니다.
             입력 금액이 남은 금액보다 크면 FUNDING_022를 반환하고 error.detail에 남은 금액(원, 숫자 문자열)을 담습니다.
             남은 금액이 0원이면 FUNDING_021을 반환합니다. 두 경우 모두 아무것도 저장하지 않습니다.
@@ -110,7 +112,7 @@ interface ContributionControllerDocs {
             메시지만 남긴 참여는 전체 참여 인원과 메시지 개수에는 포함되지만 확정·대기 달성률에는 반영되지 않고,
             입금 확인 대상에서도 제외됩니다.
             목표 금액을 달성해 금액 보태기가 닫힌 뒤에도 마감 전까지는 남길 수 있고, 마감된 펀딩에는 FUNDING_020을 반환합니다.
-            requestKey, participantName, message, paperTemplateCode, guestPassword 규칙은 금액 보태기와 같습니다.
+            requestKey, participantName, 롤링페이퍼 콘텐츠, paperTemplateCode, guestPassword 규칙은 금액 보태기와 같습니다.
             같은 키로 다시 요청하면 기존 참여를 반환하고, 다른 참여자의 키이거나 금액 보태기에 쓴 키면 FUNDING_027을 반환합니다.
             Authorization 헤더 없이 호출하면 비로그인으로 처리하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
         """,
@@ -272,6 +274,10 @@ interface ContributionControllerDocs {
               "amount": 10000,
               "message": "생일 축하해!",
               "paperTemplateCode": "BLUE_DOT_GRID",
+              "decorationCode": "PARTY_POPPER",
+              "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
+              "voiceUrl": null,
+              "voiceDurationSeconds": null,
               "guestPassword": "1234"
             }
         """
@@ -280,7 +286,11 @@ interface ContributionControllerDocs {
               "requestKey": "0a9b8c7d-6e5f-4a3b-2c1d-0e9f8a7b6c5d",
               "amount": 20000,
               "message": "늦었지만 생일 축하해",
-              "paperTemplateCode": "BLACK_CONFETTI"
+              "paperTemplateCode": "BLACK_CONFETTI",
+              "decorationCode": null,
+              "photoUrl": null,
+              "voiceUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/voice/8a7b6c5d-4e3f-2a1b-9c8d-7e6f5a4b3c2d.m4a",
+              "voiceDurationSeconds": 12
             }
         """
         private const val CONTRIBUTE_RESPONSE_EXAMPLE = """
@@ -305,8 +315,12 @@ interface ContributionControllerDocs {
             {
               "requestKey": "3c2b1a09-8f7e-4d6c-5b4a-39281706f5e4",
               "participantName": "지유 친구 민지",
-              "message": "이미 다 모였네! 생일 축하해",
+              "message": null,
               "paperTemplateCode": "BLUE_DOT_GRID",
+              "decorationCode": "HEART",
+              "photoUrl": null,
+              "voiceUrl": null,
+              "voiceDurationSeconds": null,
               "guestPassword": "1234"
             }
         """

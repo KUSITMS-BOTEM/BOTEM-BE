@@ -24,6 +24,7 @@ interface GuestContributionControllerDocs {
             이름이 없거나 비밀번호가 다른 경우 모두 FUNDING_025를 반환해 이름의 존재 여부를 노출하지 않습니다.
             같은 이름으로 5회 연속 실패하면 10분 동안 FUNDING_029를 반환하며, 성공하면 실패 횟수를 초기화합니다.
             응답의 단기 접근 토큰은 로그인 JWT가 아니며 수정·삭제 요청의 X-Guest-Contribution-Token 헤더에서만 사용합니다.
+            응답에는 롤링페이퍼의 메시지·편지지·스티커·사진·음성 정보가 포함됩니다.
         """,
     )
     @RequestBody(
@@ -61,9 +62,11 @@ interface GuestContributionControllerDocs {
     @Operation(
         summary = "비회원 보탬 수정",
         description = """
-            접근 토큰으로 참여자 이름, 축하 메시지와 편지지를 수정합니다.
+            접근 토큰으로 참여자 이름과 롤링페이퍼의 메시지·편지지·스티커·사진·음성을 수정합니다.
             토큰에 기록된 펀딩과 요청 경로가 다르거나 다른 보탬에 사용하면 FUNDING_033을 반환합니다.
             이름을 바꿀 때 같은 펀딩의 다른 비회원 보탬이 사용 중인 이름은 선택할 수 없습니다.
+            요청은 롤링페이퍼 콘텐츠 전체를 교체하므로 null로 전달한 기존 첨부는 제거됩니다.
+            새 사진·음성은 롤링페이퍼 첨부 업로드 URL API로 먼저 업로드한 fileUrl만 사용할 수 있습니다.
             보탠 금액, 입금 상태와 비밀번호는 변경하지 않습니다.
         """,
     )
@@ -165,6 +168,10 @@ interface GuestContributionControllerDocs {
                 "status": "PENDING_CONFIRMATION",
                 "message": "생일 축하해!",
                 "paperTemplateCode": "BLUE_DOT_GRID",
+                "decorationCode": "PARTY_POPPER",
+                "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
+                "voiceUrl": null,
+                "voiceDurationSeconds": null,
                 "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
                 "accessTokenExpiresAt": "2026-11-18T12:30:00Z"
               },
@@ -175,7 +182,11 @@ interface GuestContributionControllerDocs {
             {
               "participantName": "민지",
               "message": "지유야 생일 정말 축하해!",
-              "paperTemplateCode": "BLACK_CONFETTI"
+              "paperTemplateCode": "BLACK_CONFETTI",
+              "decorationCode": "HEART",
+              "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
+              "voiceUrl": null,
+              "voiceDurationSeconds": null
             }
         """
         private const val UPDATE_RESPONSE_EXAMPLE = """
@@ -187,7 +198,11 @@ interface GuestContributionControllerDocs {
                 "amount": 10000,
                 "status": "PENDING_CONFIRMATION",
                 "message": "지유야 생일 정말 축하해!",
-                "paperTemplateCode": "BLACK_CONFETTI"
+                "paperTemplateCode": "BLACK_CONFETTI",
+                "decorationCode": "HEART",
+                "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
+                "voiceUrl": null,
+                "voiceDurationSeconds": null
               },
               "error": null
             }
