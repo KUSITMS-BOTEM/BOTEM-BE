@@ -10,4 +10,5 @@ enum class FriendErrorCode(
 ) : ErrorCode {
     FRIEND_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_001", "친구를 맺을 회원을 찾을 수 없습니다."),
     FRIEND_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_002", "친구가 아닌 회원입니다."),
+    WISH_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FRIEND_003", "위시 프로필을 찾을 수 없습니다."),
 }
