@@ -16,13 +16,24 @@ data class CreateContributionRequest(
     @field:Positive
     val amount: Long,
 
-    @field:NotBlank
     @field:Size(max = 460)
-    val message: String,
+    val message: String? = null,
 
     @field:NotBlank
     @field:Size(max = 50)
     val paperTemplateCode: String,
+
+    @field:Size(max = 50)
+    val decorationCode: String? = null,
+
+    @field:Size(max = 2048)
+    val photoUrl: String? = null,
+
+    @field:Size(max = 2048)
+    val voiceUrl: String? = null,
+
+    @field:Positive
+    val voiceDurationSeconds: Int? = null,
 
     @field:Pattern(regexp = "\\d{4}", message = "숫자 4자리여야 합니다")
     val guestPassword: String? = null,

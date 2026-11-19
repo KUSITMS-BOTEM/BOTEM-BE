@@ -12,6 +12,7 @@ import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.RollingPaperAttachmentType
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
@@ -35,6 +36,7 @@ class ContributionService(
     private val userRepository: UserRepository,
     private val accountNumberCipher: AccountNumberCipher,
     private val guestPasswordVerifier: GuestContributionPasswordVerifier,
+    private val rollingPaperAttachmentService: RollingPaperAttachmentService,
     private val clock: Clock,
 ) {
 
@@ -47,6 +49,10 @@ class ContributionService(
             participantName = request.participantName,
             message = request.message,
             paperTemplateCode = request.paperTemplateCode,
+            decorationCode = request.decorationCode,
+            photoUrl = request.photoUrl,
+            voiceUrl = request.voiceUrl,
+            voiceDurationSeconds = request.voiceDurationSeconds,
             guestPassword = request.guestPassword,
         )
         val funding = lockFunding(fundingId)
@@ -61,6 +67,7 @@ class ContributionService(
 
         validateContributable(funding, request.amount)
         validateGuestIdentityAvailable(fundingId, input)
+        validateUploadedAttachments(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -85,6 +92,10 @@ class ContributionService(
             participantName = request.participantName,
             message = request.message,
             paperTemplateCode = request.paperTemplateCode,
+            decorationCode = request.decorationCode,
+            photoUrl = request.photoUrl,
+            voiceUrl = request.voiceUrl,
+            voiceDurationSeconds = request.voiceDurationSeconds,
             guestPassword = request.guestPassword,
         )
         val funding = lockFunding(fundingId)
@@ -99,6 +110,7 @@ class ContributionService(
 
         validateOpen(funding)
         validateGuestIdentityAvailable(fundingId, input)
+        validateUploadedAttachments(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -158,14 +170,31 @@ class ContributionService(
     private fun prepareParticipantInput(
         userId: Long?,
         participantName: String?,
-        message: String,
+        message: String?,
         paperTemplateCode: String,
+        decorationCode: String?,
+        photoUrl: String?,
+        voiceUrl: String?,
+        voiceDurationSeconds: Int?,
         guestPassword: String?,
     ): ParticipantInput {
         val normalizedMessage = message.normalizeOptional()
-            ?: throw invalidInput("축하 메시지는 필수입니다.")
         val normalizedPaperTemplateCode = paperTemplateCode.normalizeOptional()
             ?: throw invalidInput("편지지를 선택해야 합니다.")
+        val normalizedDecorationCode = decorationCode.normalizeOptional()
+        val normalizedPhotoUrl = photoUrl.normalizeOptional()
+        val normalizedVoiceUrl = voiceUrl.normalizeOptional()
+        if (
+            normalizedMessage == null &&
+            normalizedDecorationCode == null &&
+            normalizedPhotoUrl == null &&
+            normalizedVoiceUrl == null
+        ) {
+            throw invalidInput("축하 메시지, 스티커, 사진 또는 음성 중 하나는 필수입니다.")
+        }
+        if ((normalizedVoiceUrl == null) != (voiceDurationSeconds == null)) {
+            throw invalidInput("음성 URL과 재생 시간은 함께 입력해야 합니다.")
+        }
         if (userId == null && participantName.normalizeOptional() == null) {
             throw invalidInput("참여자 이름은 필수입니다.")
         }
@@ -174,8 +203,29 @@ class ContributionService(
             participantName = participantName.normalizeOptional(),
             message = normalizedMessage,
             paperTemplateCode = normalizedPaperTemplateCode,
+            decorationCode = normalizedDecorationCode,
+            photoUrl = normalizedPhotoUrl,
+            voiceUrl = normalizedVoiceUrl,
+            voiceDurationSeconds = voiceDurationSeconds,
             guestPasswordHash = if (userId == null) hashGuestPassword(guestPassword) else null,
         )
+    }
+
+    private fun validateUploadedAttachments(fundingId: Long, input: ParticipantInput) {
+        input.photoUrl?.let { photoUrl ->
+            rollingPaperAttachmentService.validateUploadedAttachment(
+                fundingId = fundingId,
+                attachmentType = RollingPaperAttachmentType.PHOTO,
+                fileUrl = photoUrl,
+            )
+        }
+        input.voiceUrl?.let { voiceUrl ->
+            rollingPaperAttachmentService.validateUploadedAttachment(
+                fundingId = fundingId,
+                attachmentType = RollingPaperAttachmentType.VOICE,
+                fileUrl = voiceUrl,
+            )
+        }
     }
 
     // 펀딩 단위로 잠가 남은 금액 검증과 요청 키 중복 확인을 직렬화한다
@@ -208,6 +258,10 @@ class ContributionService(
                 contributionId = contribution.id,
                 content = input.message,
                 paperTemplateCode = input.paperTemplateCode,
+                decorationCode = input.decorationCode,
+                photoUrl = input.photoUrl,
+                voiceUrl = input.voiceUrl,
+                voiceDurationSeconds = input.voiceDurationSeconds,
             ),
         )
 
@@ -281,8 +335,12 @@ class ContributionService(
 
     private class ParticipantInput(
         val participantName: String?,
-        val message: String,
+        val message: String?,
         val paperTemplateCode: String,
+        val decorationCode: String?,
+        val photoUrl: String?,
+        val voiceUrl: String?,
+        val voiceDurationSeconds: Int?,
         val guestPasswordHash: String?,
     )
 
