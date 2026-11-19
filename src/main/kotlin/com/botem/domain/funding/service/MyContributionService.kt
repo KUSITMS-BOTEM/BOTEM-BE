@@ -133,6 +133,10 @@ class MyContributionService(
                 (funding.resultOpenedAt != null || funding.isSurpriseGiftPrepared()),
             message = message?.content,
             paperTemplateCode = message?.paperTemplateCode,
+            decorationCode = message?.decorationCode,
+            photoUrl = message?.photoUrl,
+            voiceUrl = message?.voiceUrl,
+            voiceDurationSeconds = message?.voiceDurationSeconds,
             participatedAt = contribution.createdAt,
             payoutAccount = payoutAccount,
         )

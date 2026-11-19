@@ -29,6 +29,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -48,6 +49,9 @@ import kotlin.test.assertNotNull
     ContributionConcurrencyTest.FixedConfig::class,
 )
 class ContributionConcurrencyTest {
+
+    @MockitoBean
+    private lateinit var rollingPaperAttachmentService: RollingPaperAttachmentService
 
     @Autowired
     private lateinit var contributionService: ContributionService

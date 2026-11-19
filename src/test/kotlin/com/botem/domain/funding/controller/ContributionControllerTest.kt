@@ -12,6 +12,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.service.ContributionService
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
@@ -79,8 +80,7 @@ class ContributionControllerTest {
         listOf(
             body(message = "가".repeat(461)),
             body(guestPassword = "12a4"),
-            body(message = " "),
-            """{"requestKey": "$REQUEST_KEY", "amount": 10000, "paperTemplateCode": "BLUE_DOT_GRID"}""",
+            body().replace("\"guestPassword\": \"1234\"", "\"guestPassword\": \"1234\", \"voiceDurationSeconds\": 0"),
             body(amount = 0L),
         ).forEach { content ->
             mockMvc.perform(
@@ -95,6 +95,48 @@ class ContributionControllerTest {
         }
 
         verifyNoInteractions(contributionService)
+    }
+
+    @Test
+    fun `텍스트 없이 사진과 스티커만으로 금액을 보탤 수 있다`() {
+        val request = CreateContributionRequest(
+            requestKey = REQUEST_KEY,
+            amount = 10_000L,
+            message = null,
+            paperTemplateCode = "BLUE_DOT_GRID",
+            decorationCode = "PARTY_POPPER",
+            photoUrl = PHOTO_URL,
+        )
+        given(contributionService.contribute(USER_ID, FUNDING_ID, request)).willReturn(
+            ContributionResponse(
+                CONTRIBUTION_ID,
+                "지유친구",
+                10_000L,
+                ContributionStatus.AWAITING_TRANSFER,
+                ContributionPayoutAccountResponse(Bank.TOSS_BANK, "토스뱅크", "100012345678", "김지유"),
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions", FUNDING_ID)
+                .with(loggedIn())
+                .with(csrf())
+                .contentType("application/json")
+                .content(
+                    """
+                    {
+                      "requestKey": "$REQUEST_KEY",
+                      "amount": 10000,
+                      "message": null,
+                      "paperTemplateCode": "BLUE_DOT_GRID",
+                      "decorationCode": "PARTY_POPPER",
+                      "photoUrl": "$PHOTO_URL"
+                    }
+                    """.trimIndent(),
+                ),
+        ).andExpect(status().isCreated)
+
+        verify(contributionService).contribute(USER_ID, FUNDING_ID, request)
     }
 
     @Test
@@ -208,5 +250,7 @@ class ContributionControllerTest {
         private const val FUNDING_ID = 10L
         private const val CONTRIBUTION_ID = 31L
         private const val REQUEST_KEY = "7f1c2a9e-3b4d-4e5f-8a6b-1c2d3e4f5a6b"
+        private const val PHOTO_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/10/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg"
     }
 }

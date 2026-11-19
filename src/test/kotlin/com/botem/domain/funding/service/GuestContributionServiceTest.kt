@@ -8,7 +8,9 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.RollingPaperAttachmentType
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
@@ -24,8 +26,10 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.util.ReflectionTestUtils.setField
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -37,18 +41,26 @@ class GuestContributionServiceTest {
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val accessTokenProvider = mock(GuestContributionAccessTokenProvider::class.java)
     private val passwordVerifier = mock(GuestContributionPasswordVerifier::class.java)
+    private val rollingPaperAttachmentService = mock(RollingPaperAttachmentService::class.java)
     private val service = GuestContributionService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
         accessTokenProvider = accessTokenProvider,
         passwordVerifier = passwordVerifier,
+        rollingPaperAttachmentService = rollingPaperAttachmentService,
+        clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
     @Test
     fun `이름과 비밀번호가 일치하면 보탬을 조회하고 접근 토큰을 발급한다`() {
         val contribution = contribution()
-        val message = message()
+        val message = message(
+            decorationCode = "PARTY_POPPER",
+            photoUrl = PHOTO_URL,
+            voiceUrl = VOICE_URL,
+            voiceDurationSeconds = 12,
+        )
         givenFunding()
         givenGuestContributions("민지", listOf(contribution))
         given(passwordVerifier.authenticate("1234", listOf(contribution))).willReturn(contribution)
@@ -61,6 +73,10 @@ class GuestContributionServiceTest {
         assertEquals(CONTRIBUTION_ID, response.contributionId)
         assertEquals("민지", response.participantName)
         assertEquals("생일 축하해!", response.message)
+        assertEquals("PARTY_POPPER", response.decorationCode)
+        assertEquals(PHOTO_URL, response.photoUrl)
+        assertEquals(VOICE_URL, response.voiceUrl)
+        assertEquals(12, response.voiceDurationSeconds)
         assertEquals(ACCESS_TOKEN, response.accessToken)
         assertEquals(TOKEN_EXPIRES_AT, response.accessTokenExpiresAt)
     }
@@ -111,6 +127,130 @@ class GuestContributionServiceTest {
         assertEquals("수정한 메시지", message.content)
         assertEquals("BLACK_CONFETTI", message.paperTemplateCode)
         assertEquals("새 이름", response.participantName)
+        assertNull(response.photoUrl)
+    }
+
+    @Test
+    fun `비회원은 사진과 음성과 스티커를 수정할 수 있다`() {
+        val contribution = contribution()
+        val message = message()
+        givenToken(contribution)
+        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(message)
+
+        val response = service.update(
+            FUNDING_ID,
+            ACCESS_TOKEN,
+            UpdateGuestContributionRequest(
+                participantName = "민지",
+                message = null,
+                paperTemplateCode = "BLACK_CONFETTI",
+                decorationCode = "HEART",
+                photoUrl = PHOTO_URL,
+                voiceUrl = VOICE_URL,
+                voiceDurationSeconds = 12,
+            ),
+        )
+
+        verify(rollingPaperAttachmentService).validateUploadedAttachment(
+            FUNDING_ID,
+            RollingPaperAttachmentType.PHOTO,
+            PHOTO_URL,
+        )
+        verify(rollingPaperAttachmentService).validateUploadedAttachment(
+            FUNDING_ID,
+            RollingPaperAttachmentType.VOICE,
+            VOICE_URL,
+        )
+        assertNull(response.message)
+        assertEquals("HEART", response.decorationCode)
+        assertEquals(PHOTO_URL, response.photoUrl)
+        assertEquals(VOICE_URL, response.voiceUrl)
+        assertEquals(12, response.voiceDurationSeconds)
+    }
+
+    @Test
+    fun `롤링페이퍼 콘텐츠가 모두 비거나 음성 입력 조합이 다르면 수정할 수 없다`() {
+        val contribution = contribution()
+        givenToken(contribution)
+
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest("민지", null, "BLUE_DOT_GRID"),
+            )
+        }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest(
+                    participantName = "민지",
+                    message = "축하해",
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                    voiceUrl = VOICE_URL,
+                ),
+            )
+        }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest(
+                    participantName = "민지",
+                    message = "축하해",
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                    voiceDurationSeconds = 0,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `비회원 보탬도 일반 펀딩은 마감 전까지만 수정할 수 있다`() {
+        val contribution = contribution()
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(contribution)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding(deadline = NOW))
+
+        assertError(FundingErrorCode.CONTRIBUTION_NOT_EDITABLE) {
+            service.update(FUNDING_ID, ACCESS_TOKEN, UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"))
+        }
+        verify(rollingPaperMessageRepository, never()).findByContributionId(CONTRIBUTION_ID)
+    }
+
+    @Test
+    fun `조기 마감한 일반 펀딩은 원래 마감일 전까지 비회원 보탬을 수정할 수 있다`() {
+        val contribution = contribution()
+        val earlyClosed = funding().also { it.closeEarly(NOW) }
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(earlyClosed)
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(contribution)
+        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(message())
+
+        val response = service.update(
+            FUNDING_ID,
+            ACCESS_TOKEN,
+            UpdateGuestContributionRequest("민지", "수정 메시지", "BLUE_DOT_GRID"),
+        )
+
+        assertEquals("수정 메시지", response.message)
+    }
+
+    @Test
+    fun `선물 준비 상태의 서프라이즈 펀딩에서는 비회원 보탬을 수정할 수 없다`() {
+        val contribution = contribution()
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID))
+            .willReturn(funding(status = FundingStatus.GIFT_PREPARING))
+        given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)).willReturn(contribution)
+
+        assertError(FundingErrorCode.CONTRIBUTION_NOT_EDITABLE) {
+            service.update(FUNDING_ID, ACCESS_TOKEN, UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"))
+        }
     }
 
     @Test
@@ -224,6 +364,17 @@ class GuestContributionServiceTest {
                 UpdateGuestContributionRequest("민지", "메시지", "A".repeat(51)),
             )
         }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest(
+                    participantName = "민지",
+                    message = "가".repeat(461),
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                ),
+            )
+        }
     }
 
     @Test
@@ -264,19 +415,25 @@ class GuestContributionServiceTest {
             .willReturn(contribution)
     }
 
-    private fun funding() = Funding(
+    private fun funding(
+        deadline: LocalDateTime = NOW.plusDays(3),
+        status: FundingStatus = FundingStatus.FUNDING,
+    ) = Funding(
         ownerId = 1L,
         recipientId = null,
         type = FundingType.BIRTHDAY,
         title = "생일 펀딩",
         targetAmount = 100_000L,
-        deadline = NOW.plusDays(3),
+        deadline = deadline,
         revealAt = null,
         story = "사연",
         promise = null,
         product = FundingProductSnapshot(null, "에어팟", "https://example.com/p.jpg", 300_000L, "https://example.com/p"),
         payoutAccount = FundingPayoutAccountSnapshot(null, Bank.TOSS_BANK, "encrypted", "김지유"),
-    ).also { setField(it, "id", FUNDING_ID) }
+    ).also {
+        setField(it, "id", FUNDING_ID)
+        setField(it, "status", status)
+    }
 
     private fun contribution(
         id: Long = CONTRIBUTION_ID,
@@ -293,10 +450,19 @@ class GuestContributionServiceTest {
         requestKey = "request-$id",
     ).also { setField(it, "id", id) }
 
-    private fun message() = RollingPaperMessage(
+    private fun message(
+        decorationCode: String? = null,
+        photoUrl: String? = null,
+        voiceUrl: String? = null,
+        voiceDurationSeconds: Int? = null,
+    ) = RollingPaperMessage(
         contributionId = CONTRIBUTION_ID,
         content = "생일 축하해!",
         paperTemplateCode = "BLUE_DOT_GRID",
+        decorationCode = decorationCode,
+        photoUrl = photoUrl,
+        voiceUrl = voiceUrl,
+        voiceDurationSeconds = voiceDurationSeconds,
     )
 
     private fun assertError(errorCode: FundingErrorCode, block: () -> Unit) {
@@ -315,6 +481,10 @@ class GuestContributionServiceTest {
         private const val CONTRIBUTION_ID = 31L
         private const val OTHER_CONTRIBUTION_ID = 32L
         private const val ACCESS_TOKEN = "guest-access-token"
+        private const val PHOTO_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/12/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg"
+        private const val VOICE_URL =
+            "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/12/voice/8a7b6c5d-4e3f-2a1b-9c8d-7e6f5a4b3c2d.m4a"
         private val NOW = LocalDateTime.of(2026, 11, 18, 12, 0)
         private val TOKEN_EXPIRES_AT = Instant.parse("2026-11-18T03:10:00Z")
     }
