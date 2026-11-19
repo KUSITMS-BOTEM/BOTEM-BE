@@ -37,7 +37,7 @@ class GuestContributionController(
     override fun update(
         @PathVariable fundingId: Long,
         @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME, required = false) accessToken: String?,
-        @RequestBody request: UpdateGuestContributionRequest,
+        @Valid @RequestBody request: UpdateGuestContributionRequest,
     ): ApiResponse<UpdatedGuestContributionResponse> =
         ApiResponse.success(guestContributionService.update(fundingId, requireAccessToken(accessToken), request))
 

@@ -12,6 +12,10 @@ data class GuestContributionResponse(
     val status: ContributionStatus,
     val message: String?,
     val paperTemplateCode: String?,
+    val decorationCode: String?,
+    val photoUrl: String?,
+    val voiceUrl: String?,
+    val voiceDurationSeconds: Int?,
     val accessToken: String,
     val accessTokenExpiresAt: Instant,
 ) {
@@ -29,6 +33,10 @@ data class GuestContributionResponse(
                 status = contribution.status,
                 message = rollingPaperMessage?.content,
                 paperTemplateCode = rollingPaperMessage?.paperTemplateCode,
+                decorationCode = rollingPaperMessage?.decorationCode,
+                photoUrl = rollingPaperMessage?.photoUrl,
+                voiceUrl = rollingPaperMessage?.voiceUrl,
+                voiceDurationSeconds = rollingPaperMessage?.voiceDurationSeconds,
                 accessToken = accessToken,
                 accessTokenExpiresAt = accessTokenExpiresAt,
             )
@@ -42,6 +50,10 @@ data class UpdatedGuestContributionResponse(
     val status: ContributionStatus,
     val message: String?,
     val paperTemplateCode: String,
+    val decorationCode: String?,
+    val photoUrl: String?,
+    val voiceUrl: String?,
+    val voiceDurationSeconds: Int?,
 ) {
     companion object {
         fun of(
@@ -55,6 +67,10 @@ data class UpdatedGuestContributionResponse(
                 status = contribution.status,
                 message = rollingPaperMessage.content,
                 paperTemplateCode = rollingPaperMessage.paperTemplateCode,
+                decorationCode = rollingPaperMessage.decorationCode,
+                photoUrl = rollingPaperMessage.photoUrl,
+                voiceUrl = rollingPaperMessage.voiceUrl,
+                voiceDurationSeconds = rollingPaperMessage.voiceDurationSeconds,
             )
     }
 }
