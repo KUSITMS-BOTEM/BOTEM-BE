@@ -79,6 +79,32 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         @Param("now") now: LocalDateTime,
     ): Long
 
+    // 홈의 진행 중 기준과 맞춰, 생일은 마감일 경과 또는 조기 마감, 서프라이즈는 공개 시각 경과를 마감으로 본다
+    @Query(
+        """
+        SELECT funding
+        FROM Funding funding
+        WHERE funding.ownerId = :ownerId
+          AND funding.status <> com.botem.domain.funding.entity.FundingStatus.CANCELLED
+          AND (
+            (
+              funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+              AND (funding.deadline <= :now OR funding.earlyClosedAt IS NOT NULL)
+            )
+            OR
+            (
+              funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
+              AND funding.revealAt <= :now
+            )
+          )
+        ORDER BY funding.deadline DESC, funding.id DESC
+        """,
+    )
+    fun findClosedFundingsByOwnerId(
+        @Param("ownerId") ownerId: Long,
+        @Param("now") now: LocalDateTime,
+    ): List<Funding>
+
     @Query(
         """
         SELECT new com.botem.domain.funding.repository.projection.RevealedSurpriseCardProjection(
