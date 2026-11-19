@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BOTEM API 연동 현황</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f7f7f8;
+      --border: #e4e4e7;
+      --text: #18181b;
+      --muted: #71717a;
+      --accent: #2563eb;
+      --done: #16a34a;
+      --get: #16a34a;
+      --post: #2563eb;
+      --put: #ea580c;
+      --patch: #ca8a04;
+      --delete: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #18181b;
+        --surface: #232326;
+        --border: #3f3f46;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --accent: #60a5fa;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    }
+    header { padding: 20px 16px 8px; max-width: 1280px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .summary { color: var(--muted); }
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 12px 16px; max-width: 1280px; margin: 0 auto;
+      position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--border); z-index: 1;
+    }
+    input, select, textarea {
+      font: inherit; color: inherit; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
+    }
+    .filters input[type="search"] { flex: 1 1 220px; }
+    main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    tr.row { cursor: pointer; }
+    tr.row:hover { background: var(--surface); }
+    tr.row.done td.name { color: var(--muted); }
+    .method {
+      display: inline-block; min-width: 56px; text-align: center; font-size: 12px; font-weight: 700;
+      border-radius: 4px; padding: 1px 6px; color: #fff;
+    }
+    .GET { background: var(--get); } .POST { background: var(--post); } .PUT { background: var(--put); }
+    .PATCH { background: var(--patch); } .DELETE { background: var(--delete); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+    .tag { color: var(--muted); font-size: 12px; }
+    td.edit select, td.edit input[type="text"] { width: 100%; }
+    .detail td { background: var(--surface); }
+    .detail h3 { margin: 12px 0 4px; font-size: 13px; }
+    .detail p { margin: 0 0 8px; white-space: pre-wrap; }
+    .fields { margin: 0; padding-left: 18px; }
+    .fields li { margin: 2px 0; }
+    .optional { color: var(--muted); font-size: 12px; }
+    pre { margin: 0 0 8px; padding: 8px; overflow-x: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+    .saved { color: var(--done); font-size: 12px; }
+    .error { color: var(--delete); padding: 16px; }
+    @media (max-width: 760px) {
+      .hide-mobile { display: none; }
+      th, td { padding: 6px 4px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>BOTEM API 연동 현황</h1>
+  <div class="summary" id="summary">불러오는 중…</div>
+</header>
+<div class="filters">
+  <input type="search" id="q" placeholder="API 이름·경로 검색">
+  <select id="fTag"><option value="">전체 도메인</option></select>
+  <select id="fMethod">
+    <option value="">전체 Method</option>
+    <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+  </select>
+  <select id="fOwner"><option value="">전체 담당자</option></select>
+  <select id="fDone">
+    <option value="">연동 전체</option>
+    <option value="false">연동 전</option>
+    <option value="true">연동 완료</option>
+  </select>
+</div>
+<main>
+  <table>
+    <thead>
+    <tr>
+      <th>API</th>
+      <th>Method</th>
+      <th>Endpoint</th>
+      <th class="hide-mobile">도메인</th>
+      <th>담당자</th>
+      <th>연동</th>
+      <th class="hide-mobile">메모</th>
+    </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+<script>
+  // API 목록은 매번 OpenAPI 스펙에서 읽고, 담당자·연동 여부만 서버에 저장한다
+  const OWNERS = ["정푸름", "이준교"];
+  const METHODS = ["get", "post", "put", "patch", "delete"];
+  let spec;
+  let apis = [];
+  const openKeys = new Set();
+
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+  const keyOf = (api) => `${api.method} ${api.path}`;
+
+  async function getJson(url) {
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok) throw new Error(`${url} 요청 실패 (${response.status})`);
+    return response.json();
+  }
+
+  async function load() {
+    const [apiDocs, statuses] = await Promise.all([getJson("/v3/api-docs"), getJson("/api-board/statuses")]);
+    spec = apiDocs;
+    const statusByKey = new Map(statuses.data.map((s) => [`${s.method} ${s.path}`, s]));
+
+    apis = [];
+    for (const [path, item] of Object.entries(spec.paths)) {
+      for (const method of METHODS) {
+        const operation = item[method];
+        if (!operation) continue;
+        const upper = method.toUpperCase();
+        const status = statusByKey.get(`${upper} ${path}`) || {};
+        apis.push({
+          method: upper,
+          path,
+          operation,
+          name: operation.summary || operation.operationId,
+          tag: (operation.tags || ["기타"])[0],
+          owner: status.owner || "",
+          integrated: !!status.integrated,
+          memo: status.memo || "",
+        });
+      }
+    }
+    apis.sort((a, b) => a.tag.localeCompare(b.tag) || a.path.localeCompare(b.path) || METHODS.indexOf(a.method.toLowerCase()) - METHODS.indexOf(b.method.toLowerCase()));
+
+    fillSelect("fTag", [...new Set(apis.map((a) => a.tag))]);
+    fillSelect("fOwner", [...new Set([...OWNERS, ...apis.map((a) => a.owner).filter(Boolean)])].concat(["(미정)"]));
+    render();
+  }
+
+  function fillSelect(id, values) {
+    const select = document.getElementById(id);
+    select.length = 1;
+    values.forEach((value) => select.add(new Option(value, value)));
+  }
+
+  function filtered() {
+    const q = document.getElementById("q").value.trim().toLowerCase();
+    const tag = document.getElementById("fTag").value;
+    const method = document.getElementById("fMethod").value;
+    const owner = document.getElementById("fOwner").value;
+    const done = document.getElementById("fDone").value;
+    return apis.filter((a) =>
+      (!q || a.name.toLowerCase().includes(q) || a.path.toLowerCase().includes(q)) &&
+      (!tag || a.tag === tag) &&
+      (!method || a.method === method) &&
+      (!owner || (owner === "(미정)" ? !a.owner : a.owner === owner)) &&
+      (!done || String(a.integrated) === done));
+  }
+
+  function render() {
+    const list = filtered();
+    const doneCount = apis.filter((a) => a.integrated).length;
+    document.getElementById("summary").textContent =
+      `전체 ${apis.length}개 · 연동 완료 ${doneCount}개 · 표시 ${list.length}개 · 스펙은 배포된 서버 기준으로 자동 반영돼요`;
+
+    const ownerOptions = (selected) => [""].concat(OWNERS.includes(selected) || !selected ? OWNERS : [...OWNERS, selected])
+      .map((o) => `<option value="${esc(o)}" ${o === selected ? "selected" : ""}>${o ? esc(o) : "미정"}</option>`).join("");
+
+    document.getElementById("rows").innerHTML = list.map((a) => {
+      const key = keyOf(a);
+      const open = openKeys.has(key);
+      return `
+        <tr class="row ${a.integrated ? "done" : ""}" data-key="${esc(key)}">
+          <td class="name">${esc(a.name)}</td>
+          <td><span class="method ${a.method}">${a.method}</span></td>
+          <td><code>${esc(a.path)}</code></td>
+          <td class="hide-mobile tag">${esc(a.tag)}</td>
+          <td class="edit"><select data-field="owner">${ownerOptions(a.owner)}</select></td>
+          <td class="edit"><input type="checkbox" data-field="integrated" ${a.integrated ? "checked" : ""} aria-label="연동 완료"></td>
+          <td class="edit hide-mobile"><input type="text" data-field="memo" value="${esc(a.memo)}" maxlength="200" placeholder="메모"></td>
+        </tr>
+        ${open ? `<tr class="detail"><td colspan="7">${detailOf(a)}</td></tr>` : ""}`;
+    }).join("");
+  }
+
+  // ---- 상세: 설명, 파라미터, 요청·응답 필드 ----
+  function resolve(schema) {
+    let current = schema;
+    for (let i = 0; current && current.$ref && i < 10; i++) {
+      current = spec.components.schemas[current.$ref.split("/").pop()];
+    }
+    return current || {};
+  }
+
+  // OpenAPI 3.1은 Kotlin nullable을 type 배열이나 oneOf의 null로 표현한다
+  function unwrap(schema) {
+    const options = schema && (schema.oneOf || schema.anyOf);
+    return options ? (options.find((o) => o.type !== "null") || {}) : (schema || {});
+  }
+
+  function isNullable(schema) {
+    if (!schema) return false;
+    if (Array.isArray(schema.type)) return schema.type.includes("null");
+    return !!(schema.oneOf || schema.anyOf || []).find((o) => o.type === "null");
+  }
+
+  function typeOf(schema) {
+    const target = unwrap(schema);
+    if (target.$ref) return target.$ref.split("/").pop();
+    const type = Array.isArray(target.type) ? target.type.filter((t) => t !== "null")[0] : target.type;
+    if (type === "array") return `List<${typeOf(target.items)}>`;
+    if (target.enum) return target.enum.filter((v) => v !== null).join(" | ");
+    return target.format ? `${type}(${target.format})` : (type || "object");
+  }
+
+  function fieldsOf(schema, depth = 0, seen = new Set()) {
+    const resolved = resolve(unwrap(schema));
+    const isArray = resolved.type === "array" || (Array.isArray(resolved.type) && resolved.type.includes("array"));
+    const target = isArray ? resolve(unwrap(resolved.items)) : resolved;
+    const name = typeOf(isArray ? resolved.items : schema);
+    if (!target.properties || depth > 3 || seen.has(name)) return "";
+    const nextSeen = new Set(seen).add(name);
+    return `<ul class="fields">${Object.entries(target.properties).map(([field, child]) =>
+      `<li><code>${esc(field)}</code>: <code>${esc(typeOf(child))}</code>${isNullable(child) ? ' <span class="optional">(null 가능)</span>' : ""}${child.description ? ` — ${esc(child.description)}` : ""}${fieldsOf(child, depth + 1, nextSeen)}</li>`).join("")}</ul>`;
+  }
+
+  function mediaOf(content) {
+    return content && (content["application/json"] || content["*/*"] || Object.values(content)[0]);
+  }
+
+  function detailOf(a) {
+    const op = a.operation;
+    const params = (op.parameters || []).filter((p) => p.in !== "cookie");
+    const requestMedia = mediaOf(op.requestBody && op.requestBody.content);
+    const request = requestMedia && requestMedia.schema;
+    const okResponse = Object.entries(op.responses || {}).find(([code]) => code.startsWith("2"));
+    const responseMedia = okResponse && mediaOf(okResponse[1].content);
+    const responseProps = responseMedia && responseMedia.schema && resolve(responseMedia.schema).properties;
+    const data = responseProps && responseProps.data;
+    // 명세에 예시만 적은 API는 스키마 대신 예시의 data를 보여준다
+    const example = responseMedia && (responseMedia.example || Object.values(responseMedia.examples || {}).map((e) => e.value)[0]);
+
+    let html = `<h3>설명</h3><p>${esc(op.description || op.summary || "")}</p>`;
+    if (params.length) {
+      html += `<h3>Parameters</h3><ul class="fields">${params.map((p) =>
+        `<li><code>${esc(p.name)}</code> (${esc(p.in)}): <code>${esc(typeOf(p.schema))}</code>${p.required ? "" : ' <span class="optional">(선택)</span>'}${p.description ? ` — ${esc(p.description)}` : ""}</li>`).join("")}</ul>`;
+    }
+    if (request) html += `<h3>Request Body — <code>${esc(typeOf(request))}</code></h3>${fieldsOf(request) || "<p>-</p>"}`;
+    if (data) {
+      html += `<h3>Response data — <code>${esc(typeOf(data))}</code></h3>${fieldsOf(data) || "<p>-</p>"}`;
+    } else if (example) {
+      const sample = typeof example === "string" ? JSON.parse(example) : example;
+      html += `<h3>Response data 예시 (${esc(okResponse[0])})</h3><pre><code>${esc(JSON.stringify(sample.data ?? sample, null, 2))}</code></pre>`;
+    }
+    return html + '<p class="optional">오류 코드와 예시는 Swagger에서 확인할 수 있어요.</p>';
+  }
+
+  // ---- 수정 저장 ----
+  async function save(api, cell) {
+    const response = await fetch("/api-board/statuses", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: api.method, path: api.path, owner: api.owner || null, integrated: api.integrated, memo: api.memo || null }),
+    });
+    const mark = document.createElement("span");
+    mark.className = response.ok ? "saved" : "error";
+    mark.textContent = response.ok ? " 저장됨" : " 저장 실패";
+    cell.appendChild(mark);
+    setTimeout(() => mark.remove(), 1500);
+    if (!response.ok) await load();
+  }
+
+  document.getElementById("rows").addEventListener("click", (event) => {
+    if (event.target.closest("td.edit")) return;
+    const row = event.target.closest("tr.row");
+    if (!row) return;
+    const key = row.dataset.key;
+    openKeys.has(key) ? openKeys.delete(key) : openKeys.add(key);
+    render();
+  });
+
+  document.getElementById("rows").addEventListener("change", (event) => {
+    const field = event.target.dataset.field;
+    if (!field) return;
+    const api = apis.find((a) => keyOf(a) === event.target.closest("tr.row").dataset.key);
+    api[field] = field === "integrated" ? event.target.checked : event.target.value;
+    save(api, event.target.closest("td"));
+    if (field === "integrated") {
+      event.target.closest("tr.row").classList.toggle("done", api.integrated);
+      document.getElementById("summary").textContent =
+        `전체 ${apis.length}개 · 연동 완료 ${apis.filter((a) => a.integrated).length}개 · 표시 ${filtered().length}개 · 스펙은 배포된 서버 기준으로 자동 반영돼요`;
+    }
+  });
+
+  ["q", "fTag", "fMethod", "fOwner", "fDone"].forEach((id) => document.getElementById(id).addEventListener("input", render));
+
+  load().catch((error) => {
+    document.getElementById("rows").innerHTML = `<tr><td colspan="7" class="error">${esc(error.message)}</td></tr>`;
+    document.getElementById("summary").textContent = "불러오지 못했어요";
+  });
+</script>
+</body>
+</html>
