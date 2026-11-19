@@ -208,4 +208,14 @@ enum class FundingErrorCode(
         "FUNDING_052",
         "롤링페이퍼 첨부 파일 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     ),
+    SURPRISE_RECIPIENT_BIRTHDAY_REQUIRED(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_053",
+        "서프라이즈 펀딩을 열려면 받는 사람의 생일 정보가 필요합니다.",
+    ),
+    SURPRISE_RECIPIENT_BIRTHDAY_TOO_SOON(
+        HttpStatus.BAD_REQUEST,
+        "FUNDING_054",
+        "받는 사람의 생일이 임박해 서프라이즈 펀딩을 열 수 없습니다.",
+    ),
 }

@@ -79,6 +79,8 @@ class FundingCreationService(
         }
 
         val now = LocalDateTime.now(clock)
+        val recipient = requireNotNull(lockedUsers[request.recipientId])
+        val schedule = calculateSurpriseSchedule(recipient, now)
         validateActiveFundingCount(userId, now)
         // 개설자 진행 중 한도와 같이, 공개 시각이 지난 서프라이즈는 중복으로 보지 않는다
         if (fundingRepository.existsByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
@@ -96,8 +98,8 @@ class FundingCreationService(
             ownerId = userId,
             recipientId = request.recipientId,
             targetAmount = request.targetAmount,
-            deadline = request.deadline.atTime(LocalTime.MAX).truncatedTo(ChronoUnit.MICROS),
-            revealAt = request.revealAt.truncatedTo(ChronoUnit.MICROS),
+            deadline = schedule.deadline,
+            revealAt = schedule.revealAt,
             showOnRecipientProfile = request.showOnRecipientProfile,
             notifyRecipientFriends = request.notifyRecipientFriends,
             product = wish.toSnapshot(),
@@ -107,6 +109,26 @@ class FundingCreationService(
         val savedFunding = fundingRepository.save(funding)
 
         return CreateFundingResponse.from(savedFunding, createShareUrl(savedFunding.id))
+    }
+
+    private fun calculateSurpriseSchedule(recipient: User, now: LocalDateTime): SurpriseSchedule {
+        val birthday = recipient.birthday
+            ?: throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_BIRTHDAY_REQUIRED)
+        val today = now.toLocalDate()
+        val birthdayThisYear = birthday.atYear(today.year)
+        val nextBirthday = if (birthdayThisYear.isBefore(today)) {
+            birthday.atYear(today.year + 1)
+        } else {
+            birthdayThisYear
+        }
+        if (!nextBirthday.isAfter(today.plusDays(MINIMUM_BIRTHDAY_LEAD_DAYS))) {
+            throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_BIRTHDAY_TOO_SOON)
+        }
+
+        return SurpriseSchedule(
+            deadline = nextBirthday.minusDays(1).atTime(LocalTime.MAX).truncatedTo(ChronoUnit.MICROS),
+            revealAt = nextBirthday.atStartOfDay().truncatedTo(ChronoUnit.MICROS),
+        )
     }
 
     private fun lockUser(userId: Long) {
@@ -140,8 +162,14 @@ class FundingCreationService(
     private fun createShareUrl(fundingId: Long): String =
         "${fundingShareProperties.baseUrl.trimEnd('/')}/$fundingId"
 
+    private data class SurpriseSchedule(
+        val deadline: LocalDateTime,
+        val revealAt: LocalDateTime,
+    )
+
     companion object {
         private const val MAX_ACTIVE_FUNDING_COUNT = 5
+        private const val MINIMUM_BIRTHDAY_LEAD_DAYS = 1L
         private val ENDED_FUNDING_STATUSES = setOf(
             FundingStatus.COMPLETED,
             FundingStatus.CANCELLED,
