@@ -8,6 +8,7 @@ import com.botem.domain.funding.repository.GiftVerificationRepository
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.S3Properties
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.core.exception.SdkException
@@ -27,6 +28,8 @@ class GiftVerificationImageService(
     private val s3Client: S3Client,
     private val s3Properties: S3Properties,
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional(readOnly = true)
     fun createUploadUrl(
@@ -96,8 +99,10 @@ class GiftVerificationImageService(
             if (exception.statusCode() == NOT_FOUND_STATUS) {
                 throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_IMAGE_NOT_UPLOADED)
             }
+            log.warn("S3 선물 인증 사진 확인 실패. key={}, status={}", key, exception.statusCode(), exception)
             throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE)
         } catch (exception: SdkException) {
+            log.warn("S3 선물 인증 사진 확인 실패. key={}", key, exception)
             throw BusinessException(FundingErrorCode.GIFT_VERIFICATION_IMAGE_CHECK_UNAVAILABLE)
         }
     }

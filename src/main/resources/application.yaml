@@ -16,6 +16,14 @@ spring:
     deserialization:
       accept-float-as-int: false
 
+# 모든 로그에 요청 ID를 붙이고, Sentry 이벤트에도 같은 값을 태그로 남긴다 (RequestIdFilter)
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"
+
+sentry:
+  context-tags: requestId
+
 # 로컬·테스트용 기본값. 운영은 application-prod.yaml에서 환경변수로만 받음
 wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}
