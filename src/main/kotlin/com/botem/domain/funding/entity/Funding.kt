@@ -233,14 +233,15 @@ class Funding(
         status = FundingStatus.FUNDING
     }
 
-    fun openResult(openedAt: LocalDateTime) {
+    // 마감 전이라도 목표를 달성하고 확인 대기가 없으면 개설자가 바로 열 수 있다 (홈 '지금 펑! 열까요?')
+    fun openResult(openedAt: LocalDateTime, earlyOpenable: Boolean = false) {
         if (resultOpenedAt != null) {
             return
         }
         if (type != FundingType.BIRTHDAY) {
             throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
         }
-        if (deadline.isAfter(openedAt)) {
+        if (deadline.isAfter(openedAt) && !earlyOpenable) {
             throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
         }
         if (status !in RESULT_OPENABLE_STATUSES) {

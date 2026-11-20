@@ -53,7 +53,8 @@ class FundingResultService(
             if (!excludePendingContributions && summaryOf(funding).pendingCount > 0) {
                 throw BusinessException(FundingErrorCode.PENDING_CONTRIBUTION_EXISTS)
             }
-            funding.openResult(now)
+            // 마감 전 열기 조건은 잠금 이후 접근 검증에서 이미 확인했다
+            funding.openResult(now, earlyOpenable = funding.deadline.isAfter(now))
         }
 
         return resultOf(funding)
@@ -131,12 +132,18 @@ class FundingResultService(
         if (funding.type != FundingType.BIRTHDAY) {
             throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
         }
-        if (funding.deadline.isAfter(now)) {
-            throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
-        }
         if (funding.status !in RESULT_VIEWABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE)
         }
+        if (funding.deadline.isAfter(now) && funding.resultOpenedAt == null && !isEarlyOpenable(funding)) {
+            throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
+        }
+    }
+
+    // 마감 전에는 목표를 달성하고 확인 대기가 없을 때만 결과를 볼 수 있다. 확인 대기를 결과에서 빼고 일찍 여는 것은 허용하지 않는다
+    private fun isEarlyOpenable(funding: Funding): Boolean {
+        val summary = summaryOf(funding)
+        return summary.confirmedAmount >= funding.targetAmount && summary.pendingCount == 0L
     }
 
     companion object {
