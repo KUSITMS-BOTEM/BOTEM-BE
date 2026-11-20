@@ -56,6 +56,8 @@ class ContributionService(
             voiceTranscript = request.voiceTranscript,
             guestPassword = request.guestPassword,
         )
+        // S3 확인은 느릴 수 있어 펀딩 잠금 전에 끝낸다. 잠근 채 기다리면 같은 펀딩의 다른 참여가 모두 대기한다
+        validateUploadedAttachments(fundingId, input)
         val funding = lockFunding(fundingId)
         validateVisibleTo(funding, userId)
 
@@ -69,7 +71,6 @@ class ContributionService(
         validateContributable(funding, request.amount)
         validateMemberNotParticipated(fundingId, funding.extendedAt, userId)
         validateGuestIdentityAvailable(fundingId, input)
-        validateUploadedAttachments(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
@@ -101,6 +102,8 @@ class ContributionService(
             voiceTranscript = request.voiceTranscript,
             guestPassword = request.guestPassword,
         )
+        // S3 확인은 느릴 수 있어 펀딩 잠금 전에 끝낸다. 잠근 채 기다리면 같은 펀딩의 다른 참여가 모두 대기한다
+        validateUploadedAttachments(fundingId, input)
         val funding = lockFunding(fundingId)
         validateVisibleTo(funding, userId)
 
@@ -114,7 +117,6 @@ class ContributionService(
         validateOpen(funding)
         validateMemberNotParticipated(fundingId, funding.extendedAt, userId)
         validateGuestIdentityAvailable(fundingId, input)
-        validateUploadedAttachments(fundingId, input)
         val contribution = saveWithMessage(
             userId = userId,
             fundingId = fundingId,
