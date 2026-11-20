@@ -51,6 +51,242 @@ BOTEM 백엔드 서버입니다.
 - **Metrics Collection** `Prometheus`
 - **Monitoring & Visualization** `Grafana`
 
+# 🗂️ ERD
+
+실제 MySQL에 Flyway 마이그레이션을 적용한 스키마로 자동 생성합니다. 직접 수정하지 말고 `./gradlew generateErd`(Docker 필요)로 갱신하세요. 엔티티·마이그레이션이 바뀐 PR에서는 CI가 자동으로 갱신해 커밋합니다.
+
+<!-- ERD:START -->
+```mermaid
+erDiagram
+    api_integration_statuses {
+        bigint id PK
+        varchar http_method
+        varchar path
+        varchar owner "nullable"
+        varchar frontend_owner "nullable"
+        tinyint integrated
+        datetime created_at
+        datetime updated_at
+    }
+    contribution_thank_cards {
+        bigint id PK
+        bigint contribution_id FK, UK
+        bigint sender_user_id FK
+        varchar message
+        varchar paper_color
+        varchar share_key UK
+        datetime sent_at
+        datetime created_at
+        datetime updated_at
+    }
+    contributions {
+        bigint id PK
+        bigint funding_id FK
+        bigint participant_user_id FK "nullable"
+        varchar participant_name
+        bigint amount
+        varchar status
+        varchar guest_password_hash "nullable"
+        int guest_password_failed_count
+        datetime guest_password_locked_until "nullable"
+        varchar request_key "nullable"
+        datetime confirmed_at "nullable"
+        datetime rejected_at "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+    friendships {
+        bigint id PK
+        bigint user_id FK
+        bigint friend_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    funding_product_change_histories {
+        bigint id PK
+        bigint funding_id FK
+        bigint previous_source_wish_id "nullable"
+        varchar previous_product_name
+        varchar previous_product_image_url
+        bigint previous_product_price
+        varchar previous_product_url
+        bigint changed_source_wish_id "nullable"
+        varchar changed_product_name
+        varchar changed_product_image_url
+        bigint changed_product_price
+        varchar changed_product_url
+        datetime changed_at
+    }
+    fundings {
+        bigint id PK
+        bigint owner_id FK
+        bigint recipient_id FK "nullable"
+        varchar funding_type
+        varchar status
+        varchar title "nullable"
+        bigint target_amount
+        datetime deadline
+        datetime reveal_at "nullable"
+        varchar story "nullable"
+        varchar promise "nullable"
+        tinyint show_on_recipient_profile
+        tinyint notify_recipient_friends
+        varchar share_key UK
+        bigint source_wish_id FK "nullable"
+        varchar product_name
+        varchar product_image_url
+        bigint product_price
+        varchar product_url
+        varchar product_seller_name "nullable"
+        bigint source_payout_account_id FK "nullable"
+        varchar payout_bank
+        varchar payout_encrypted_account_number
+        varchar payout_account_holder "nullable"
+        int extension_count
+        datetime extended_at "nullable"
+        datetime result_opened_at "nullable"
+        datetime gift_prepared_at "nullable"
+        datetime completed_at "nullable"
+        datetime created_at
+        datetime updated_at
+        datetime surprise_opened_at "nullable"
+        datetime early_closed_at "nullable"
+        datetime product_changed_at "nullable"
+    }
+    gift_verifications {
+        bigint id PK
+        bigint funding_id FK, UK
+        varchar status
+        varchar image_url "nullable"
+        longtext thank_you_message "nullable"
+        tinyint purchased_through_botem_link
+        varchar replacement_product_name "nullable"
+        datetime completed_at "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+    guest_contribution_access_attempts {
+        bigint id PK
+        bigint contribution_id FK, UK
+        int failed_count
+        datetime locked_until "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+    payout_accounts {
+        bigint id PK
+        bigint user_id FK
+        varchar bank
+        varchar encrypted_account_number
+        varchar account_holder "nullable"
+        tinyint is_default
+        varchar verification_status
+        datetime created_at
+        datetime updated_at
+    }
+    product_requests {
+        bigint id PK
+        bigint user_id FK
+        varchar product_url
+        varchar coupang_product_id "nullable"
+        varchar product_name "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+    recommended_products {
+        bigint id PK
+        varchar name
+        varchar image_url
+        bigint price
+        varchar seller_name
+        varchar product_url
+        varchar category
+        varchar status
+        int display_order
+        datetime created_at
+        datetime updated_at
+    }
+    refresh_tokens {
+        bigint id PK
+        bigint user_id FK, UK
+        varchar token_hash
+        datetime created_at
+        datetime updated_at
+    }
+    rolling_paper_messages {
+        bigint id PK
+        bigint contribution_id FK, UK
+        longtext content "nullable"
+        varchar paper_template_code
+        varchar decoration_code "nullable"
+        varchar photo_url "nullable"
+        varchar voice_url "nullable"
+        int voice_duration_seconds "nullable"
+        varchar voice_transcript "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+    surprise_thank_cards {
+        bigint id PK
+        bigint funding_id FK, UK
+        bigint sender_user_id FK
+        longtext message
+        datetime sent_at
+        datetime created_at
+        datetime updated_at
+    }
+    users {
+        bigint id PK
+        bigint kakao_id UK
+        varchar nickname
+        varchar profile_image_url "nullable"
+        date birthday "nullable"
+        datetime created_at
+        datetime updated_at
+        varchar wish_profile_key UK "nullable"
+        tinyint kakao_connected
+        varchar status
+        datetime withdrawn_at "nullable"
+        varchar birth_month_day "nullable"
+        varchar name "nullable"
+        varchar email "nullable"
+    }
+    wishes {
+        bigint id PK
+        bigint user_id FK
+        varchar product_name
+        varchar product_image_url
+        bigint price
+        varchar product_url
+        datetime created_at
+        datetime updated_at
+        bigint recommended_product_id FK "nullable"
+        varchar seller_name "nullable"
+    }
+    contributions ||--o| contribution_thank_cards : "contribution_id"
+    contributions ||--o| guest_contribution_access_attempts : "contribution_id"
+    contributions ||--o| rolling_paper_messages : "contribution_id"
+    fundings ||--o{ contributions : "funding_id"
+    fundings ||--o{ funding_product_change_histories : "funding_id"
+    fundings ||--o| gift_verifications : "funding_id"
+    fundings ||--o| surprise_thank_cards : "funding_id"
+    payout_accounts |o--o{ fundings : "source_payout_account_id"
+    recommended_products |o--o{ wishes : "recommended_product_id"
+    users ||--o{ contribution_thank_cards : "sender_user_id"
+    users |o--o{ contributions : "participant_user_id"
+    users ||--o{ friendships : "friend_id"
+    users ||--o{ friendships : "user_id"
+    users ||--o{ fundings : "owner_id"
+    users |o--o{ fundings : "recipient_id"
+    users ||--o{ payout_accounts : "user_id"
+    users ||--o{ product_requests : "user_id"
+    users ||--o| refresh_tokens : "user_id"
+    users ||--o{ surprise_thank_cards : "sender_user_id"
+    users ||--o{ wishes : "user_id"
+    wishes |o--o{ fundings : "source_wish_id"
+```
+<!-- ERD:END -->
+
 # 🌿 Git Convention
 
 ## 1. Branch Strategy
