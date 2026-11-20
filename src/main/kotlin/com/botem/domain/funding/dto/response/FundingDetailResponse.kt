@@ -4,6 +4,7 @@ import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.SurpriseThankCard
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 // 공유 링크로 보는 펀딩 상세. 모인 금액은 다른 참여자에게 노출하지 않도록 달성률만 반환하고, 목표 금액은 보여준다
@@ -89,6 +90,7 @@ data class FundingDetailParticipantResponse(
     val order: Int,
     val name: String,
     val profileImageUrl: String?,
+    val contributedDate: LocalDate,
 )
 
 enum class FundingDisplayStatus {
