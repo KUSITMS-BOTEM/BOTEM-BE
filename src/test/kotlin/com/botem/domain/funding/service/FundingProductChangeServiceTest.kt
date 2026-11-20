@@ -56,6 +56,7 @@ class FundingProductChangeServiceTest {
         val response = service.change(OWNER_ID, FUNDING_ID, NEW_WISH_ID)
 
         assertEquals("새 헤드폰", response.product.name)
+        assertEquals("BOTEM 브랜드샵", response.product.sellerName)
         assertEquals(NOW, response.productChangedAt)
         assertEquals(100_000L, funding.targetAmount)
         val captor = ArgumentCaptor.forClass(FundingProductChangeHistory::class.java)
@@ -178,6 +179,7 @@ class FundingProductChangeServiceTest {
             productImageUrl = "https://image.example.com/new.jpg",
             price = 120_000L,
             productUrl = "https://shop.example.com/new",
+            sellerName = "BOTEM 브랜드샵",
         ).also { setField(it, "id", NEW_WISH_ID) }
 
     private fun funding(

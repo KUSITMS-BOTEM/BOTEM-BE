@@ -979,7 +979,8 @@ interface FundingControllerDocs {
                   "name": "에어팟 프로 3",
                   "imageUrl": "https://image.example.com/product.jpg",
                   "price": 300000,
-                  "url": "https://www.coupang.com/vp/products/1"
+                  "url": "https://www.coupang.com/vp/products/1",
+                  "sellerName": "BOTEM 브랜드샵"
                 },
                 "productChanged": false,
                 "productChangedAt": null,
@@ -1029,7 +1030,8 @@ interface FundingControllerDocs {
                   "name": "소니 WH-1000XM5",
                   "imageUrl": "https://image.example.com/product.jpg",
                   "price": 459000,
-                  "url": "https://shop.example.com/product"
+                  "url": "https://shop.example.com/product",
+                  "sellerName": "BOTEM 브랜드샵"
                 },
                 "productChanged": false,
                 "productChangedAt": null,
@@ -1118,7 +1120,8 @@ interface FundingControllerDocs {
                   "name": "소니 WH-1000XM6",
                   "imageUrl": "https://image.example.com/new-product.jpg",
                   "price": 519000,
-                  "url": "https://shop.example.com/new-product"
+                  "url": "https://shop.example.com/new-product",
+                  "sellerName": "BOTEM 브랜드샵"
                 },
                 "productChangedAt": "2026-11-18T15:40:00"
               },
@@ -1427,6 +1430,7 @@ interface FundingControllerDocs {
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://shop.example.com/product",
+                "productSellerName": "BOTEM 브랜드샵",
                 "targetAmount": 459000,
                 "confirmedAmount": 420000,
                 "achievementPercentage": 91,
@@ -1454,6 +1458,7 @@ interface FundingControllerDocs {
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://shop.example.com/product",
+                "productSellerName": "BOTEM 브랜드샵",
                 "targetAmount": 459000,
                 "confirmedAmount": 420000,
                 "achievementPercentage": 91,

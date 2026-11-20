@@ -69,6 +69,7 @@ data class FundingDetailProductResponse(
     val imageUrl: String,
     val price: Long,
     val url: String,
+    val sellerName: String?,
 ) {
     companion object {
         fun from(product: FundingProductSnapshot): FundingDetailProductResponse =
@@ -77,6 +78,7 @@ data class FundingDetailProductResponse(
                 imageUrl = product.imageUrl,
                 price = product.price,
                 url = product.url,
+                sellerName = product.sellerName,
             )
     }
 }
