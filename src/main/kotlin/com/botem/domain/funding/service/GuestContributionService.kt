@@ -240,6 +240,12 @@ class GuestContributionService(
         if (voiceTranscript != null && voiceUrl == null) {
             throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "음성 자막은 음성과 함께 입력해야 합니다.")
         }
+        if (voiceTranscript != null && !RollingPaperMessage.hasValidVoiceTranscriptLength(voiceTranscript)) {
+            throw BusinessException(
+                CommonErrorCode.INVALID_INPUT_VALUE,
+                "음성 자막은 ${RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH}자 이하여야 합니다.",
+            )
+        }
     }
 
     private fun validateUploadedAttachments(fundingId: Long, photoUrl: String?, voiceUrl: String?) {
