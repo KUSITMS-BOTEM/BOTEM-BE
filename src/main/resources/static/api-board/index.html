@@ -49,7 +49,7 @@
       border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
     }
     .filters input[type="search"] { flex: 1 1 220px; }
-    main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; }
+    main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
     th { color: var(--muted); font-weight: 600; font-size: 12px; }
@@ -64,7 +64,9 @@
     .PATCH { background: var(--patch); } .DELETE { background: var(--delete); }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
     .tag { color: var(--muted); font-size: 12px; }
-    td.edit select, td.edit input[type="text"] { width: 100%; }
+    /* 좁은 화면에서도 담당자 이름(3글자)이 잘리지 않도록 선택 칸 너비를 고정한다 */
+    td.edit select { min-width: 88px; }
+    th, td.edit, td.method-cell { white-space: nowrap; }
     .detail td { background: var(--surface); }
     .detail h3 { margin: 12px 0 4px; font-size: 13px; }
     .detail p { margin: 0 0 8px; white-space: pre-wrap; }
@@ -92,7 +94,8 @@
     <option value="">전체 Method</option>
     <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
   </select>
-  <select id="fOwner"><option value="">전체 담당자</option></select>
+  <select id="fOwner"><option value="">전체 백엔드 담당</option></select>
+  <select id="fFrontendOwner"><option value="">전체 프론트 담당</option></select>
   <select id="fDone">
     <option value="">연동 전체</option>
     <option value="false">연동 전</option>
@@ -107,17 +110,18 @@
       <th>Method</th>
       <th>Endpoint</th>
       <th class="hide-mobile">도메인</th>
-      <th>담당자</th>
+      <th>백엔드 담당</th>
+      <th>프론트 담당</th>
       <th>연동</th>
-      <th class="hide-mobile">메모</th>
     </tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
 </main>
 <script>
-  // API 목록은 매번 OpenAPI 스펙에서 읽고, 담당자·연동 여부만 서버에 저장한다
+  // API 목록은 매번 OpenAPI 스펙에서 읽고, 백엔드·프론트 담당자와 연동 여부만 서버에 저장한다
   const OWNERS = ["정푸름", "이준교"];
+  const FRONTEND_OWNERS = ["김산호", "임세윤"];
   const METHODS = ["get", "post", "put", "patch", "delete"];
   let spec;
   let apis = [];
@@ -154,7 +158,7 @@
           tag: (operation.tags || ["기타"])[0],
           owner: status.owner || "",
           integrated: !!status.integrated,
-          memo: status.memo || "",
+          frontendOwner: status.frontendOwner || "",
         });
       }
     }
@@ -162,6 +166,7 @@
 
     fillSelect("fTag", [...new Set(apis.map((a) => a.tag))]);
     fillSelect("fOwner", [...new Set([...OWNERS, ...apis.map((a) => a.owner).filter(Boolean)])].concat(["(미정)"]));
+    fillSelect("fFrontendOwner", [...new Set([...FRONTEND_OWNERS, ...apis.map((a) => a.frontendOwner).filter(Boolean)])].concat(["(미정)"]));
     render();
   }
 
@@ -176,12 +181,15 @@
     const tag = document.getElementById("fTag").value;
     const method = document.getElementById("fMethod").value;
     const owner = document.getElementById("fOwner").value;
+    const frontendOwner = document.getElementById("fFrontendOwner").value;
+    const matches = (selected, value) => !selected || (selected === "(미정)" ? !value : value === selected);
     const done = document.getElementById("fDone").value;
     return apis.filter((a) =>
       (!q || a.name.toLowerCase().includes(q) || a.path.toLowerCase().includes(q)) &&
       (!tag || a.tag === tag) &&
       (!method || a.method === method) &&
-      (!owner || (owner === "(미정)" ? !a.owner : a.owner === owner)) &&
+      matches(owner, a.owner) &&
+      matches(frontendOwner, a.frontendOwner) &&
       (!done || String(a.integrated) === done));
   }
 
@@ -191,7 +199,7 @@
     document.getElementById("summary").textContent =
       `전체 ${apis.length}개 · 연동 완료 ${doneCount}개 · 표시 ${list.length}개 · 스펙은 배포된 서버 기준으로 자동 반영돼요`;
 
-    const ownerOptions = (selected) => [""].concat(OWNERS.includes(selected) || !selected ? OWNERS : [...OWNERS, selected])
+    const ownerOptions = (selected, owners) => [""].concat(owners.includes(selected) || !selected ? owners : [...owners, selected])
       .map((o) => `<option value="${esc(o)}" ${o === selected ? "selected" : ""}>${o ? esc(o) : "미정"}</option>`).join("");
 
     document.getElementById("rows").innerHTML = list.map((a) => {
@@ -200,12 +208,12 @@
       return `
         <tr class="row ${a.integrated ? "done" : ""}" data-key="${esc(key)}">
           <td class="name">${esc(a.name)}</td>
-          <td><span class="method ${a.method}">${a.method}</span></td>
+          <td class="method-cell"><span class="method ${a.method}">${a.method}</span></td>
           <td><code>${esc(a.path)}</code></td>
           <td class="hide-mobile tag">${esc(a.tag)}</td>
-          <td class="edit"><select data-field="owner">${ownerOptions(a.owner)}</select></td>
+          <td class="edit"><select data-field="owner" aria-label="백엔드 담당">${ownerOptions(a.owner, OWNERS)}</select></td>
+          <td class="edit"><select data-field="frontendOwner" aria-label="프론트 담당">${ownerOptions(a.frontendOwner, FRONTEND_OWNERS)}</select></td>
           <td class="edit"><input type="checkbox" data-field="integrated" ${a.integrated ? "checked" : ""} aria-label="연동 완료"></td>
-          <td class="edit hide-mobile"><input type="text" data-field="memo" value="${esc(a.memo)}" maxlength="200" placeholder="메모"></td>
         </tr>
         ${open ? `<tr class="detail"><td colspan="7">${detailOf(a)}</td></tr>` : ""}`;
     }).join("");
@@ -289,7 +297,7 @@
       method: "PUT",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ method: api.method, path: api.path, owner: api.owner || null, integrated: api.integrated, memo: api.memo || null }),
+      body: JSON.stringify({ method: api.method, path: api.path, owner: api.owner || null, integrated: api.integrated, frontendOwner: api.frontendOwner || null }),
     });
     const mark = document.createElement("span");
     mark.className = response.ok ? "saved" : "error";
@@ -321,7 +329,7 @@
     }
   });
 
-  ["q", "fTag", "fMethod", "fOwner", "fDone"].forEach((id) => document.getElementById(id).addEventListener("input", render));
+  ["q", "fTag", "fMethod", "fOwner", "fFrontendOwner", "fDone"].forEach((id) => document.getElementById(id).addEventListener("input", render));
 
   load().catch((error) => {
     document.getElementById("rows").innerHTML = `<tr><td colspan="7" class="error">${esc(error.message)}</td></tr>`;

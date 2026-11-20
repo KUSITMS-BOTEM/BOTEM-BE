@@ -19,20 +19,22 @@ class ApiIntegrationStatusService(
     // 스펙에 새로 생긴 API는 저장된 상태가 없으므로 처음 수정할 때 만든다
     @Transactional
     fun updateStatus(request: UpdateApiIntegrationStatusRequest): ApiIntegrationStatusResponse {
-        val owner = request.owner?.trim()?.takeIf(String::isNotEmpty)
-        val memo = request.memo?.trim()?.takeIf(String::isNotEmpty)
+        val owner = request.owner.normalized()
+        val frontendOwner = request.frontendOwner.normalized()
         val status = apiIntegrationStatusRepository.findByHttpMethodAndPath(request.method, request.path)
-            ?.also { it.update(owner, request.integrated, memo) }
+            ?.also { it.update(owner, request.integrated, frontendOwner) }
             ?: apiIntegrationStatusRepository.save(
                 ApiIntegrationStatus(
                     httpMethod = request.method,
                     path = request.path,
                     owner = owner,
                     integrated = request.integrated,
-                    memo = memo,
+                    frontendOwner = frontendOwner,
                 ),
             )
 
         return ApiIntegrationStatusResponse.from(status)
     }
+
+    private fun String?.normalized(): String? = this?.trim()?.takeIf(String::isNotEmpty)
 }
