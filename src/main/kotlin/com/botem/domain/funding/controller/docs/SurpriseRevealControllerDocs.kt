@@ -222,7 +222,8 @@ interface SurpriseRevealControllerDocs {
                     "decorationCode": null,
                     "photoUrl": null,
                     "voiceUrl": null,
-                    "voiceDurationSeconds": null
+                    "voiceDurationSeconds": null,
+                    "voiceTranscript": null
                   },
                   {
                     "messageId": 102,
@@ -233,7 +234,8 @@ interface SurpriseRevealControllerDocs {
                     "decorationCode": null,
                     "photoUrl": null,
                     "voiceUrl": "https://cdn.example.com/voice/102.m4a",
-                    "voiceDurationSeconds": 12
+                    "voiceDurationSeconds": 12,
+                    "voiceTranscript": "생일 진짜 축하해!"
                   }
                 ]
               },

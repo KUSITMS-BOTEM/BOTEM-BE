@@ -69,6 +69,7 @@ interface GuestContributionControllerDocs {
             서프라이즈 펀딩은 조기 마감 후 수정할 수 없습니다.
             요청은 롤링페이퍼 콘텐츠 전체를 교체하므로 null로 전달한 기존 첨부는 제거됩니다.
             새 사진·음성은 롤링페이퍼 첨부 업로드 URL API로 먼저 업로드한 fileUrl만 사용할 수 있습니다.
+            voiceTranscript는 음성 아래에 보여줄 자막으로, 프론트가 만들어 보내며 음성이 있을 때만 500자까지 저장합니다. 음성을 지우면 자막도 함께 지웁니다. 음성 없이 보내면 400입니다.
             보탠 금액, 입금 상태와 비밀번호는 변경하지 않습니다.
         """,
     )
@@ -181,6 +182,7 @@ interface GuestContributionControllerDocs {
                 "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
                 "voiceUrl": null,
                 "voiceDurationSeconds": null,
+                "voiceTranscript": null,
                 "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
                 "accessTokenExpiresAt": "2026-11-18T12:30:00Z"
               },
@@ -195,7 +197,8 @@ interface GuestContributionControllerDocs {
               "decorationCode": "HEART",
               "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
               "voiceUrl": null,
-              "voiceDurationSeconds": null
+              "voiceDurationSeconds": null,
+              "voiceTranscript": null
             }
         """
         private const val UPDATE_RESPONSE_EXAMPLE = """
@@ -211,7 +214,8 @@ interface GuestContributionControllerDocs {
                 "decorationCode": "HEART",
                 "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
                 "voiceUrl": null,
-                "voiceDurationSeconds": null
+                "voiceDurationSeconds": null,
+                "voiceTranscript": null
               },
               "error": null
             }

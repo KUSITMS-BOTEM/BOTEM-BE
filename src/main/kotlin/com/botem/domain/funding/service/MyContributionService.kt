@@ -137,6 +137,7 @@ class MyContributionService(
             photoUrl = message?.photoUrl,
             voiceUrl = message?.voiceUrl,
             voiceDurationSeconds = message?.voiceDurationSeconds,
+            voiceTranscript = message?.voiceTranscript,
             participatedAt = contribution.createdAt,
             payoutAccount = payoutAccount,
         )

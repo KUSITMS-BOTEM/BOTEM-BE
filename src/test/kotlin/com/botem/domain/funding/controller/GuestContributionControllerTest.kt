@@ -175,6 +175,7 @@ class GuestContributionControllerTest {
         photoUrl = PHOTO_URL,
         voiceUrl = null,
         voiceDurationSeconds = null,
+        voiceTranscript = null,
         accessToken = ACCESS_TOKEN,
         accessTokenExpiresAt = Instant.parse("2026-11-18T03:10:00Z"),
     )
@@ -190,6 +191,7 @@ class GuestContributionControllerTest {
         photoUrl = null,
         voiceUrl = VOICE_URL,
         voiceDurationSeconds = 12,
+        voiceTranscript = "생일 축하해",
     )
 
     companion object {

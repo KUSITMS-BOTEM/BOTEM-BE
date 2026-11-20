@@ -1,5 +1,6 @@
 package com.botem.domain.funding.dto.request
 
+import com.botem.domain.funding.entity.RollingPaperMessage
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Positive
@@ -34,6 +35,10 @@ data class CreateContributionRequest(
 
     @field:Positive
     val voiceDurationSeconds: Int? = null,
+
+    // 음성이 있을 때만 보낼 수 있는 자막
+    @field:Size(max = RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH)
+    val voiceTranscript: String? = null,
 
     @field:Pattern(regexp = "\\d{4}", message = "숫자 4자리여야 합니다")
     val guestPassword: String? = null,

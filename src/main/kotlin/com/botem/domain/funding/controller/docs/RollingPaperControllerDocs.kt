@@ -20,6 +20,7 @@ interface RollingPaperControllerDocs {
             개설자만 조회할 수 있고, 결과를 열기 전에는 FUNDING_058을 반환합니다.
             celebrantName은 '생일 축하해요 {이름}님!' 문구에 쓰는 개설자 이름(이름이 없으면 닉네임)이고, messageCount는 메시지 수입니다.
             messages는 취소된 보탬을 제외하고 보탠 순서대로 반환하며, 텍스트·편지지·스티커·사진·음성을 포함합니다.
+            voiceTranscript는 음성 아래에 보여줄 자막이며, 음성이 없거나 자막을 보내지 않았으면 null입니다.
             비로그인 참여자의 participantProfileImageUrl은 null이므로 기본 이미지는 프론트엔드에서 표시합니다.
             서프라이즈 받는 사람은 서프라이즈 공개 상세 API에서 같은 메시지 목록을 조회합니다.
         """,
@@ -75,7 +76,8 @@ interface RollingPaperControllerDocs {
                     "decorationCode": "CAKE",
                     "photoUrl": "https://image.example.com/rolling-paper/photo.jpg",
                     "voiceUrl": null,
-                    "voiceDurationSeconds": null
+                    "voiceDurationSeconds": null,
+                    "voiceTranscript": null
                   },
                   {
                     "messageId": 42,
@@ -86,7 +88,8 @@ interface RollingPaperControllerDocs {
                     "decorationCode": null,
                     "photoUrl": null,
                     "voiceUrl": "https://image.example.com/rolling-paper/voice.m4a",
-                    "voiceDurationSeconds": 12
+                    "voiceDurationSeconds": 12,
+                    "voiceTranscript": "생일 진짜 축하해!"
                   }
                 ]
               },

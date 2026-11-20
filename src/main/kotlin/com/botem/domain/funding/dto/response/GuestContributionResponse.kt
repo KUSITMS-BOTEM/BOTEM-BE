@@ -16,6 +16,7 @@ data class GuestContributionResponse(
     val photoUrl: String?,
     val voiceUrl: String?,
     val voiceDurationSeconds: Int?,
+    val voiceTranscript: String?,
     val accessToken: String,
     val accessTokenExpiresAt: Instant,
 ) {
@@ -37,6 +38,7 @@ data class GuestContributionResponse(
                 photoUrl = rollingPaperMessage?.photoUrl,
                 voiceUrl = rollingPaperMessage?.voiceUrl,
                 voiceDurationSeconds = rollingPaperMessage?.voiceDurationSeconds,
+                voiceTranscript = rollingPaperMessage?.voiceTranscript,
                 accessToken = accessToken,
                 accessTokenExpiresAt = accessTokenExpiresAt,
             )
@@ -54,6 +56,7 @@ data class UpdatedGuestContributionResponse(
     val photoUrl: String?,
     val voiceUrl: String?,
     val voiceDurationSeconds: Int?,
+    val voiceTranscript: String?,
 ) {
     companion object {
         fun of(
@@ -71,6 +74,7 @@ data class UpdatedGuestContributionResponse(
                 photoUrl = rollingPaperMessage.photoUrl,
                 voiceUrl = rollingPaperMessage.voiceUrl,
                 voiceDurationSeconds = rollingPaperMessage.voiceDurationSeconds,
+                voiceTranscript = rollingPaperMessage.voiceTranscript,
             )
     }
 }

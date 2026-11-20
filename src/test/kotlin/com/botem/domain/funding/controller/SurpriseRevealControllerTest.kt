@@ -142,6 +142,7 @@ class SurpriseRevealControllerTest {
                     photoUrl = null,
                     voiceUrl = null,
                     voiceDurationSeconds = null,
+                    voiceTranscript = null,
                 ),
             ),
         )

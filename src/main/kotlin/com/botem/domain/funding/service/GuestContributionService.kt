@@ -78,7 +78,8 @@ class GuestContributionService(
         )
         val photoUrl = normalizeOptional(request.photoUrl, MAX_URL_LENGTH, "사진 URL은 2048자 이하여야 합니다.")
         val voiceUrl = normalizeOptional(request.voiceUrl, MAX_URL_LENGTH, "음성 URL은 2048자 이하여야 합니다.")
-        validateContent(message, decorationCode, photoUrl, voiceUrl, request.voiceDurationSeconds)
+        val voiceTranscript = request.voiceTranscript?.trim()?.takeIf(String::isNotEmpty)
+        validateContent(message, decorationCode, photoUrl, voiceUrl, request.voiceDurationSeconds, voiceTranscript)
         validateUploadedAttachments(fundingId, photoUrl, voiceUrl)
 
         if (participantName != contribution.participantName) {
@@ -95,6 +96,7 @@ class GuestContributionService(
                     photoUrl = photoUrl,
                     voiceUrl = voiceUrl,
                     voiceDurationSeconds = request.voiceDurationSeconds,
+                    voiceTranscript = voiceTranscript,
                 ),
             )
         rollingPaperMessage.updateContent(
@@ -104,6 +106,7 @@ class GuestContributionService(
             photoUrl = photoUrl,
             voiceUrl = voiceUrl,
             voiceDurationSeconds = request.voiceDurationSeconds,
+            voiceTranscript = voiceTranscript,
         )
 
         return UpdatedGuestContributionResponse.of(contribution, rollingPaperMessage)
@@ -213,6 +216,7 @@ class GuestContributionService(
         photoUrl: String?,
         voiceUrl: String?,
         voiceDurationSeconds: Int?,
+        voiceTranscript: String?,
     ) {
         if (message == null && decorationCode == null && photoUrl == null && voiceUrl == null) {
             throw BusinessException(
@@ -222,6 +226,9 @@ class GuestContributionService(
         }
         if ((voiceUrl == null) != (voiceDurationSeconds == null) || voiceDurationSeconds?.let { it <= 0 } == true) {
             throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "음성 URL과 0초보다 긴 재생 시간을 함께 입력해야 합니다.")
+        }
+        if (voiceTranscript != null && voiceUrl == null) {
+            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "음성 자막은 음성과 함께 입력해야 합니다.")
         }
     }
 
