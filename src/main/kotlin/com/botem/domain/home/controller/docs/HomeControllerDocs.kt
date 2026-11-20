@@ -116,6 +116,7 @@ interface HomeControllerDocs {
         description = """
             로그인한 사용자가 인증해야 하는 선물 목록을 오래된 펀딩 마감 순으로 조회합니다.
             완료된 인증과 취소된 참여는 제외하며, 30일이 지나도 인증 대상을 자동으로 제외하지 않습니다.
+            productUrl은 생일 펀딩에서 고른 선물(또는 서프라이즈 선물)의 구매 링크로, 배너에서 구매 링크를 다시 보여줄 때 사용합니다.
             현재 메시지만 남긴 참여는 참여 인원에 포함합니다.
         """,
     )
@@ -312,6 +313,7 @@ interface HomeControllerDocs {
                     "fundingId": 12,
                     "productName": "다이슨 에어랩",
                     "productImageUrl": "https://image.example.com/product.jpg",
+                    "productUrl": "https://www.coupang.com/vp/products/1",
                     "fundingDeadline": "2026-11-01T23:59:59",
                     "participantCount": 6,
                     "replacementProductName": null

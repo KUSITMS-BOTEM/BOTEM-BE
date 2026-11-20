@@ -10,6 +10,7 @@ import com.botem.domain.funding.dto.response.FundingEarlyCloseResponse
 import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.GiftChoiceResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
 import com.botem.global.exception.ErrorCode
@@ -332,6 +333,7 @@ interface FundingControllerDocs {
             목표 금액과 기존 참여 내역은 유지하고, 위시 원본은 수정하지 않으며 펀딩 상품 스냅샷만 교체합니다.
             변경 전·후 상품 정보는 이력으로 저장합니다. 같은 위시로 반복 요청하면 이력을 추가하지 않고 현재 결과를 반환합니다.
             다른 종료되지 않은 펀딩에서 사용 중인 위시는 선택할 수 없습니다.
+            생일 펀딩은 결과를 연 뒤에도 구매(선물 선택 저장) 전까지 '다른 선물 고르기'로 상품을 바꿀 수 있습니다 (FUND-PG-012).
         """,
     )
     @RequestBody(
@@ -512,6 +514,9 @@ interface FundingControllerDocs {
             같은 회원이 여러 번 보태면 여러 줄이 되며, 금액은 반환하지 않습니다.
             감사카드는 contributionId로 보내며, status가 CONFIRMED이고 thankCardSent가 false인 보탬에만 보낼 수 있습니다.
             hasMessage·hasPhoto·hasVoice는 롤링페이퍼에 글·사진·음성이 있는지 여부이고, thankCardSent는 감사카드를 이미 보냈는지 여부입니다.
+            productChanged는 상품을 바꾼 적이 있는지로 '기존 선물'·'변경된 선물' 표시에 사용합니다 (FUND-PG-012).
+            canExtend는 '기간 연장' 노출 여부로, 마감 후 목표 미달이고 연장하지 않았으며 아직 선물을 고르지 않았을 때 true입니다.
+            giftChosen은 구매(쿠팡 이동)로 선물을 정했는지 여부입니다. 정한 뒤에는 기간 연장과 '다른 선물 고르기'를 할 수 없습니다.
         """,
     )
     @ApiResponses(
@@ -623,6 +628,51 @@ interface FundingControllerDocs {
         @Parameter(description = "남은 확인 대기를 결과에서 제외하고 열지 여부 (기본 false)")
         excludePendingContributions: Boolean,
     ): ApiResponse<FundingResultResponse>
+
+    @Operation(
+        summary = "생일 펀딩 선물 선택 저장",
+        description = """
+            결과를 연 생일 펀딩에서 개설자가 '차액으로 구매'·'구매하기'로 쿠팡에 이동하는 순간 호출합니다 (FUND-PG-011/012).
+            지금 펀딩 상품을 선물로 정하고 선물 인증 대기(WAITING_GIFT_VERIFICATION)로 바꿉니다.
+            다른 선물로 사려면 먼저 펀딩 상품 변경 API로 상품을 바꾼 뒤 호출합니다.
+            선물을 정한 뒤에는 기간 연장과 상품 변경을 할 수 없고, 펀딩은 홈 카드 대신 '인증할 선물' 배너에 표시됩니다.
+            응답의 productUrl로 쿠팡에 이동하고, giftVerificationId로 선물 인증을 완료합니다.
+            이미 선물을 정한 펀딩에 다시 요청하면 상태를 바꾸지 않고 같은 결과를 반환합니다.
+            '24시간 안에 구매 후 인증' 문구는 안내 문구이며 서버 기한은 없습니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "선물 선택 저장 성공 또는 이미 저장한 결과 반환",
+            content = [Content(examples = [ExampleObject(value = GIFT_CHOICE_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "생일 펀딩이 아님",
+            content = [Content(examples = [ExampleObject(value = BIRTHDAY_FUNDING_REQUIRED_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(
+            responseCode = "403",
+            description = "펀딩 개설자가 아님",
+            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "404",
+            description = "펀딩 없음 또는 취소된 펀딩",
+            content = [Content(examples = [ExampleObject(value = FUNDING_NOT_FOUND_EXAMPLE)])],
+        ),
+        SwaggerApiResponse(
+            responseCode = "409",
+            description = "결과를 열기 전이거나 인증을 마친 펀딩",
+            content = [Content(examples = [ExampleObject(value = GIFT_CHOICE_NOT_AVAILABLE_EXAMPLE)])],
+        ),
+    )
+    fun chooseGift(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "펀딩 ID") fundingId: Long,
+    ): ApiResponse<GiftChoiceResponse>
 
     @Operation(
         summary = "서프라이즈 마감 · 선물 준비 조회",
@@ -1112,6 +1162,7 @@ interface FundingControllerDocs {
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://www.coupang.com/vp/products/1",
+                "productChanged": false,
                 "targetAmount": 699000,
                 "confirmedAmount": 580000,
                 "achievementPercentage": 82,
@@ -1121,6 +1172,8 @@ interface FundingControllerDocs {
                 "pendingContributionCount": 2,
                 "pendingCleanupRequired": true,
                 "resultOpenedAt": null,
+                "canExtend": false,
+                "giftChosen": false,
                 "contributions": [
                   {
                     "contributionId": 31,
@@ -1157,6 +1210,7 @@ interface FundingControllerDocs {
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://www.coupang.com/vp/products/1",
+                "productChanged": false,
                 "targetAmount": 699000,
                 "confirmedAmount": 710000,
                 "achievementPercentage": 101,
@@ -1166,6 +1220,8 @@ interface FundingControllerDocs {
                 "pendingContributionCount": 0,
                 "pendingCleanupRequired": false,
                 "resultOpenedAt": "2026-11-15T00:00:00",
+                "canExtend": false,
+                "giftChosen": false,
                 "contributions": [
                   {
                     "contributionId": 31,
@@ -1322,6 +1378,30 @@ interface FundingControllerDocs {
               "error": {
                 "code": "FUNDING_042",
                 "message": "현재 상태에서는 펀딩을 조기 마감할 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val GIFT_CHOICE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "giftVerificationId": 7,
+                "productName": "다이슨 에어랩",
+                "productImageUrl": "https://image.example.com/product.jpg",
+                "productUrl": "https://www.coupang.com/vp/products/1"
+              },
+              "error": null
+            }
+        """
+        private const val GIFT_CHOICE_NOT_AVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_059",
+                "message": "펀딩 결과를 연 뒤 구매 전까지만 선물을 고를 수 있습니다.",
                 "detail": null
               }
             }
