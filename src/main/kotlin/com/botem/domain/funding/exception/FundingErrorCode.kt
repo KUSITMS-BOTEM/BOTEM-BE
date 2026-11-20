@@ -233,4 +233,9 @@ enum class FundingErrorCode(
         "FUNDING_057",
         "이미 이 펀딩에 보탰습니다. 내 보탬을 수정해 주세요.",
     ),
+    ROLLING_PAPER_NOT_OPENED(
+        HttpStatus.CONFLICT,
+        "FUNDING_058",
+        "펀딩 결과를 연 뒤 롤링페이퍼를 볼 수 있습니다.",
+    ),
 }
