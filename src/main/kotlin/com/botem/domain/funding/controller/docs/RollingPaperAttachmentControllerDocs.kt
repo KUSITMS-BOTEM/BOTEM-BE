@@ -45,7 +45,7 @@ interface RollingPaperAttachmentControllerDocs {
     )
     fun createUploadUrl(
         @Parameter(hidden = true) userId: Long?,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
         request: CreateRollingPaperAttachmentUploadUrlRequest,
     ): ApiResponse<RollingPaperAttachmentUploadUrlResponse>
 

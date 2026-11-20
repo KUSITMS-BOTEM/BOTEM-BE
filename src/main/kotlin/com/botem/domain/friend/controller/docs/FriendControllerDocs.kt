@@ -211,6 +211,7 @@ interface FriendControllerDocs {
                 "fundings": [
                   {
                     "fundingId": 31,
+                    "shareKey": "0123456789abcdef0123456789abcdef",
                     "type": "SURPRISE",
                     "productName": "소니 WH-1000XM4",
                     "productImageUrl": "https://image.example.com/product.jpg",

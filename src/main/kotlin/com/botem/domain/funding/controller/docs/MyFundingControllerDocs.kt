@@ -46,6 +46,7 @@ interface MyFundingControllerDocs {
                 "fundings": [
                   {
                     "fundingId": 12,
+                    "shareKey": "0123456789abcdef0123456789abcdef",
                     "type": "BIRTHDAY",
                     "productName": "에어팟 프로 2",
                     "productImageUrl": "https://image.example.com/product.jpg",
@@ -57,6 +58,7 @@ interface MyFundingControllerDocs {
                   },
                   {
                     "fundingId": 9,
+                    "shareKey": "0123456789abcdef0123456789abcdef",
                     "type": "SURPRISE",
                     "productName": "에어팟 프로 2",
                     "productImageUrl": "https://image.example.com/product.jpg",

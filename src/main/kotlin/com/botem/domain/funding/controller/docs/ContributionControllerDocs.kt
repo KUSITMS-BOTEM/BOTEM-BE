@@ -111,7 +111,7 @@ interface ContributionControllerDocs {
     )
     fun contribute(
         @Parameter(hidden = true) userId: Long?,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
         request: CreateContributionRequest,
     ): ApiResponse<ContributionResponse>
 
@@ -183,7 +183,7 @@ interface ContributionControllerDocs {
     )
     fun leaveMessage(
         @Parameter(hidden = true) userId: Long?,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
         request: CreateMessageContributionRequest,
     ): ApiResponse<MessageContributionResponse>
 
@@ -268,7 +268,7 @@ interface ContributionControllerDocs {
     )
     fun markTransferSent(
         @Parameter(hidden = true) userId: Long?,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
         @Parameter(description = "참여 ID") contributionId: Long,
         request: MarkTransferSentRequest,
     ): ApiResponse<TransferSentResponse>

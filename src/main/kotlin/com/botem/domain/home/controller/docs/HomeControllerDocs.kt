@@ -167,6 +167,7 @@ interface HomeControllerDocs {
                 "fundingCards": [
                   {
                     "fundingId": 12,
+                    "shareKey": "0123456789abcdef0123456789abcdef",
                     "cardType": "CLOSED_UNOPENED",
                     "fundingType": "BIRTHDAY",
                     "productName": "다이슨 에어랩",
@@ -197,6 +198,7 @@ interface HomeControllerDocs {
                   },
                   {
                     "fundingId": 15,
+                    "shareKey": "0123456789abcdef0123456789abcdef",
                     "cardType": "IN_PROGRESS",
                     "fundingType": "SURPRISE",
                     "productName": "무선 헤드폰",
