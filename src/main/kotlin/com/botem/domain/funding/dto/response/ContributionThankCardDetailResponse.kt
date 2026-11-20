@@ -4,6 +4,7 @@ import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionThankCard
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.user.entity.User
+import com.botem.domain.funding.entity.ThankCardColor
 import java.time.LocalDateTime
 
 data class ContributionThankCardDetailResponse(
@@ -15,6 +16,7 @@ data class ContributionThankCardDetailResponse(
     val productName: String,
     val productImageUrl: String,
     val message: String,
+    val paperColor: ThankCardColor,
     val sentAt: LocalDateTime,
     val shareUrl: String,
 ) {
@@ -35,6 +37,7 @@ data class ContributionThankCardDetailResponse(
                 productName = funding.product.name,
                 productImageUrl = funding.product.imageUrl,
                 message = thankCard.message,
+                paperColor = thankCard.paperColor,
                 sentAt = thankCard.sentAt,
                 shareUrl = shareUrl,
             )
