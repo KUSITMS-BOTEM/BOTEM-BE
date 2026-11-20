@@ -1,6 +1,7 @@
 package com.botem.global.migration
 
 import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
@@ -16,7 +17,9 @@ import kotlin.test.assertTrue
 
 // 다른 테스트는 H2에 엔티티로 스키마를 만들어 Flyway를 실행하지 않는다.
 // 운영과 같은 MySQL에 모든 마이그레이션을 적용하고, 엔티티 매핑이 그 스키마와 맞는지(ddl-auto=validate) 확인한다.
-// 컨텍스트가 뜨지 않으면(마이그레이션 실패·validate 실패) 이 테스트가 실패한다
+// 컨텍스트가 뜨지 않으면(마이그레이션 실패·validate 실패) 이 테스트가 실패한다.
+// Docker가 필요해 일반 test에서는 빠지고 `./gradlew migrationTest`로 실행한다
+@Tag("migration")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers(disabledWithoutDocker = true)

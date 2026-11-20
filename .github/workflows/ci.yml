@@ -8,6 +8,9 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  MIGRATION_PATHS: '^(src/main/resources/db/migration/|src/main/kotlin/.*/entity/|src/main/resources/application[^/]*\.ya?ml$|src/test/kotlin/com/botem/global/migration/|build\.gradle\.kts$|\.github/workflows/ci\.yml$)'
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,6 +18,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          # 마이그레이션 관련 변경을 base 브랜치와 비교하기 위해 전체 이력을 가져온다
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -41,6 +46,23 @@ jobs:
 
       - name: 커버리지 기준 검증
         run: ./gradlew koverVerify
+
+      # 엔티티만 바꾸고 마이그레이션을 빠뜨린 경우도 잡도록 엔티티·설정 변경도 함께 감지한다
+      - name: 마이그레이션 관련 변경 감지
+        id: migration-changes
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if git diff --name-only "origin/$BASE_REF...HEAD" | grep -qE "$MIGRATION_PATHS"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 마이그레이션·스키마 검증 (MySQL)
+        if: steps.migration-changes.outputs.changed == 'true'
+        run: |
+          ./gradlew migrationTest
+          # Docker가 없어 건너뛰었다면 검증하지 않은 것이므로 실패시킨다
+          grep -q 'skipped="0"' build/test-results/migrationTest/TEST-com.botem.global.migration.MigrationSchemaTest.xml
 
       - name: 커버리지 리포트 업로드
         if: ${{ !cancelled() && steps.report.outcome == 'success' }}
