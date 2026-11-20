@@ -7,6 +7,10 @@ spring:
     clients:
       connect-timeout: 3s
       read-timeout: 5s
+  # 요청이 끝날 때까지 DB 커넥션을 붙잡지 않도록 끈다. 엔티티는 연관관계 없이 ID로 참조하고
+  # 서비스 트랜잭션 안에서 DTO로 바꿔 반환하므로 컨트롤러·직렬화 단계의 지연 로딩이 없다
+  jpa:
+    open-in-view: false
   # 금액 같은 정수 필드에 소수를 보내면 잘라서 받지 않고 400으로 거절한다
   jackson:
     deserialization:
