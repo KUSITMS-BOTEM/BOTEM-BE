@@ -27,6 +27,8 @@ interface HomeControllerDocs {
             참여자 미리보기는 참여 시각이 빠른 순서로 카드당 최대 3명까지 반환합니다.
             비로그인 참여자와 프로필 이미지가 없는 회원의 profileImageUrl은 null이며, 기본 이미지는 프론트엔드에서 표시합니다.
             recipientName은 서프라이즈 카드 제목에 쓰는 받는 사람 이름(이름이 없으면 닉네임)이며, 생일 펀딩은 null입니다.
+            earlyOpenable은 마감 전이지만 확정 금액이 목표에 닿았고 확인 대기가 0건이라 지금 결과를 열 수 있는 생일 펀딩이면 true입니다.
+            true면 '마감일이 아직 안 지났지만 지금 펑! 열까요?' 카드를 보여주고 결과 조회·팡 열기 API를 바로 호출할 수 있습니다.
         """,
     )
     @ApiResponses(
@@ -187,7 +189,8 @@ interface HomeControllerDocs {
                     "confirmedPercentage": 100,
                     "pendingPercentage": 0,
                     "pendingContributionCount": 0,
-                    "recipientName": null
+                    "recipientName": null,
+                    "earlyOpenable": false
                   },
                   {
                     "fundingId": 15,
@@ -211,7 +214,8 @@ interface HomeControllerDocs {
                     "confirmedPercentage": 55,
                     "pendingPercentage": 15,
                     "pendingContributionCount": 2,
-                    "recipientName": "서준"
+                    "recipientName": "서준",
+                    "earlyOpenable": false
                   }
                 ],
                 "activeFundingCount": 1,
