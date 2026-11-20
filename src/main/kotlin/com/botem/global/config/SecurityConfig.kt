@@ -9,6 +9,7 @@ import com.botem.global.property.AdminProperties
 import com.botem.global.security.AdminApiKeyFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.authorization.AuthorizationManager
@@ -71,8 +72,8 @@ class SecurityConfig(
                 "sentry-trace",
                 "baggage",
             )
-            // 프론트가 오류 문의 때 요청 ID를 읽을 수 있도록 노출한다
-            exposedHeaders = listOf(RequestIdFilter.HEADER_NAME)
+            // 프론트가 오류 문의 때 요청 ID를, 요청 제한(429) 때 다시 시도할 시간을 읽을 수 있도록 노출한다
+            exposedHeaders = listOf(RequestIdFilter.HEADER_NAME, HttpHeaders.RETRY_AFTER)
             allowCredentials = true
         }
 
