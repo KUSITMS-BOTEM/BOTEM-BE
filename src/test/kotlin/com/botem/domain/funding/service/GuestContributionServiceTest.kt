@@ -251,6 +251,20 @@ class GuestContributionServiceTest {
                 ),
             )
         }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest(
+                    participantName = "민지",
+                    message = "축하해",
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                    voiceUrl = VOICE_URL,
+                    voiceDurationSeconds = 12,
+                    voiceTranscript = "🎉".repeat(501),
+                ),
+            )
+        }
     }
 
     @Test
