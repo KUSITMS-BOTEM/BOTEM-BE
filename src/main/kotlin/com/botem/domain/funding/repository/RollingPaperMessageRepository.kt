@@ -23,7 +23,8 @@ interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Lon
             message.decorationCode,
             message.photoUrl,
             message.voiceUrl,
-            message.voiceDurationSeconds
+            message.voiceDurationSeconds,
+            message.voiceTranscript
         )
         FROM RollingPaperMessage message
         JOIN Contribution contribution ON contribution.id = message.contributionId

@@ -12,6 +12,7 @@ data class RollingPaperMessageResponse(
     val photoUrl: String?,
     val voiceUrl: String?,
     val voiceDurationSeconds: Int?,
+    val voiceTranscript: String?,
 ) {
     companion object {
         fun from(message: RollingPaperMessageProjection): RollingPaperMessageResponse =
@@ -25,6 +26,7 @@ data class RollingPaperMessageResponse(
                 photoUrl = message.photoUrl,
                 voiceUrl = message.voiceUrl,
                 voiceDurationSeconds = message.voiceDurationSeconds,
+                voiceTranscript = message.voiceTranscript,
             )
     }
 }

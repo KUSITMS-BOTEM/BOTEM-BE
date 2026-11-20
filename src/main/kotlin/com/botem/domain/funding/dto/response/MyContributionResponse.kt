@@ -22,6 +22,7 @@ data class MyContributionResponse(
     val photoUrl: String?,
     val voiceUrl: String?,
     val voiceDurationSeconds: Int?,
+    val voiceTranscript: String?,
     val participatedAt: LocalDateTime,
     // 송금 전이거나 개설자가 못 받았다고 한 보탬에만 다시 송금할 계좌를 보여준다
     val payoutAccount: ContributionPayoutAccountResponse?,

@@ -10,4 +10,5 @@ data class RollingPaperMessageProjection(
     val photoUrl: String?,
     val voiceUrl: String?,
     val voiceDurationSeconds: Int?,
+    val voiceTranscript: String?,
 )

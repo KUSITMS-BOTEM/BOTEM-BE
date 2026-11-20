@@ -53,6 +53,7 @@ class ContributionService(
             photoUrl = request.photoUrl,
             voiceUrl = request.voiceUrl,
             voiceDurationSeconds = request.voiceDurationSeconds,
+            voiceTranscript = request.voiceTranscript,
             guestPassword = request.guestPassword,
         )
         val funding = lockFunding(fundingId)
@@ -97,6 +98,7 @@ class ContributionService(
             photoUrl = request.photoUrl,
             voiceUrl = request.voiceUrl,
             voiceDurationSeconds = request.voiceDurationSeconds,
+            voiceTranscript = request.voiceTranscript,
             guestPassword = request.guestPassword,
         )
         val funding = lockFunding(fundingId)
@@ -208,6 +210,7 @@ class ContributionService(
         photoUrl: String?,
         voiceUrl: String?,
         voiceDurationSeconds: Int?,
+        voiceTranscript: String?,
         guestPassword: String?,
     ): ParticipantInput {
         val normalizedMessage = message.normalizeOptional()
@@ -227,6 +230,10 @@ class ContributionService(
         if ((normalizedVoiceUrl == null) != (voiceDurationSeconds == null)) {
             throw invalidInput("음성 URL과 재생 시간은 함께 입력해야 합니다.")
         }
+        val normalizedVoiceTranscript = voiceTranscript.normalizeOptional()
+        if (normalizedVoiceTranscript != null && normalizedVoiceUrl == null) {
+            throw invalidInput("음성 자막은 음성과 함께 입력해야 합니다.")
+        }
         if (userId == null && participantName.normalizeOptional() == null) {
             throw invalidInput("참여자 이름은 필수입니다.")
         }
@@ -239,6 +246,7 @@ class ContributionService(
             photoUrl = normalizedPhotoUrl,
             voiceUrl = normalizedVoiceUrl,
             voiceDurationSeconds = voiceDurationSeconds,
+            voiceTranscript = normalizedVoiceTranscript,
             guestPasswordHash = if (userId == null) hashGuestPassword(guestPassword) else null,
         )
     }
@@ -294,6 +302,7 @@ class ContributionService(
                 photoUrl = input.photoUrl,
                 voiceUrl = input.voiceUrl,
                 voiceDurationSeconds = input.voiceDurationSeconds,
+                voiceTranscript = input.voiceTranscript,
             ),
         )
 
@@ -373,6 +382,7 @@ class ContributionService(
         val photoUrl: String?,
         val voiceUrl: String?,
         val voiceDurationSeconds: Int?,
+        val voiceTranscript: String?,
         val guestPasswordHash: String?,
     )
 
