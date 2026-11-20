@@ -66,6 +66,7 @@ class ContributionService(
         }
 
         validateContributable(funding, request.amount)
+        validateMemberNotParticipated(fundingId, funding.extendedAt, userId)
         validateGuestIdentityAvailable(fundingId, input)
         validateUploadedAttachments(fundingId, input)
         val contribution = saveWithMessage(
@@ -109,6 +110,7 @@ class ContributionService(
         }
 
         validateOpen(funding)
+        validateMemberNotParticipated(fundingId, funding.extendedAt, userId)
         validateGuestIdentityAvailable(fundingId, input)
         validateUploadedAttachments(fundingId, input)
         val contribution = saveWithMessage(
@@ -154,6 +156,30 @@ class ContributionService(
         contribution.markTransferSent()
 
         return TransferSentResponse(contribution.id, contribution.status)
+    }
+
+    // 한 펀딩에 금액 보태기와 메시지로 보태기를 합쳐 1인 1회 (취소한 보탬 제외).
+    // 연장한 펀딩은 기존 마감일까지 송금하지 못한 회원도 다시 보탤 수 있도록 연장 이후 보탬만 센다.
+    // 비회원은 로그인 없이 같은 사람을 구분할 수 없어 같은 이름 1회(validateGuestIdentityAvailable)로 대신한다
+    private fun validateMemberNotParticipated(fundingId: Long, extendedAt: LocalDateTime?, userId: Long?) {
+        userId ?: return
+        val participated = if (extendedAt == null) {
+            contributionRepository.existsByFundingIdAndParticipantUserIdAndStatusNot(
+                fundingId,
+                userId,
+                ContributionStatus.CANCELLED,
+            )
+        } else {
+            contributionRepository.existsByFundingIdAndParticipantUserIdAndStatusNotAndCreatedAtAfter(
+                fundingId,
+                userId,
+                ContributionStatus.CANCELLED,
+                extendedAt,
+            )
+        }
+        if (participated) {
+            throw BusinessException(FundingErrorCode.CONTRIBUTION_ALREADY_PARTICIPATED)
+        }
     }
 
     private fun validateGuestIdentityAvailable(fundingId: Long, input: ParticipantInput) {
