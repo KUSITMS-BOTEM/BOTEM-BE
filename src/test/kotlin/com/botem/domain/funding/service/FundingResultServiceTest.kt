@@ -338,15 +338,21 @@ class FundingResultServiceTest {
             assertFailsWith<BusinessException> { service.getResult(USER_ID, FUNDING_ID) }.errorCode,
         )
 
-        // 확인 대기를 결과에서 빼고 여는 것도 마감 전에는 허용하지 않는다
+        // 목표를 달성했어도 확인 대기가 있으면 조회는 FUNDING_005, 열기는 제외 여부와 관계없이 FUNDING_007이다
         given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
             .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 4L, pendingCount = 1L)))
         assertEquals(
             FundingErrorCode.FUNDING_NOT_ENDED,
-            assertFailsWith<BusinessException> {
-                service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = true)
-            }.errorCode,
+            assertFailsWith<BusinessException> { service.getResult(USER_ID, FUNDING_ID) }.errorCode,
         )
+        listOf(true, false).forEach { excludePending ->
+            assertEquals(
+                FundingErrorCode.PENDING_CONTRIBUTION_EXISTS,
+                assertFailsWith<BusinessException> {
+                    service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = excludePending)
+                }.errorCode,
+            )
+        }
         assertEquals(null, funding.resultOpenedAt)
     }
 
