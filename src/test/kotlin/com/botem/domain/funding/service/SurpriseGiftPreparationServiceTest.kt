@@ -58,6 +58,7 @@ class SurpriseGiftPreparationServiceTest {
         assertEquals(FundingStatus.CLOSED, funding.status)
         verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
         assertEquals("지유", response.recipientName)
+        assertFalse(response.recipientWithdrawn)
         assertEquals(80_000L, response.confirmedAmount)
         assertEquals(80, response.achievementPercentage)
         assertFalse(response.targetReached)
@@ -156,6 +157,23 @@ class SurpriseGiftPreparationServiceTest {
         val exception = assertFailsWith<BusinessException> { service.getPreparation(OWNER_ID, FUNDING_ID) }
 
         assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
+    }
+
+    @Test
+    fun `받는 사람이 탈퇴해도 선물 준비 화면을 조회하고 탈퇴 여부를 알려준다`() {
+        givenFunding(funding(status = FundingStatus.FUNDING))
+        givenSummary(confirmedAmount = 80_000L, participantCount = 4L)
+        given(userRepository.findById(RECIPIENT_ID)).willReturn(
+            Optional.of(
+                User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
+                    .also { it.withdraw(NOW) },
+            ),
+        )
+
+        val response = service.getPreparation(OWNER_ID, FUNDING_ID)
+
+        assertTrue(response.recipientWithdrawn)
+        assertEquals("탈퇴한 사용자", response.recipientName)
     }
 
     private fun givenFunding(funding: Funding) {

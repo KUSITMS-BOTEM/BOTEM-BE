@@ -251,6 +251,7 @@ interface FundingControllerDocs {
             messageCount는 도착한 롤링페이퍼 메시지 개수이며 메시지 내용은 마감 전까지 반환하지 않습니다.
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
             revealAt은 서프라이즈 펀딩의 공개 시각이며 생일 펀딩은 null입니다.
+            recipientWithdrawn은 서프라이즈 받는 사람이 탈퇴했으면 true입니다('받는 사람이 보탬을 떠났어요'). 탈퇴해도 서프라이즈는 그대로 진행하며, 생일 펀딩은 false입니다.
             giftPreparedAt은 서프라이즈 주최자가 선물 준비를 완료한 시각이며, 준비 전이거나 생일 펀딩은 null입니다.
             managementState는 NO_PARTICIPANTS(참여자 0명), IN_PROGRESS(진행 중), TARGET_REACHED(확정 금액 100% 도달),
             CLOSED(마감) 중 하나이며, extended는 기간을 연장한 적이 있으면 true입니다.
@@ -628,6 +629,7 @@ interface FundingControllerDocs {
             pendingCleanupRequired가 true면 확인 대기 참여를 처리하거나 제외해야 선물 준비를 완료할 수 있습니다.
             선물 준비를 완료한 뒤에도 같은 API로 준비 완료 · 공유 화면 데이터를 조회할 수 있습니다.
             recipientName은 받는 사람의 이름이며, 이름이 없으면 닉네임을 반환합니다.
+            recipientWithdrawn은 받는 사람이 탈퇴했으면 true이며, 이때 recipientName은 '탈퇴한 사용자'입니다. 탈퇴해도 선물 준비와 공개 일정은 그대로 진행합니다.
         """,
     )
     @ApiResponses(
@@ -972,6 +974,7 @@ interface FundingControllerDocs {
                 "targetAmount": 459000,
                 "deadline": "2026-11-30T23:59:59.999999",
                 "revealAt": null,
+                "recipientWithdrawn": false,
                 "remainingDays": 7,
                 "confirmedPercentage": 45,
                 "pendingPercentage": 15,
@@ -1326,6 +1329,7 @@ interface FundingControllerDocs {
               "data": {
                 "fundingId": 21,
                 "recipientName": "지유",
+                "recipientWithdrawn": false,
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://shop.example.com/product",
@@ -1352,6 +1356,7 @@ interface FundingControllerDocs {
               "data": {
                 "fundingId": 21,
                 "recipientName": "지유",
+                "recipientWithdrawn": false,
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://shop.example.com/product",

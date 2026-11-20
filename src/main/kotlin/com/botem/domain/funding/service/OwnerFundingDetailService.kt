@@ -16,6 +16,7 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
@@ -72,6 +73,9 @@ class OwnerFundingDetailService(
             targetAmount = funding.targetAmount,
             deadline = funding.deadline,
             revealAt = funding.revealAt,
+            recipientWithdrawn = funding.recipientId
+                ?.let { userRepository.findById(it).orElse(null) }
+                ?.status == UserStatus.WITHDRAWN,
             remainingDays = if (beforeDeadline) {
                 ChronoUnit.DAYS.between(now.toLocalDate(), funding.deadline.toLocalDate())
             } else {

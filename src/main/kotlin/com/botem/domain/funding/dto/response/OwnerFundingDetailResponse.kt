@@ -17,6 +17,8 @@ data class OwnerFundingDetailResponse(
     val targetAmount: Long,
     val deadline: LocalDateTime,
     val revealAt: LocalDateTime?,
+    // 서프라이즈 받는 사람이 탈퇴했으면 true ('받는 사람이 보탬을 떠났어요'). 생일 펀딩은 false
+    val recipientWithdrawn: Boolean,
     val remainingDays: Long?,
     val confirmedPercentage: Int,
     val pendingPercentage: Int,
