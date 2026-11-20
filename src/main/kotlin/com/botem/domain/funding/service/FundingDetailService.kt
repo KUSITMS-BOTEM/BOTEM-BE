@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 @Service
@@ -125,7 +126,10 @@ class FundingDetailService(
                 order = index + 1,
                 name = contribution.participantName,
                 profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
-                contributedDate = contribution.createdAt.toLocalDate(),
+                contributedDate = contribution.createdAt
+                    .atZone(ZoneId.systemDefault())
+                    .withZoneSameInstant(KOREA_ZONE)
+                    .toLocalDate(),
             )
         }
     }
@@ -151,6 +155,7 @@ class FundingDetailService(
         filter { it.status == status }.sumOf(Contribution::amount)
 
     companion object {
+        private val KOREA_ZONE = ZoneId.of("Asia/Seoul")
         private val PARTICIPATABLE_STATUSES = setOf(FundingStatus.FUNDING, FundingStatus.CLOSED)
     }
 }

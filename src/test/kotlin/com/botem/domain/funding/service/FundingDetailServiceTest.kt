@@ -34,6 +34,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Optional
+import java.util.TimeZone
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -101,6 +102,22 @@ class FundingDetailServiceTest {
         assertTrue(result.canContributeAmount)
         assertTrue(result.canParticipate)
         assertEquals(3L, result.remainingDays)
+    }
+
+    @Test
+    fun `UTC 서버에서 기록된 참여 시각은 한국 날짜로 반환한다`() {
+        val originalTimeZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        try {
+            givenFunding(funding())
+            givenContributions(contribution(amount = 1_000L, createdAt = LocalDateTime.of(2026, 11, 12, 15, 30)))
+
+            val result = service.getDetail(null, FUNDING_ID)
+
+            assertEquals(LocalDate.of(2026, 11, 13), result.participants.single().contributedDate)
+        } finally {
+            TimeZone.setDefault(originalTimeZone)
+        }
     }
 
     @Test
