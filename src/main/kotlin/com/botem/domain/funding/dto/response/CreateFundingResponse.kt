@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 
 data class CreateFundingResponse(
     val fundingId: Long,
+    val shareKey: String,
     val type: FundingType,
     val status: FundingStatus,
     val shareUrl: String,
@@ -18,6 +19,7 @@ data class CreateFundingResponse(
         fun from(funding: Funding, shareUrl: String): CreateFundingResponse =
             CreateFundingResponse(
                 fundingId = funding.id,
+                shareKey = funding.shareKey,
                 type = funding.type,
                 status = funding.status,
                 shareUrl = shareUrl,

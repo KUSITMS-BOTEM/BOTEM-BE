@@ -1,5 +1,7 @@
 package com.botem.domain.funding.controller
 
+import org.junit.jupiter.api.BeforeEach
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
@@ -57,6 +59,11 @@ class FundingControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
+
+    private lateinit var fundingShareKeyResolver: FundingShareKeyResolver
+
+
+    @MockitoBean
     private lateinit var fundingCreationService: FundingCreationService
 
     @MockitoBean
@@ -83,12 +90,21 @@ class FundingControllerTest {
     @MockitoBean
     private lateinit var giftChoiceService: GiftChoiceService
 
+    @BeforeEach
+
+    fun stubShareKey() {
+
+        given(fundingShareKeyResolver.fundingIdOf(SHARE_KEY)).willReturn(FUNDING_ID)
+
+    }
+
+
     @Test
     fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
         given(fundingDetailService.getDetail(USER_ID, FUNDING_ID)).willReturn(detailResponse(ownerPreview = true))
 
         mockMvc.perform(
-            get("/api/fundings/{fundingId}", FUNDING_ID)
+            get("/api/fundings/share/{shareKey}", SHARE_KEY)
                 .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
         )
             .andExpect(status().isOk)
@@ -114,9 +130,10 @@ class FundingControllerTest {
         given(fundingCreationService.createBirthdayFunding(USER_ID, request)).willReturn(
             CreateFundingResponse(
                 FUNDING_ID,
+                "0123456789abcdef0123456789abcdef",
                 FundingType.BIRTHDAY,
                 FundingStatus.FUNDING,
-                "https://botem.me/fundings/12",
+                "https://botem.me/share/0123456789abcdef0123456789abcdef",
                 LocalDateTime.of(2026, 11, 30, 23, 59, 59),
                 null,
             ),
@@ -144,7 +161,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
             .andExpect(jsonPath("$.data.type").value("BIRTHDAY"))
             .andExpect(jsonPath("$.data.status").value("FUNDING"))
-            .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/fundings/12"))
+            .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/share/0123456789abcdef0123456789abcdef"))
 
         verify(fundingCreationService).createBirthdayFunding(USER_ID, request)
     }
@@ -161,9 +178,10 @@ class FundingControllerTest {
         given(fundingCreationService.createSurpriseFunding(USER_ID, request)).willReturn(
             CreateFundingResponse(
                 FUNDING_ID,
+                "0123456789abcdef0123456789abcdef",
                 FundingType.SURPRISE,
                 FundingStatus.FUNDING,
-                "https://botem.me/fundings/12",
+                "https://botem.me/share/0123456789abcdef0123456789abcdef",
                 LocalDateTime.of(2026, 12, 12, 23, 59, 59),
                 LocalDateTime.of(2026, 12, 13, 0, 0),
             ),
@@ -188,7 +206,7 @@ class FundingControllerTest {
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.data.type").value("SURPRISE"))
-            .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/fundings/12"))
+            .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/share/0123456789abcdef0123456789abcdef"))
             .andExpect(jsonPath("$.data.revealAt").value("2026-12-13T00:00:00"))
 
         verify(fundingCreationService).createSurpriseFunding(USER_ID, request)
@@ -373,6 +391,7 @@ class FundingControllerTest {
         given(ownerFundingDetailService.getManagementDetail(USER_ID, FUNDING_ID)).willReturn(
             OwnerFundingDetailResponse(
                 fundingId = FUNDING_ID,
+                shareKey = "0123456789abcdef0123456789abcdef",
                 type = FundingType.BIRTHDAY,
                 title = "생일 선물 펀딩",
                 story = "새 헤드폰이 필요해요",
@@ -544,6 +563,7 @@ class FundingControllerTest {
     private fun detailResponse(ownerPreview: Boolean): FundingDetailResponse =
         FundingDetailResponse(
             fundingId = FUNDING_ID,
+            shareKey = "0123456789abcdef0123456789abcdef",
             type = FundingType.BIRTHDAY,
             title = "생일 선물 펀딩",
             celebrantName = "지유",
@@ -611,6 +631,7 @@ class FundingControllerTest {
     private fun surpriseGiftPreparationResponse(giftPreparedAt: LocalDateTime?): SurpriseGiftPreparationResponse =
         SurpriseGiftPreparationResponse(
             fundingId = FUNDING_ID,
+            shareKey = "0123456789abcdef0123456789abcdef",
             recipientName = "지유",
             recipientWithdrawn = false,
             productName = "무선 헤드폰",
@@ -633,6 +654,7 @@ class FundingControllerTest {
         )
 
     companion object {
+        private const val SHARE_KEY = "0123456789abcdef0123456789abcdef"
         private const val USER_ID = 1L
         private const val FUNDING_ID = 12L
         private val OPENED_AT = LocalDateTime.of(2026, 11, 15, 0, 0)

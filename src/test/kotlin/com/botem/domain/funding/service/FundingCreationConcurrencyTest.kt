@@ -175,7 +175,7 @@ class FundingCreationConcurrencyTest {
 
         @Bean
         fun fundingShareProperties(): FundingShareProperties =
-            FundingShareProperties("https://botem.me/fundings")
+            FundingShareProperties("https://botem.me/share")
 
         @Bean
         fun accountNumberCipher(): AccountNumberCipher =

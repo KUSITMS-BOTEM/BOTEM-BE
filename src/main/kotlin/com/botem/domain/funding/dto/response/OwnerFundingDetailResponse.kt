@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 // 개설자 전용 펀딩 관리 화면. 개설자에게도 참여자별 금액은 반환하지 않는다
 data class OwnerFundingDetailResponse(
     val fundingId: Long,
+    val shareKey: String,
     val type: FundingType,
     val title: String?,
     val story: String?,

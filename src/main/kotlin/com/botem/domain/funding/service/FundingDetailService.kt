@@ -59,6 +59,7 @@ class FundingDetailService(
 
         return FundingDetailResponse(
             fundingId = funding.id,
+            shareKey = funding.shareKey,
             type = funding.type,
             title = funding.title,
             celebrantName = celebrant?.let { it.name ?: it.nickname }.orEmpty(),

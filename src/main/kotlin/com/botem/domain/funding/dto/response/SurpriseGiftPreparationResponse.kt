@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 // 주최자 마감 · 선물 준비(SUR-PG-007)와 준비 완료 · 공유(SUR-PG-008) 화면이 함께 쓴다
 data class SurpriseGiftPreparationResponse(
     val fundingId: Long,
+    val shareKey: String,
     val recipientName: String?,
     // 받는 사람이 탈퇴해도 서프라이즈는 그대로 진행하고, 주최자에게 '받는 사람이 보탬을 떠났어요'를 보여준다
     val recipientWithdrawn: Boolean,
@@ -39,6 +40,7 @@ data class SurpriseGiftPreparationResponse(
         ): SurpriseGiftPreparationResponse =
             SurpriseGiftPreparationResponse(
                 fundingId = funding.id,
+                shareKey = funding.shareKey,
                 recipientName = recipientName,
                 recipientWithdrawn = recipientWithdrawn,
                 productName = funding.product.name,

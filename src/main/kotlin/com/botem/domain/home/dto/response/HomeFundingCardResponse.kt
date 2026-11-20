@@ -4,6 +4,7 @@ import com.botem.domain.funding.entity.FundingType
 
 data class HomeFundingCardResponse(
     val fundingId: Long,
+    val shareKey: String,
     val cardType: HomeFundingCardType,
     val fundingType: FundingType,
     val productName: String,

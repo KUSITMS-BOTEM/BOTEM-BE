@@ -50,7 +50,7 @@ interface MyContributionControllerDocs {
     )
     fun getMyContributions(
         @Parameter(hidden = true) userId: Long,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
     ): ApiResponse<MyContributionListResponse>
 
     @Operation(
@@ -118,7 +118,7 @@ interface MyContributionControllerDocs {
     )
     fun updateMyContribution(
         @Parameter(hidden = true) userId: Long,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
         @Parameter(description = "보탬 ID") contributionId: Long,
         request: UpdateMyContributionRequest,
     ): ApiResponse<MyContributionResponse>

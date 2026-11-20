@@ -1,5 +1,7 @@
 package com.botem.domain.funding.controller
 
+import org.junit.jupiter.api.BeforeEach
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.funding.dto.request.AccessGuestContributionRequest
 import com.botem.domain.funding.dto.request.UpdateGuestContributionRequest
 import com.botem.domain.funding.dto.response.GuestContributionResponse
@@ -39,6 +41,11 @@ class GuestContributionControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
+
+    private lateinit var fundingShareKeyResolver: FundingShareKeyResolver
+
+
+    @MockitoBean
     private lateinit var guestContributionService: GuestContributionService
 
     @MockitoBean
@@ -50,13 +57,22 @@ class GuestContributionControllerTest {
     @MockitoBean
     private lateinit var userRepository: UserRepository
 
+    @BeforeEach
+
+    fun stubShareKey() {
+
+        given(fundingShareKeyResolver.fundingIdOf(SHARE_KEY)).willReturn(FUNDING_ID)
+
+    }
+
+
     @Test
     fun `로그인 없이 이름과 비밀번호로 비회원 보탬을 조회한다`() {
         val request = AccessGuestContributionRequest("민지", "1234")
         given(guestContributionService.access(FUNDING_ID, request)).willReturn(accessResponse())
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/guest/access", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/guest/access", SHARE_KEY)
                 .with(csrf())
                 .contentType("application/json")
                 .content("""{ "participantName": "민지", "guestPassword": "1234" }"""),
@@ -72,7 +88,7 @@ class GuestContributionControllerTest {
     @Test
     fun `비밀번호가 숫자 4자리가 아니면 조회하지 않는다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/guest/access", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/guest/access", SHARE_KEY)
                 .with(csrf())
                 .contentType("application/json")
                 .content("""{ "participantName": "민지", "guestPassword": "12a4" }"""),
@@ -95,7 +111,7 @@ class GuestContributionControllerTest {
         given(guestContributionService.update(FUNDING_ID, ACCESS_TOKEN, request)).willReturn(updateResponse())
 
         mockMvc.perform(
-            patch("/api/fundings/{fundingId}/contributions/guest", FUNDING_ID)
+            patch("/api/fundings/share/{shareKey}/contributions/guest", SHARE_KEY)
                 .with(csrf())
                 .header(GuestContributionAccessTokenProvider.HEADER_NAME, ACCESS_TOKEN)
                 .contentType("application/json")
@@ -121,7 +137,7 @@ class GuestContributionControllerTest {
     @Test
     fun `접근 토큰 헤더가 없으면 수정 요청을 거부한다`() {
         mockMvc.perform(
-            patch("/api/fundings/{fundingId}/contributions/guest", FUNDING_ID)
+            patch("/api/fundings/share/{shareKey}/contributions/guest", SHARE_KEY)
                 .with(csrf())
                 .contentType("application/json")
                 .content(
@@ -137,7 +153,7 @@ class GuestContributionControllerTest {
     @Test
     fun `전용 접근 토큰 헤더로 비회원 보탬을 삭제한다`() {
         mockMvc.perform(
-            delete("/api/fundings/{fundingId}/contributions/guest", FUNDING_ID)
+            delete("/api/fundings/share/{shareKey}/contributions/guest", SHARE_KEY)
                 .with(csrf())
                 .header(GuestContributionAccessTokenProvider.HEADER_NAME, ACCESS_TOKEN),
         )
@@ -177,6 +193,7 @@ class GuestContributionControllerTest {
     )
 
     companion object {
+        private const val SHARE_KEY = "0123456789abcdef0123456789abcdef"
         private const val FUNDING_ID = 12L
         private const val CONTRIBUTION_ID = 31L
         private const val ACCESS_TOKEN = "guest-access-token"

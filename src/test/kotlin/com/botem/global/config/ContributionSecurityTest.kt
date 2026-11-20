@@ -20,7 +20,7 @@ class ContributionSecurityTest {
     @Test
     fun `로그인하지 않아도 금액 보태기 API에 접근할 수 있다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions", MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions", MISSING_KEY)
                 .contentType("application/json")
                 .content(CONTRIBUTE_BODY),
         )
@@ -31,7 +31,7 @@ class ContributionSecurityTest {
     @Test
     fun `로그인하지 않아도 메시지로 보태기 API에 접근할 수 있다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/message-only", MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/message-only", MISSING_KEY)
                 .contentType("application/json")
                 .content(CONTRIBUTE_BODY),
         )
@@ -42,7 +42,7 @@ class ContributionSecurityTest {
     @Test
     fun `유효하지 않은 토큰으로 메시지를 보태면 401로 응답한다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/message-only", MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/message-only", MISSING_KEY)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
                 .contentType("application/json")
                 .content("{}"),
@@ -54,7 +54,7 @@ class ContributionSecurityTest {
     @Test
     fun `로그인하지 않아도 송금 완료 표시 API에 접근할 수 있다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", MISSING_ID, MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/{contributionId}/transfer-sent", MISSING_KEY, MISSING_ID)
                 .contentType("application/json")
                 .content("""{"guestPassword": "1234"}"""),
         )
@@ -65,7 +65,7 @@ class ContributionSecurityTest {
     @Test
     fun `유효하지 않은 토큰으로 보태면 비로그인으로 처리하지 않고 401로 응답한다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions", MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions", MISSING_KEY)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
                 .contentType("application/json")
                 .content(CONTRIBUTE_BODY),
@@ -77,7 +77,7 @@ class ContributionSecurityTest {
     @Test
     fun `유효하지 않은 토큰과 잘못된 본문을 함께 보내도 본문 검증보다 401을 먼저 반환한다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions", MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions", MISSING_KEY)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
                 .contentType("application/json")
                 .content("{}"),
@@ -86,13 +86,23 @@ class ContributionSecurityTest {
             .andExpect(jsonPath("$.error.code").value("AUTH_002"))
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", MISSING_ID, MISSING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/{contributionId}/transfer-sent", MISSING_KEY, MISSING_ID)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
                 .contentType("application/json")
                 .content("""{"guestPassword": "12345"}"""),
         )
             .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.error.code").value("AUTH_002"))
+    }
+
+    @Test
+    fun `기존 펀딩 ID 경로의 보태기는 더 이상 비로그인에 공개하지 않는다`() {
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/contributions", MISSING_ID)
+                .contentType("application/json")
+                .content(CONTRIBUTE_BODY),
+        )
+            .andExpect(status().isUnauthorized)
     }
 
     @Test
@@ -103,6 +113,7 @@ class ContributionSecurityTest {
 
     companion object {
         private const val MISSING_ID = 999_999L
+        private const val MISSING_KEY = "ffffffffffffffffffffffffffffffff"
         private const val CONTRIBUTE_BODY = """
             {
               "requestKey": "7f1c2a9e-3b4d-4e5f-8a6b-1c2d3e4f5a6b",

@@ -138,6 +138,7 @@ class HomeNoFundingServiceTest {
     private fun homeFundingCard(): HomeFundingCardResponse =
         HomeFundingCardResponse(
             fundingId = 10L,
+            shareKey = "0123456789abcdef0123456789abcdef",
             cardType = HomeFundingCardType.IN_PROGRESS,
             fundingType = FundingType.BIRTHDAY,
             productName = "무선 헤드폰",

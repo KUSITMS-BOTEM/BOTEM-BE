@@ -33,6 +33,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class FundingCreationServiceTest {
 
@@ -43,7 +44,7 @@ class FundingCreationServiceTest {
         fundingRepository = fundingRepository,
         userRepository = userRepository,
         resourceResolver = resourceResolver,
-        fundingShareProperties = FundingShareProperties("https://botem.me/fundings/"),
+        fundingShareProperties = FundingShareProperties("https://botem.me/share/"),
         clock = Clock.fixed(Instant.parse("2026-11-17T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -63,7 +64,9 @@ class FundingCreationServiceTest {
         assertEquals(FUNDING_ID, response.fundingId)
         assertEquals(FundingType.BIRTHDAY, response.type)
         assertEquals(FundingStatus.FUNDING, response.status)
-        assertEquals("https://botem.me/fundings/$FUNDING_ID", response.shareUrl)
+        // 공유 링크는 순차 ID가 아니라 랜덤 공유 키로 만든다
+        assertTrue(Funding.isShareKeyFormat(response.shareKey))
+        assertEquals("https://botem.me/share/${response.shareKey}", response.shareUrl)
         val saved = org.mockito.ArgumentCaptor.forClass(Funding::class.java)
         verify(fundingRepository).save(saved.capture())
         assertEquals(WISH_ID, saved.value.product.sourceWishId)
@@ -124,7 +127,9 @@ class FundingCreationServiceTest {
 
         assertEquals(FundingType.SURPRISE, response.type)
         assertEquals(FundingStatus.FUNDING, response.status)
-        assertEquals("https://botem.me/fundings/$FUNDING_ID", response.shareUrl)
+        // 공유 링크는 순차 ID가 아니라 랜덤 공유 키로 만든다
+        assertTrue(Funding.isShareKeyFormat(response.shareKey))
+        assertEquals("https://botem.me/share/${response.shareKey}", response.shareUrl)
         val saved = org.mockito.ArgumentCaptor.forClass(Funding::class.java)
         verify(fundingRepository).save(saved.capture())
         assertEquals(USER_ID, saved.value.ownerId)

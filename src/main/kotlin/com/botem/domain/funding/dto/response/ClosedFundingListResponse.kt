@@ -9,6 +9,7 @@ data class ClosedFundingListResponse(
 
 data class ClosedFundingResponse(
     val fundingId: Long,
+    val shareKey: String,
     val type: FundingType,
     val productName: String,
     val productImageUrl: String,

@@ -1,5 +1,7 @@
 package com.botem.domain.funding.controller
 
+import org.junit.jupiter.api.BeforeEach
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.funding.dto.response.RollingPaperAttachmentUploadUrlResponse
 import com.botem.domain.funding.entity.RollingPaperAttachmentType
 import com.botem.domain.funding.service.RollingPaperAttachmentService
@@ -32,6 +34,11 @@ class RollingPaperAttachmentControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
+
+    private lateinit var fundingShareKeyResolver: FundingShareKeyResolver
+
+
+    @MockitoBean
     private lateinit var attachmentService: RollingPaperAttachmentService
 
     @MockitoBean
@@ -42,6 +49,15 @@ class RollingPaperAttachmentControllerTest {
 
     @MockitoBean
     private lateinit var userRepository: UserRepository
+
+    @BeforeEach
+
+    fun stubShareKey() {
+
+        given(fundingShareKeyResolver.fundingIdOf(SHARE_KEY)).willReturn(FUNDING_ID)
+
+    }
+
 
     @Test
     fun `로그인 없이 롤링페이퍼 사진 업로드 URL을 발급한다`() {
@@ -62,7 +78,7 @@ class RollingPaperAttachmentControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/rolling-paper-attachments/upload-url", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/rolling-paper-attachments/upload-url", SHARE_KEY)
                 .with(csrf())
                 .contentType("application/json")
                 .content(
@@ -97,7 +113,7 @@ class RollingPaperAttachmentControllerTest {
             """{ "attachmentType": "PHOTO", "contentType": "image/jpeg", "contentLength": null }""",
         ).forEach { body ->
             mockMvc.perform(
-                post("/api/fundings/{fundingId}/rolling-paper-attachments/upload-url", FUNDING_ID)
+                post("/api/fundings/share/{shareKey}/rolling-paper-attachments/upload-url", SHARE_KEY)
                     .with(csrf())
                     .contentType("application/json")
                     .content(body),
@@ -110,6 +126,7 @@ class RollingPaperAttachmentControllerTest {
     }
 
     companion object {
+        private const val SHARE_KEY = "0123456789abcdef0123456789abcdef"
         private const val FUNDING_ID = 7L
         private const val FILE_URL =
             "https://botem-test.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg"

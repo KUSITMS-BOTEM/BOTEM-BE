@@ -14,6 +14,9 @@ import java.time.LocalDateTime
 
 interface FundingRepository : JpaRepository<Funding, Long> {
 
+    @Query("SELECT funding.id FROM Funding funding WHERE funding.shareKey = :shareKey")
+    fun findIdByShareKey(@Param("shareKey") shareKey: String): Long?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT funding FROM Funding funding WHERE funding.id = :fundingId")
     fun findByIdForUpdate(@Param("fundingId") fundingId: Long): Funding?

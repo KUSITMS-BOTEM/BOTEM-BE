@@ -12,11 +12,12 @@ spring:
     deserialization:
       accept-float-as-int: false
 
+# 로컬·테스트용 기본값. 운영은 application-prod.yaml에서 환경변수로만 받음
 wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}
 
 funding-share:
-  base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/fundings}
+  base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/share}
 
 contribution-thank-card:
   base-url: ${CONTRIBUTION_THANK_CARD_BASE_URL:https://botem.me/thank-cards}

@@ -57,7 +57,7 @@ class FundingCreationService(
         )
         val savedFunding = fundingRepository.save(funding)
 
-        return CreateFundingResponse.from(savedFunding, createShareUrl(savedFunding.id))
+        return CreateFundingResponse.from(savedFunding, createShareUrl(savedFunding.shareKey))
     }
 
     @Transactional
@@ -108,7 +108,7 @@ class FundingCreationService(
         )
         val savedFunding = fundingRepository.save(funding)
 
-        return CreateFundingResponse.from(savedFunding, createShareUrl(savedFunding.id))
+        return CreateFundingResponse.from(savedFunding, createShareUrl(savedFunding.shareKey))
     }
 
     private fun calculateSurpriseSchedule(recipient: User, now: LocalDateTime): SurpriseSchedule {
@@ -160,8 +160,8 @@ class FundingCreationService(
         }
     }
 
-    private fun createShareUrl(fundingId: Long): String =
-        "${fundingShareProperties.baseUrl.trimEnd('/')}/$fundingId"
+    private fun createShareUrl(shareKey: String): String =
+        "${fundingShareProperties.baseUrl.trimEnd('/')}/$shareKey"
 
     private data class SurpriseSchedule(
         val deadline: LocalDateTime,

@@ -6,6 +6,7 @@ import com.botem.domain.funding.dto.request.UpdateGuestContributionRequest
 import com.botem.domain.funding.dto.response.GuestContributionResponse
 import com.botem.domain.funding.dto.response.UpdatedGuestContributionResponse
 import com.botem.domain.funding.exception.FundingErrorCode
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.funding.service.GuestContributionAccessTokenProvider
 import com.botem.domain.funding.service.GuestContributionService
 import com.botem.global.exception.BusinessException
@@ -21,32 +22,33 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/fundings/{fundingId}/contributions/guest")
+@RequestMapping("/api/fundings/share/{shareKey}/contributions/guest")
 class GuestContributionController(
+    private val fundingShareKeyResolver: FundingShareKeyResolver,
     private val guestContributionService: GuestContributionService,
 ) : GuestContributionControllerDocs {
 
     @PostMapping("/access")
     override fun access(
-        @PathVariable fundingId: Long,
+        @PathVariable shareKey: String,
         @Valid @RequestBody request: AccessGuestContributionRequest,
     ): ApiResponse<GuestContributionResponse> =
-        ApiResponse.success(guestContributionService.access(fundingId, request))
+        ApiResponse.success(guestContributionService.access(fundingShareKeyResolver.fundingIdOf(shareKey), request))
 
     @PatchMapping
     override fun update(
-        @PathVariable fundingId: Long,
+        @PathVariable shareKey: String,
         @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME, required = false) accessToken: String?,
         @Valid @RequestBody request: UpdateGuestContributionRequest,
     ): ApiResponse<UpdatedGuestContributionResponse> =
-        ApiResponse.success(guestContributionService.update(fundingId, requireAccessToken(accessToken), request))
+        ApiResponse.success(guestContributionService.update(fundingShareKeyResolver.fundingIdOf(shareKey), requireAccessToken(accessToken), request))
 
     @DeleteMapping
     override fun cancel(
-        @PathVariable fundingId: Long,
+        @PathVariable shareKey: String,
         @RequestHeader(GuestContributionAccessTokenProvider.HEADER_NAME, required = false) accessToken: String?,
     ): ApiResponse<Nothing> {
-        guestContributionService.cancel(fundingId, requireAccessToken(accessToken))
+        guestContributionService.cancel(fundingShareKeyResolver.fundingIdOf(shareKey), requireAccessToken(accessToken))
 
         return ApiResponse.success()
     }

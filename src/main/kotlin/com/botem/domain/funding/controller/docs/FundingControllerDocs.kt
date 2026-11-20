@@ -35,6 +35,7 @@ interface FundingControllerDocs {
             계좌번호는 숫자, 공백, 하이픈만 허용하고 숫자 8~20자리여야 합니다. 입력한 계좌는 내 계좌 목록에 등록되지 않습니다.
             마감일은 선택한 날짜의 마지막 시각으로 저장됩니다.
             진행 중인 일반 펀딩과 공개 대기 중인 서프라이즈를 합쳐 최대 5개까지 개설할 수 있습니다.
+            shareUrl은 공유 링크(`/share/{shareKey}`)이고, shareKey는 참여자용 API(`/api/fundings/share/{shareKey}/...`) 경로에 씁니다.
         """,
     )
     @RequestBody(
@@ -104,7 +105,7 @@ interface FundingControllerDocs {
             showOnRecipientProfile(위시 프로필에 몰래 알리기)과 notifyRecipientFriends(보탬 친구에게도 알리기)는 생략하면 true이며,
             받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
             받는 사람 한 명당 공개 전 서프라이즈는 하나만 열 수 있고(공개 시각이 지나면 새로 열 수 있음), 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
-            서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크입니다.
+            서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크이고, shareKey는 참여자용 API 경로에 쓰는 공유 키입니다.
             응답의 deadline·revealAt은 서버가 받는 사람 생일로 계산한 마감 시각과 공개 시각으로, 개설 완료 화면에 그대로 보여줍니다.
         """,
     )
@@ -192,6 +193,7 @@ interface FundingControllerDocs {
         summary = "참여자용 펀딩 상세 조회",
         description = """
             공유 링크로 펀딩 정보와 진행 상태를 조회합니다. 로그인하지 않아도 조회할 수 있습니다.
+            펀딩은 공유 링크의 공유 키(32자리)로 찾으며, 순차 펀딩 ID로는 조회할 수 없습니다. 없거나 형식이 틀린 키는 FUNDING_002입니다.
             모인 금액은 노출하지 않고 확정 달성률(입금 확인 완료)과 확인 대기 달성률만 반환하며, 목표 금액(targetAmount)은 반환합니다.
             celebrantName·celebrantProfileImageUrl은 '{이름}의 생일' 제목에 쓰는 주인공으로, 생일 펀딩은 개설자, 서프라이즈는 받는 사람입니다(이름이 없으면 닉네임).
             extended는 기간을 연장한 펀딩이면 true입니다('기간이 연장됐어요' 배지).
@@ -238,7 +240,7 @@ interface FundingControllerDocs {
     fun getFundingDetail(
         @Parameter(hidden = true) userId: Long?,
         @Parameter(hidden = true) tokenErrorCode: ErrorCode?,
-        @Parameter(description = "펀딩 ID") fundingId: Long,
+        @Parameter(description = "펀딩 공유 키 (공유 링크의 32자리 값)") shareKey: String,
     ): ApiResponse<FundingDetailResponse>
 
     @Operation(
@@ -799,9 +801,10 @@ interface FundingControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 13,
+                "shareKey": "0123456789abcdef0123456789abcdef",
                 "type": "SURPRISE",
                 "status": "FUNDING",
-                "shareUrl": "https://botem.me/fundings/13",
+                "shareUrl": "https://botem.me/share/0123456789abcdef0123456789abcdef",
                 "deadline": "2026-12-12T23:59:59.999999",
                 "revealAt": "2026-12-13T00:00:00"
               },
@@ -890,9 +893,10 @@ interface FundingControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 12,
+                "shareKey": "0123456789abcdef0123456789abcdef",
                 "type": "BIRTHDAY",
                 "status": "FUNDING",
-                "shareUrl": "https://botem.me/fundings/12",
+                "shareUrl": "https://botem.me/share/0123456789abcdef0123456789abcdef",
                 "deadline": "2026-11-30T23:59:59.999999",
                 "revealAt": null
               },
@@ -970,6 +974,7 @@ interface FundingControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 12,
+                "shareKey": "0123456789abcdef0123456789abcdef",
                 "type": "BIRTHDAY",
                 "title": null,
                 "celebrantName": "지유",
@@ -1022,6 +1027,7 @@ interface FundingControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 12,
+                "shareKey": "0123456789abcdef0123456789abcdef",
                 "type": "BIRTHDAY",
                 "title": "지유의 생일",
                 "story": "올해 생일에는 오래 사용한 헤드폰을 바꾸고 싶어요.",
@@ -1425,6 +1431,7 @@ interface FundingControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 21,
+                "shareKey": "0123456789abcdef0123456789abcdef",
                 "recipientName": "지유",
                 "recipientWithdrawn": false,
                 "productName": "소니 WH-1000XM5",
@@ -1453,6 +1460,7 @@ interface FundingControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 21,
+                "shareKey": "0123456789abcdef0123456789abcdef",
                 "recipientName": "지유",
                 "recipientWithdrawn": false,
                 "productName": "소니 WH-1000XM5",

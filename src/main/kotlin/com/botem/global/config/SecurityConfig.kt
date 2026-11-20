@@ -39,7 +39,7 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
-                it.requestMatchers(HttpMethod.GET, "/api/fundings/{fundingId:\\d+}").permitAll()
+                it.requestMatchers(HttpMethod.GET, "/api/fundings/share/{shareKey}").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/thank-cards/*").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/wish-profiles/*").permitAll()
                 it.requestMatchers(HttpMethod.POST, *GUEST_ALLOWED_POST_URIS).access(REJECT_INVALID_TOKEN)
@@ -80,15 +80,15 @@ class SecurityConfig(
 
     companion object {
         private val GUEST_ALLOWED_POST_URIS = arrayOf(
-            "/api/fundings/{fundingId:\\d+}/contributions",
-            "/api/fundings/{fundingId:\\d+}/contributions/message-only",
-            "/api/fundings/{fundingId:\\d+}/contributions/{contributionId:\\d+}/transfer-sent",
-            "/api/fundings/{fundingId:\\d+}/contributions/guest/access",
-            "/api/fundings/{fundingId:\\d+}/rolling-paper-attachments/upload-url",
+            "/api/fundings/share/{shareKey}/contributions",
+            "/api/fundings/share/{shareKey}/contributions/message-only",
+            "/api/fundings/share/{shareKey}/contributions/{contributionId:\\d+}/transfer-sent",
+            "/api/fundings/share/{shareKey}/contributions/guest/access",
+            "/api/fundings/share/{shareKey}/rolling-paper-attachments/upload-url",
         )
 
         private const val GUEST_CONTRIBUTION_URI =
-            "/api/fundings/{fundingId:\\d+}/contributions/guest"
+            "/api/fundings/share/{shareKey}/contributions/guest"
 
         // 비로그인도 허용하지만, 보낸 토큰이 유효하지 않으면 본문 검증보다 먼저 401로 응답한다
         private val REJECT_INVALID_TOKEN = AuthorizationManager<RequestAuthorizationContext> { _, context ->
