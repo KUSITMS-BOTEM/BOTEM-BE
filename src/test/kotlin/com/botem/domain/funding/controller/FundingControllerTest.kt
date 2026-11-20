@@ -114,6 +114,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.celebrantName").value("지유"))
             .andExpect(jsonPath("$.data.targetAmount").value(100_000))
             .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
+            .andExpect(jsonPath("$.data.participants[0].contributedDate").value("2026-11-12"))
     }
 
     @Test
@@ -586,7 +587,14 @@ class FundingControllerTest {
             confirmedPercentage = 40,
             pendingPercentage = 10,
             participantCount = 1,
-            participants = listOf(FundingDetailParticipantResponse(order = 1, name = "지유", profileImageUrl = null)),
+            participants = listOf(
+                FundingDetailParticipantResponse(
+                    order = 1,
+                    name = "지유",
+                    profileImageUrl = null,
+                    contributedDate = LocalDate.of(2026, 11, 12),
+                ),
+            ),
             displayStatus = FundingDisplayStatus.IN_PROGRESS,
             canContributeAmount = true,
             canParticipate = true,

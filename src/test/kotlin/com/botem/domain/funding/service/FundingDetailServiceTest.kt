@@ -30,6 +30,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Optional
@@ -59,10 +60,16 @@ class FundingDetailServiceTest {
     fun `로그인 참여자는 한 번만, 비로그인 참여는 각각 집계하고 취소된 참여는 제외한다`() {
         givenFunding(funding())
         givenContributions(
-            contribution(userId = PARTICIPANT_ID, name = "지유", amount = 30_000L, confirmed = true),
-            contribution(userId = null, name = "익명1", amount = 10_000L, status = ContributionStatus.PENDING_CONFIRMATION),
-            contribution(userId = PARTICIPANT_ID, name = "지유 다른 이름", amount = 20_000L, confirmed = true),
-            contribution(userId = null, name = "익명2", amount = 0L, status = ContributionStatus.MESSAGE_ONLY),
+            contribution(userId = PARTICIPANT_ID, name = "지유", amount = 30_000L, confirmed = true, createdAt = NOW.minusDays(3)),
+            contribution(
+                userId = null,
+                name = "익명1",
+                amount = 10_000L,
+                status = ContributionStatus.PENDING_CONFIRMATION,
+                createdAt = NOW.minusDays(2),
+            ),
+            contribution(userId = PARTICIPANT_ID, name = "지유 다른 이름", amount = 20_000L, confirmed = true, createdAt = NOW.minusDays(1)),
+            contribution(userId = null, name = "익명2", amount = 0L, status = ContributionStatus.MESSAGE_ONLY, createdAt = NOW.minusDays(1)),
             contribution(userId = 99L, name = "취소한 친구", amount = 50_000L, status = ContributionStatus.CANCELLED),
         )
         given(userRepository.findAllById(setOf(PARTICIPANT_ID)))
@@ -73,6 +80,10 @@ class FundingDetailServiceTest {
         assertEquals(3, result.participantCount)
         assertEquals(listOf(1, 2, 3), result.participants.map { it.order })
         assertEquals(listOf("지유", "익명1", "익명2"), result.participants.map { it.name })
+        assertEquals(
+            listOf(LocalDate.of(2026, 11, 12), LocalDate.of(2026, 11, 13), LocalDate.of(2026, 11, 14)),
+            result.participants.map { it.contributedDate },
+        )
         assertEquals("https://image.example.com/jiyu.jpg", result.participants[0].profileImageUrl)
         assertNull(result.participants[1].profileImageUrl)
         assertEquals(50, result.confirmedPercentage)
@@ -365,6 +376,7 @@ class FundingDetailServiceTest {
         amount: Long,
         status: ContributionStatus = ContributionStatus.AWAITING_TRANSFER,
         confirmed: Boolean = false,
+        createdAt: LocalDateTime = NOW.minusDays(1),
     ): Contribution =
         Contribution(
             fundingId = FUNDING_ID,
@@ -374,6 +386,7 @@ class FundingDetailServiceTest {
             status = status,
             guestPasswordHash = null,
         ).also {
+            setBaseField(it, "createdAt", createdAt)
             if (confirmed) {
                 it.markTransferSent()
                 it.confirm(NOW)
@@ -386,6 +399,13 @@ class FundingDetailServiceTest {
 
     private fun setField(target: Any, fieldName: String, value: Any) {
         target.javaClass.getDeclaredField(fieldName).apply {
+            isAccessible = true
+            set(target, value)
+        }
+    }
+
+    private fun setBaseField(target: Any, fieldName: String, value: Any) {
+        target.javaClass.superclass.getDeclaredField(fieldName).apply {
             isAccessible = true
             set(target, value)
         }
