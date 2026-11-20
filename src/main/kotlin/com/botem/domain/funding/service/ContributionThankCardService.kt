@@ -6,7 +6,9 @@ import com.botem.domain.funding.dto.response.ContributionThankCardResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.ContributionThankCard
+import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.ContributionThankCardRepository
@@ -41,9 +43,7 @@ class ContributionThankCardService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        if (funding.ownerId != userId) {
-            throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
-        }
+        validateSender(funding, userId)
 
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
@@ -67,6 +67,23 @@ class ContributionThankCardService(
         )
 
         return toSendResponse(thankCard)
+    }
+
+    private fun validateSender(funding: Funding, userId: Long) {
+        when (funding.type) {
+            FundingType.BIRTHDAY -> {
+                if (funding.ownerId != userId) {
+                    throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
+                }
+            }
+
+            FundingType.SURPRISE -> {
+                funding.validateSurpriseRevealAccess(userId, LocalDateTime.now(clock))
+                if (funding.surpriseOpenedAt == null) {
+                    throw BusinessException(FundingErrorCode.SURPRISE_NOT_OPENED)
+                }
+            }
+        }
     }
 
     @Transactional(readOnly = true)
