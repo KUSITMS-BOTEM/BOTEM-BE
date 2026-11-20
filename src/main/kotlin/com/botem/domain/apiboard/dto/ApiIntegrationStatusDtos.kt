@@ -18,8 +18,8 @@ data class UpdateApiIntegrationStatusRequest(
 
     val integrated: Boolean = false,
 
-    @field:Size(max = ApiIntegrationStatus.MAX_MEMO_LENGTH)
-    val memo: String? = null,
+    @field:Size(max = ApiIntegrationStatus.MAX_OWNER_LENGTH)
+    val frontendOwner: String? = null,
 )
 
 data class ApiIntegrationStatusResponse(
@@ -27,7 +27,7 @@ data class ApiIntegrationStatusResponse(
     val path: String,
     val owner: String?,
     val integrated: Boolean,
-    val memo: String?,
+    val frontendOwner: String?,
 ) {
     companion object {
         fun from(status: ApiIntegrationStatus): ApiIntegrationStatusResponse =
@@ -36,7 +36,7 @@ data class ApiIntegrationStatusResponse(
                 path = status.path,
                 owner = status.owner,
                 integrated = status.integrated,
-                memo = status.memo,
+                frontendOwner = status.frontendOwner,
             )
     }
 }

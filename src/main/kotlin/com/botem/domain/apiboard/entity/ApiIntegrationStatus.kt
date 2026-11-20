@@ -9,7 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 
-// API 목록은 OpenAPI 스펙에서 읽고, 코드로 알 수 없는 담당자·연동 여부만 여기 저장한다
+// API 목록은 OpenAPI 스펙에서 읽고, 코드로 알 수 없는 백엔드·프론트 담당자와 연동 여부만 여기 저장한다
 @Entity
 @Table(
     name = "api_integration_statuses",
@@ -28,7 +28,7 @@ class ApiIntegrationStatus(
 
     integrated: Boolean = false,
 
-    memo: String? = null,
+    frontendOwner: String? = null,
 ) : BaseEntity() {
 
     @Id
@@ -43,18 +43,17 @@ class ApiIntegrationStatus(
     var integrated: Boolean = integrated
         protected set
 
-    @Column(length = MAX_MEMO_LENGTH)
-    var memo: String? = memo
+    @Column(length = MAX_OWNER_LENGTH)
+    var frontendOwner: String? = frontendOwner
         protected set
 
-    fun update(owner: String?, integrated: Boolean, memo: String?) {
+    fun update(owner: String?, integrated: Boolean, frontendOwner: String?) {
         this.owner = owner
         this.integrated = integrated
-        this.memo = memo
+        this.frontendOwner = frontendOwner
     }
 
     companion object {
         const val MAX_OWNER_LENGTH = 20
-        const val MAX_MEMO_LENGTH = 200
     }
 }
