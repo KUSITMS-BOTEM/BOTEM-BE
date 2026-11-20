@@ -16,7 +16,6 @@ data class SurpriseRevealDetailResponse(
     val messageCount: Int,
     val revealAt: LocalDateTime,
     val openedAt: LocalDateTime?,
-    val thankCardSent: Boolean,
     val messages: List<RollingPaperMessageResponse>,
 ) {
     companion object {
@@ -26,7 +25,6 @@ data class SurpriseRevealDetailResponse(
             organizerName: String,
             summary: FundingContributionSummary,
             messages: List<RollingPaperMessageProjection>,
-            thankCardSent: Boolean,
         ): SurpriseRevealDetailResponse =
             SurpriseRevealDetailResponse(
                 fundingId = funding.id,
@@ -39,7 +37,6 @@ data class SurpriseRevealDetailResponse(
                 messageCount = messages.size,
                 revealAt = checkNotNull(funding.revealAt),
                 openedAt = funding.surpriseOpenedAt,
-                thankCardSent = thankCardSent,
                 messages = messages.map(RollingPaperMessageResponse::from),
             )
     }

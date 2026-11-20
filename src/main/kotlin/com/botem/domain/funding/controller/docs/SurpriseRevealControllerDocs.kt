@@ -1,14 +1,11 @@
 package com.botem.domain.funding.controller.docs
 
-import com.botem.domain.funding.dto.request.SendSurpriseThankCardRequest
 import com.botem.domain.funding.dto.response.SurpriseRevealDetailResponse
-import com.botem.domain.funding.dto.response.SurpriseThankCardResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
-import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -119,82 +116,6 @@ interface SurpriseRevealControllerDocs {
         @Parameter(hidden = true) userId: Long,
         @Parameter(description = "서프라이즈 펀딩 ID") fundingId: Long,
     ): ApiResponse<SurpriseRevealDetailResponse>
-
-    @Operation(
-        summary = "서프라이즈 감사 카드 전송",
-        description = """
-            열린 서프라이즈의 주최자와 참여자에게 전달할 감사 메시지를 저장합니다.
-            메시지는 앞뒤 공백을 제거한 뒤 최대 1,000자까지 저장합니다.
-            이미 감사 카드를 보낸 펀딩에 다시 요청하면 최초에 저장한 카드를 반환하며 내용을 변경하지 않습니다.
-            감사 카드 전송 후 홈 공개 카드에서는 제외되고 펀딩은 선물 인증 대기 상태로 전환됩니다.
-            대기 중 선물 인증 정보를 함께 생성하며, 펀딩의 최종 완료는 별도의 선물 인증에서 처리합니다.
-        """,
-    )
-    @RequestBody(
-        content = [Content(examples = [ExampleObject(value = THANK_CARD_REQUEST_EXAMPLE)])],
-    )
-    @ApiResponses(
-        SwaggerApiResponse(
-            responseCode = "200",
-            description = "감사 카드 전송 또는 기존 감사 카드 반환",
-            content = [Content(examples = [ExampleObject(value = THANK_CARD_RESPONSE_EXAMPLE)])],
-        ),
-        SwaggerApiResponse(
-            responseCode = "400",
-            description = "서프라이즈 펀딩이 아니거나 메시지가 올바르지 않음",
-            content = [
-                Content(
-                    examples = [
-                        ExampleObject(name = "FUNDING_014", summary = "서프라이즈 아님", value = SURPRISE_REQUIRED_EXAMPLE),
-                        ExampleObject(name = "COMMON_001", summary = "메시지 오류", value = INVALID_INPUT_EXAMPLE),
-                    ],
-                ),
-            ],
-        ),
-        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
-        SwaggerApiResponse(
-            responseCode = "403",
-            description = "서프라이즈 수신자가 아님",
-            content = [Content(examples = [ExampleObject(value = RECIPIENT_ONLY_EXAMPLE)])],
-        ),
-        SwaggerApiResponse(
-            responseCode = "404",
-            description = "펀딩이 없거나 아직 공개되지 않음",
-            content = [
-                Content(
-                    examples = [
-                        ExampleObject(name = "FUNDING_002", summary = "펀딩 없음", value = FUNDING_NOT_FOUND_EXAMPLE),
-                        ExampleObject(
-                            name = "FUNDING_016",
-                            summary = "공개 전",
-                            value = REVEAL_NOT_AVAILABLE_EXAMPLE,
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        SwaggerApiResponse(
-            responseCode = "409",
-            description = "서프라이즈를 열지 않았거나 감사 카드를 보낼 수 없는 상태",
-            content = [
-                Content(
-                    examples = [
-                        ExampleObject(
-                            name = "FUNDING_017",
-                            summary = "처리 불가 상태",
-                            value = REVEAL_NOT_OPENABLE_EXAMPLE,
-                        ),
-                        ExampleObject(name = "FUNDING_018", summary = "열기 전", value = NOT_OPENED_EXAMPLE),
-                    ],
-                ),
-            ],
-        ),
-    )
-    fun sendThankCard(
-        @Parameter(hidden = true) userId: Long,
-        @Parameter(description = "서프라이즈 펀딩 ID") fundingId: Long,
-        request: SendSurpriseThankCardRequest,
-    ): ApiResponse<SurpriseThankCardResponse>
 
     companion object {
         private const val DETAIL_RESPONSE_EXAMPLE = """

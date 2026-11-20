@@ -3,7 +3,6 @@ package com.botem.domain.funding.dto.response
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerification
-import com.botem.domain.funding.entity.SurpriseThankCard
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -34,7 +33,6 @@ data class FundingDetailResponse(
     val canParticipate: Boolean,
     val ownerPreview: Boolean,
     val giftVerification: FundingDetailGiftVerificationResponse?,
-    val thankCard: FundingDetailThankCardResponse?,
 )
 
 // 구매 경로와 대체 상품명은 공개하지 않는다
@@ -49,19 +47,6 @@ data class FundingDetailGiftVerificationResponse(
                 imageUrl = giftVerification.imageUrl,
                 thankYouMessage = giftVerification.thankYouMessage,
                 completedAt = giftVerification.completedAt,
-            )
-    }
-}
-
-data class FundingDetailThankCardResponse(
-    val message: String,
-    val sentAt: LocalDateTime,
-) {
-    companion object {
-        fun from(thankCard: SurpriseThankCard): FundingDetailThankCardResponse =
-            FundingDetailThankCardResponse(
-                message = thankCard.message,
-                sentAt = thankCard.sentAt,
             )
     }
 }

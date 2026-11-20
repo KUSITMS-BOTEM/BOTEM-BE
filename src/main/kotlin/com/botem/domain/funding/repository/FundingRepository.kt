@@ -219,11 +219,6 @@ interface FundingRepository : JpaRepository<Funding, Long> {
             com.botem.domain.funding.entity.FundingStatus.REVEALED,
             com.botem.domain.funding.entity.FundingStatus.WAITING_GIFT_VERIFICATION
           )
-          AND NOT EXISTS (
-              SELECT thankCard.id
-              FROM SurpriseThankCard thankCard
-              WHERE thankCard.fundingId = funding.id
-          )
         GROUP BY
             funding.id,
             funding.product.imageUrl,
