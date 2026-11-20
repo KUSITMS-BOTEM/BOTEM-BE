@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
@@ -144,6 +145,31 @@ class ContributionServiceTest {
         val captor = ArgumentCaptor.forClass(RollingPaperMessage::class.java)
         verify(rollingPaperMessageRepository, times(2)).save(captor.capture())
         assertEquals(listOf("다 모였네", null), captor.allValues.map { it.voiceTranscript })
+    }
+
+    @Test
+    fun `첨부 확인은 펀딩 잠금 전에 하고, 실패하면 펀딩을 잠그지 않는다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+
+        service.contribute(null, FUNDING_ID, request(voiceUrl = VOICE_URL, voiceDurationSeconds = 12))
+
+        val order = inOrder(rollingPaperAttachmentService, fundingRepository)
+        order.verify(rollingPaperAttachmentService)
+            .validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.VOICE, VOICE_URL)
+        order.verify(fundingRepository).findByIdForUpdate(FUNDING_ID)
+
+        given(
+            rollingPaperAttachmentService.validateUploadedAttachment(
+                FUNDING_ID,
+                RollingPaperAttachmentType.PHOTO,
+                PHOTO_URL,
+            ),
+        ).willThrow(BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_NOT_UPLOADED))
+        assertErrorCode(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_NOT_UPLOADED) {
+            service.leaveMessage(null, FUNDING_ID, messageRequest(photoUrl = PHOTO_URL))
+        }
+        verify(fundingRepository, times(1)).findByIdForUpdate(FUNDING_ID)
     }
 
     @Test
