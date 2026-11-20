@@ -495,6 +495,7 @@ interface FundingControllerDocs {
         summary = "마감된 펀딩 결과 조회",
         description = """
             로그인한 펀딩 개설자가 마감된 생일 펀딩의 결과를 조회합니다. 마감 여부는 마감일과 현재 시각으로 판단합니다.
+            마감 전이라도 확정 금액이 목표에 닿았고 확인 대기가 0건이면 조회할 수 있습니다(홈 '지금 펑! 열까요?'). 그 외 마감 전에는 FUNDING_005를 반환합니다.
             결과를 열기 전에 처음 조회하면 보태기를 마감하고, 아직 송금 전인 참여는 금액을 빼고 메시지 전용으로 바꿉니다.
             확정 금액은 입금 확인이 완료된 참여만 합산하고, 참여자 수는 취소된 참여를 제외합니다.
             messageCount가 0보다 크면 금액이 0원이어도 롤링페이퍼를 공개하고, participantCount가 0이면 참여자 0명 화면을 보여줍니다.
@@ -532,7 +533,7 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감 전이거나 결과를 조회할 수 없는 상태",
+            description = "마감 전(목표 미달 또는 확인 대기 있음)이거나 결과를 조회할 수 없는 상태",
             content = [
                 Content(
                     examples = [
@@ -556,6 +557,9 @@ interface FundingControllerDocs {
         summary = "펀딩 결과 팡 열기",
         description = """
             마감된 생일 펀딩의 결과를 열고 선물 준비 단계로 전환합니다. 결과를 연 뒤에는 참여 상태와 결과 금액을 바꿀 수 없습니다.
+            마감 전이라도 확정 금액이 목표에 닿았고 확인 대기가 0건이면 열 수 있으며, 연 뒤에는 마감일 전이어도 금액 보태기·메시지·보탬 수정이 모두 막힙니다.
+            마감 전에는 목표를 달성했어도 확인 대기가 있으면 excludePendingContributions 값과 관계없이 열 수 없고 FUNDING_007을 반환합니다.
+            마감 전 목표 미달이면 FUNDING_005를 반환합니다.
             입금 확인 대기 참여가 남아 있으면 FUNDING_007을 반환합니다. 확인 대기는 자동으로 확정하지 않습니다.
             excludePendingContributions=true로 요청하면 남은 확인 대기를 결과 금액에서 제외하고 엽니다.
             제외된 참여는 상태를 그대로 유지해 참여자에게는 '확인 중'으로 보입니다.

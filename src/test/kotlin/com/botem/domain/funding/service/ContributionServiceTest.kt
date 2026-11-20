@@ -355,6 +355,17 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `마감 전에 결과를 연 펀딩에는 금액도 메시지도 보탤 수 없다`() {
+        givenFunding(confirmedAmount = TARGET_AMOUNT)
+        requireNotNull(fundingRepository.findByIdForUpdate(FUNDING_ID)).openResult(NOW, earlyOpenable = true)
+
+        assertErrorCode(FundingErrorCode.FUNDING_CLOSED) {
+            service.leaveMessage(null, FUNDING_ID, messageRequest())
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
     fun `마감된 펀딩에는 메시지로 보탤 수 없다`() {
         givenFunding(confirmedAmount = 0L, deadline = NOW)
 

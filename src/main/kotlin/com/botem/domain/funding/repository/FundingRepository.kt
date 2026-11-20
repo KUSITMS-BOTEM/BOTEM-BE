@@ -164,7 +164,7 @@ interface FundingRepository : JpaRepository<Funding, Long> {
         statuses: Collection<FundingStatus>,
     ): Funding?
 
-    // 홈의 진행 중 기준과 맞춰, 생일은 마감일 경과 또는 조기 마감, 서프라이즈는 공개 시각 경과를 마감으로 본다
+    // 홈의 진행 중 기준과 맞춰, 생일은 마감일 경과·조기 마감·마감 전 결과 열기, 서프라이즈는 공개 시각 경과를 마감으로 본다
     @Query(
         """
         SELECT funding
@@ -174,7 +174,7 @@ interface FundingRepository : JpaRepository<Funding, Long> {
           AND (
             (
               funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
-              AND (funding.deadline <= :now OR funding.earlyClosedAt IS NOT NULL)
+              AND (funding.deadline <= :now OR funding.earlyClosedAt IS NOT NULL OR funding.resultOpenedAt IS NOT NULL)
             )
             OR
             (

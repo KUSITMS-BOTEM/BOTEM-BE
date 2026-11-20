@@ -309,6 +309,53 @@ class FundingResultServiceTest {
         assertFalse(second.thankCardSent)
     }
 
+    @Test
+    fun `마감 전이라도 목표를 달성하고 확인 대기가 없으면 결과를 조회하고 열 수 있다`() {
+        val funding = funding(deadline = NOW.plusDays(3))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 4L)))
+
+        val viewed = service.getResult(USER_ID, FUNDING_ID)
+        val opened = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
+
+        assertEquals(null, viewed.resultOpenedAt)
+        assertEquals(NOW, opened.resultOpenedAt)
+        assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
+        // 연 뒤에는 마감 전이어도 결과를 다시 조회할 수 있다
+        assertEquals(NOW, service.getResult(USER_ID, FUNDING_ID).resultOpenedAt)
+    }
+
+    @Test
+    fun `마감 전에는 목표 미달이거나 확인 대기가 있으면 결과를 볼 수 없다`() {
+        val funding = funding(deadline = NOW.plusDays(3))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 99_999L, participantCount = 4L)))
+        assertEquals(
+            FundingErrorCode.FUNDING_NOT_ENDED,
+            assertFailsWith<BusinessException> { service.getResult(USER_ID, FUNDING_ID) }.errorCode,
+        )
+
+        // 목표를 달성했어도 확인 대기가 있으면 조회는 FUNDING_005, 열기는 제외 여부와 관계없이 FUNDING_007이다
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 4L, pendingCount = 1L)))
+        assertEquals(
+            FundingErrorCode.FUNDING_NOT_ENDED,
+            assertFailsWith<BusinessException> { service.getResult(USER_ID, FUNDING_ID) }.errorCode,
+        )
+        listOf(true, false).forEach { excludePending ->
+            assertEquals(
+                FundingErrorCode.PENDING_CONTRIBUTION_EXISTS,
+                assertFailsWith<BusinessException> {
+                    service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = excludePending)
+                }.errorCode,
+            )
+        }
+        assertEquals(null, funding.resultOpenedAt)
+    }
+
     private fun contribution(id: Long, userId: Long?, name: String, status: ContributionStatus): Contribution =
         Contribution(
             fundingId = FUNDING_ID,

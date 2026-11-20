@@ -116,6 +116,11 @@ class HomeFundingService(
             pendingPercentage = progressPercentage(summary.pendingAmount, funding.targetAmount),
             pendingContributionCount = summary.pendingCount,
             recipientName = recipientName,
+            // 결과 조회·열기 API의 마감 전 열기 조건과 같아야 한다
+            earlyOpenable = cardType == HomeFundingCardType.IN_PROGRESS &&
+                funding.type == FundingType.BIRTHDAY &&
+                summary.confirmedAmount >= funding.targetAmount &&
+                summary.pendingCount == 0L,
         )
     }
 
