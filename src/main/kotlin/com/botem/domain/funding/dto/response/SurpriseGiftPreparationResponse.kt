@@ -8,6 +8,8 @@ import java.time.LocalDateTime
 data class SurpriseGiftPreparationResponse(
     val fundingId: Long,
     val recipientName: String?,
+    // 받는 사람이 탈퇴해도 서프라이즈는 그대로 진행하고, 주최자에게 '받는 사람이 보탬을 떠났어요'를 보여준다
+    val recipientWithdrawn: Boolean,
     val productName: String,
     val productImageUrl: String,
     val productUrl: String,
@@ -29,6 +31,7 @@ data class SurpriseGiftPreparationResponse(
         fun from(
             funding: Funding,
             recipientName: String?,
+            recipientWithdrawn: Boolean,
             summary: FundingContributionSummary,
             achievementPercentage: Int,
             messageCount: Long,
@@ -36,6 +39,7 @@ data class SurpriseGiftPreparationResponse(
             SurpriseGiftPreparationResponse(
                 fundingId = funding.id,
                 recipientName = recipientName,
+                recipientWithdrawn = recipientWithdrawn,
                 productName = funding.product.name,
                 productImageUrl = funding.product.imageUrl,
                 productUrl = funding.product.url,

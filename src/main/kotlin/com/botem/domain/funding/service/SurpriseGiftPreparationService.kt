@@ -9,6 +9,7 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
+import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
@@ -77,13 +78,12 @@ class SurpriseGiftPreparationService(
 
     private fun responseOf(funding: Funding): SurpriseGiftPreparationResponse {
         val summary = summaryOf(funding)
-        val recipientName = funding.recipientId
-            ?.let { userRepository.findById(it).orElse(null) }
-            ?.let { it.name ?: it.nickname }
+        val recipient = funding.recipientId?.let { userRepository.findById(it).orElse(null) }
 
         return SurpriseGiftPreparationResponse.from(
             funding = funding,
-            recipientName = recipientName,
+            recipientName = recipient?.let { it.name ?: it.nickname },
+            recipientWithdrawn = recipient?.status == UserStatus.WITHDRAWN,
             summary = summary,
             achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messageCount = rollingPaperMessageRepository.countByFundingId(funding.id),
