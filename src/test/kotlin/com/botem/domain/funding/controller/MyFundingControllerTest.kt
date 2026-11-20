@@ -35,6 +35,7 @@ class MyFundingControllerTest {
                 listOf(
                     ClosedFundingResponse(
                         fundingId = 12L,
+                        shareKey = "0123456789abcdef0123456789abcdef",
                         type = FundingType.BIRTHDAY,
                         productName = "에어팟 프로 2",
                         productImageUrl = "https://image.example.com/product.jpg",

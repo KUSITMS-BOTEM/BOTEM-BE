@@ -1,5 +1,7 @@
 package com.botem.domain.funding.controller
 
+import org.junit.jupiter.api.BeforeEach
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.request.CreateContributionRequest
 import com.botem.domain.funding.dto.request.CreateMessageContributionRequest
@@ -32,7 +34,21 @@ class ContributionControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
+
+    private lateinit var fundingShareKeyResolver: FundingShareKeyResolver
+
+
+    @MockitoBean
     private lateinit var contributionService: ContributionService
+
+    @BeforeEach
+
+    fun stubShareKey() {
+
+        given(fundingShareKeyResolver.fundingIdOf(SHARE_KEY)).willReturn(FUNDING_ID)
+
+    }
+
 
     @Test
     fun `로그인 사용자가 금액을 보태면 201과 받을 계좌를 반환한다`() {
@@ -53,7 +69,7 @@ class ContributionControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions", SHARE_KEY)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -84,7 +100,7 @@ class ContributionControllerTest {
             body(amount = 0L),
         ).forEach { content ->
             mockMvc.perform(
-                post("/api/fundings/{fundingId}/contributions", FUNDING_ID)
+                post("/api/fundings/share/{shareKey}/contributions", SHARE_KEY)
                     .with(loggedIn())
                     .with(csrf())
                     .contentType("application/json")
@@ -118,7 +134,7 @@ class ContributionControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions", SHARE_KEY)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -142,7 +158,7 @@ class ContributionControllerTest {
     @Test
     fun `금액에 소수를 보내면 잘라서 받지 않고 400을 반환한다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions", SHARE_KEY)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -166,7 +182,7 @@ class ContributionControllerTest {
         )
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/message-only", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/message-only", SHARE_KEY)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -182,7 +198,7 @@ class ContributionControllerTest {
     @Test
     fun `메시지로 보탤 때 메시지가 460자를 넘으면 400을 반환한다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/message-only", FUNDING_ID)
+            post("/api/fundings/share/{shareKey}/contributions/message-only", SHARE_KEY)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -203,7 +219,7 @@ class ContributionControllerTest {
         ).willReturn(TransferSentResponse(CONTRIBUTION_ID, ContributionStatus.PENDING_CONFIRMATION))
 
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", FUNDING_ID, CONTRIBUTION_ID)
+            post("/api/fundings/share/{shareKey}/contributions/{contributionId}/transfer-sent", SHARE_KEY, CONTRIBUTION_ID)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -216,7 +232,7 @@ class ContributionControllerTest {
     @Test
     fun `송금 완료 비밀번호가 숫자 4자리가 아니면 400을 반환한다`() {
         mockMvc.perform(
-            post("/api/fundings/{fundingId}/contributions/{contributionId}/transfer-sent", FUNDING_ID, CONTRIBUTION_ID)
+            post("/api/fundings/share/{shareKey}/contributions/{contributionId}/transfer-sent", SHARE_KEY, CONTRIBUTION_ID)
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -246,6 +262,7 @@ class ContributionControllerTest {
         """.trimIndent()
 
     companion object {
+        private const val SHARE_KEY = "0123456789abcdef0123456789abcdef"
         private const val USER_ID = 1L
         private const val FUNDING_ID = 10L
         private const val CONTRIBUTION_ID = 31L

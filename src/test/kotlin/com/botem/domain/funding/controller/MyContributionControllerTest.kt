@@ -1,5 +1,7 @@
 package com.botem.domain.funding.controller
 
+import org.junit.jupiter.api.BeforeEach
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.funding.dto.request.UpdateMyContributionRequest
 import com.botem.domain.funding.dto.response.MyContributionListResponse
 import com.botem.domain.funding.dto.response.MyContributionResponse
@@ -28,7 +30,21 @@ class MyContributionControllerTest {
     private lateinit var mockMvc: MockMvc
 
     @MockitoBean
+
+    private lateinit var fundingShareKeyResolver: FundingShareKeyResolver
+
+
+    @MockitoBean
     private lateinit var myContributionService: MyContributionService
+
+    @BeforeEach
+
+    fun stubShareKey() {
+
+        given(fundingShareKeyResolver.fundingIdOf(SHARE_KEY)).willReturn(FUNDING_ID)
+
+    }
+
 
     @Test
     fun `내 보탬을 조회하고 수정한다`() {
@@ -43,13 +59,13 @@ class MyContributionControllerTest {
             ),
         ).willReturn(response())
 
-        mockMvc.perform(get("/api/fundings/$FUNDING_ID/contributions/me").with(loggedIn()))
+        mockMvc.perform(get("/api/fundings/share/$SHARE_KEY/contributions/me").with(loggedIn()))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.editable").value(true))
             .andExpect(jsonPath("$.data.contributions[0].status").value("PENDING_CONFIRMATION"))
             .andExpect(jsonPath("$.data.contributions[0].photoUrl").value(PHOTO_URL))
         mockMvc.perform(
-            patch("/api/fundings/$FUNDING_ID/contributions/$CONTRIBUTION_ID")
+            patch("/api/fundings/share/$SHARE_KEY/contributions/$CONTRIBUTION_ID")
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -62,7 +78,7 @@ class MyContributionControllerTest {
     @Test
     fun `메시지가 비어 있으면 수정하지 않는다`() {
         mockMvc.perform(
-            patch("/api/fundings/$FUNDING_ID/contributions/$CONTRIBUTION_ID")
+            patch("/api/fundings/share/$SHARE_KEY/contributions/$CONTRIBUTION_ID")
                 .with(loggedIn())
                 .with(csrf())
                 .contentType("application/json")
@@ -93,6 +109,7 @@ class MyContributionControllerTest {
     private fun loggedIn() = authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))
 
     companion object {
+        private const val SHARE_KEY = "0123456789abcdef0123456789abcdef"
         private const val USER_ID = 1L
         private const val FUNDING_ID = 10L
         private const val CONTRIBUTION_ID = 21L
