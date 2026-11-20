@@ -8,6 +8,7 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.S3Properties
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import software.amazon.awssdk.core.exception.SdkException
@@ -32,6 +33,8 @@ class RollingPaperAttachmentService(
     private val s3Properties: S3Properties,
     private val clock: Clock,
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @Transactional(readOnly = true)
     fun createUploadUrl(
@@ -129,8 +132,10 @@ class RollingPaperAttachmentService(
             if (exception.statusCode() == NOT_FOUND_STATUS) {
                 throw BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_NOT_UPLOADED)
             }
+            log.warn("S3 롤링페이퍼 첨부 확인 실패. key={}, status={}", key, exception.statusCode(), exception)
             throw BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE)
         } catch (exception: SdkException) {
+            log.warn("S3 롤링페이퍼 첨부 확인 실패. key={}", key, exception)
             throw BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE)
         }
 
@@ -148,8 +153,10 @@ class RollingPaperAttachmentService(
             if (exception.statusCode() == NOT_FOUND_STATUS) {
                 throw BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_NOT_UPLOADED)
             }
+            log.warn("S3 롤링페이퍼 첨부 확인 실패. key={}, status={}", key, exception.statusCode(), exception)
             throw BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE)
         } catch (exception: SdkException) {
+            log.warn("S3 롤링페이퍼 첨부 확인 실패. key={}", key, exception)
             throw BusinessException(FundingErrorCode.ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE)
         }
 
