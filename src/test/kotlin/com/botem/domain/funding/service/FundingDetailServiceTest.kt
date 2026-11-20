@@ -168,6 +168,31 @@ class FundingDetailServiceTest {
     }
 
     @Test
+    fun `생일은 개설자, 서프라이즈는 받는 사람을 주인공으로 하고 목표 금액과 연장 여부를 반환한다`() {
+        given(userRepository.findById(OWNER_ID)).willReturn(
+            Optional.of(User(kakaoId = 1L, nickname = "지유닉", profileImageUrl = "https://image.example.com/jiyu.jpg", name = "지유")),
+        )
+        given(userRepository.findById(PARTICIPANT_ID)).willReturn(
+            Optional.of(User(kakaoId = 2L, nickname = "서준닉", profileImageUrl = null)),
+        )
+        givenContributions()
+
+        givenFunding(funding())
+        val birthday = service.getDetail(null, FUNDING_ID)
+        assertEquals("지유", birthday.celebrantName)
+        assertEquals("https://image.example.com/jiyu.jpg", birthday.celebrantProfileImageUrl)
+        assertEquals(100_000L, birthday.targetAmount)
+        assertFalse(birthday.extended)
+
+        givenFunding(funding(type = FundingType.SURPRISE))
+        // 이름이 없으면 닉네임을 쓴다
+        assertEquals("서준닉", service.getDetail(OWNER_ID, FUNDING_ID).celebrantName)
+
+        givenFunding(funding().also { setField(it, "extensionCount", 1) })
+        assertTrue(service.getDetail(null, FUNDING_ID).extended)
+    }
+
+    @Test
     fun `취소된 펀딩은 찾을 수 없다`() {
         givenFunding(funding(status = FundingStatus.CANCELLED))
 

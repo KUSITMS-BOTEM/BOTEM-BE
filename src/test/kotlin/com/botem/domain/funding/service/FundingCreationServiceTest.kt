@@ -134,6 +134,9 @@ class FundingCreationServiceTest {
         assertEquals(SURPRISE_PAYOUT_ACCOUNT, saved.value.payoutAccount)
         assertEquals(LocalDateTime.of(2026, 11, 30, 23, 59, 59, 999_999_000), saved.value.deadline)
         assertEquals(LocalDateTime.of(2026, 12, 1, 0, 0), saved.value.revealAt)
+        // 서버가 계산한 마감일·공개일을 개설 응답에도 내려준다
+        assertEquals(saved.value.deadline, response.deadline)
+        assertEquals(saved.value.revealAt, response.revealAt)
         assertFalse(saved.value.showOnRecipientProfile)
         assertEquals(true, saved.value.notifyRecipientFriends)
     }

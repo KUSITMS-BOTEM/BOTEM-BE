@@ -89,6 +89,8 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
             .andExpect(jsonPath("$.data.displayStatus").value("IN_PROGRESS"))
             .andExpect(jsonPath("$.data.ownerPreview").value(true))
+            .andExpect(jsonPath("$.data.celebrantName").value("지유"))
+            .andExpect(jsonPath("$.data.targetAmount").value(100_000))
     }
 
     @Test
@@ -103,7 +105,14 @@ class FundingControllerTest {
             promise = null,
         )
         given(fundingCreationService.createBirthdayFunding(USER_ID, request)).willReturn(
-            CreateFundingResponse(FUNDING_ID, FundingType.BIRTHDAY, FundingStatus.FUNDING, "https://botem.me/fundings/12"),
+            CreateFundingResponse(
+                FUNDING_ID,
+                FundingType.BIRTHDAY,
+                FundingStatus.FUNDING,
+                "https://botem.me/fundings/12",
+                LocalDateTime.of(2026, 11, 30, 23, 59, 59),
+                null,
+            ),
         )
 
         mockMvc.perform(
@@ -143,7 +152,14 @@ class FundingControllerTest {
             targetAmount = 39_000L,
         )
         given(fundingCreationService.createSurpriseFunding(USER_ID, request)).willReturn(
-            CreateFundingResponse(FUNDING_ID, FundingType.SURPRISE, FundingStatus.FUNDING, "https://botem.me/fundings/12"),
+            CreateFundingResponse(
+                FUNDING_ID,
+                FundingType.SURPRISE,
+                FundingStatus.FUNDING,
+                "https://botem.me/fundings/12",
+                LocalDateTime.of(2026, 12, 12, 23, 59, 59),
+                LocalDateTime.of(2026, 12, 13, 0, 0),
+            ),
         )
 
         mockMvc.perform(
@@ -166,6 +182,7 @@ class FundingControllerTest {
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.data.type").value("SURPRISE"))
             .andExpect(jsonPath("$.data.shareUrl").value("https://botem.me/fundings/12"))
+            .andExpect(jsonPath("$.data.revealAt").value("2026-12-13T00:00:00"))
 
         verify(fundingCreationService).createSurpriseFunding(USER_ID, request)
     }
@@ -491,6 +508,9 @@ class FundingControllerTest {
             fundingId = FUNDING_ID,
             type = FundingType.BIRTHDAY,
             title = "생일 선물 펀딩",
+            celebrantName = "지유",
+            celebrantProfileImageUrl = null,
+            targetAmount = 100_000L,
             product = FundingDetailProductResponse(
                 name = "무선 헤드폰",
                 imageUrl = "https://image.example.com/product.jpg",
@@ -502,6 +522,7 @@ class FundingControllerTest {
             story = "새 헤드폰이 필요해요",
             promise = null,
             deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
+            extended = false,
             remainingDays = 3L,
             confirmedPercentage = 40,
             pendingPercentage = 10,
@@ -520,6 +541,7 @@ class FundingControllerTest {
             fundingId = FUNDING_ID,
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
+            productUrl = "https://shop.example.com/product",
             targetAmount = 100_000L,
             confirmedAmount = 80_000L,
             achievementPercentage = 80,

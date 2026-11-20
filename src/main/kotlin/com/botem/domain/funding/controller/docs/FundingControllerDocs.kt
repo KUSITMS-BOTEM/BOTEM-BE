@@ -104,6 +104,7 @@ interface FundingControllerDocs {
             받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
             받는 사람 한 명당 공개 전 서프라이즈는 하나만 열 수 있고(공개 시각이 지나면 새로 열 수 있음), 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
             서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크입니다.
+            응답의 deadline·revealAt은 서버가 받는 사람 생일로 계산한 마감 시각과 공개 시각으로, 개설 완료 화면에 그대로 보여줍니다.
         """,
     )
     @RequestBody(
@@ -190,7 +191,9 @@ interface FundingControllerDocs {
         summary = "참여자용 펀딩 상세 조회",
         description = """
             공유 링크로 펀딩 정보와 진행 상태를 조회합니다. 로그인하지 않아도 조회할 수 있습니다.
-            금액은 노출하지 않고, 확정 달성률(입금 확인 완료)과 확인 대기 달성률만 반환합니다.
+            모인 금액은 노출하지 않고 확정 달성률(입금 확인 완료)과 확인 대기 달성률만 반환하며, 목표 금액(targetAmount)은 반환합니다.
+            celebrantName·celebrantProfileImageUrl은 '{이름}의 생일' 제목에 쓰는 주인공으로, 생일 펀딩은 개설자, 서프라이즈는 받는 사람입니다(이름이 없으면 닉네임).
+            extended는 기간을 연장한 펀딩이면 true입니다('기간이 연장됐어요' 배지).
             참여자 목록은 취소된 참여를 제외하고 첫 참여 순서대로 반환합니다. 로그인 참여자는 한 번만,
             비로그인 참여는 각각 한 명으로 집계하며 메시지만 남긴 참여자도 포함합니다.
             order는 참여 순서(1부터)이며 역할 배지 문구는 이 값으로 결정합니다.
@@ -748,7 +751,9 @@ interface FundingControllerDocs {
                 "fundingId": 13,
                 "type": "SURPRISE",
                 "status": "FUNDING",
-                "shareUrl": "https://botem.me/fundings/13"
+                "shareUrl": "https://botem.me/fundings/13",
+                "deadline": "2026-12-12T23:59:59.999999",
+                "revealAt": "2026-12-13T00:00:00"
               },
               "error": null
             }
@@ -837,7 +842,9 @@ interface FundingControllerDocs {
                 "fundingId": 12,
                 "type": "BIRTHDAY",
                 "status": "FUNDING",
-                "shareUrl": "https://botem.me/fundings/12"
+                "shareUrl": "https://botem.me/fundings/12",
+                "deadline": "2026-11-30T23:59:59.999999",
+                "revealAt": null
               },
               "error": null
             }
@@ -914,7 +921,10 @@ interface FundingControllerDocs {
               "data": {
                 "fundingId": 12,
                 "type": "BIRTHDAY",
-                "title": "생일에 에어팟 받고 싶어요",
+                "title": null,
+                "celebrantName": "지유",
+                "celebrantProfileImageUrl": "https://image.example.com/profile/jiyu.jpg",
+                "targetAmount": 300000,
                 "product": {
                   "name": "에어팟 프로 3",
                   "imageUrl": "https://image.example.com/product.jpg",
@@ -926,6 +936,7 @@ interface FundingControllerDocs {
                 "story": "올해 생일에는 오래 사용한 이어폰을 바꾸고 싶어요.",
                 "promise": "선물을 받으면 인증 사진을 올릴게요.",
                 "deadline": "2026-11-30T23:59:59",
+                "extended": false,
                 "remainingDays": 12,
                 "confirmedPercentage": 40,
                 "pendingPercentage": 10,
@@ -1100,6 +1111,7 @@ interface FundingControllerDocs {
                 "fundingId": 12,
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
+                "productUrl": "https://www.coupang.com/vp/products/1",
                 "targetAmount": 699000,
                 "confirmedAmount": 580000,
                 "achievementPercentage": 82,
@@ -1144,6 +1156,7 @@ interface FundingControllerDocs {
                 "fundingId": 12,
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
+                "productUrl": "https://www.coupang.com/vp/products/1",
                 "targetAmount": 699000,
                 "confirmedAmount": 710000,
                 "achievementPercentage": 101,

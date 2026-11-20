@@ -6,17 +6,22 @@ import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.entity.SurpriseThankCard
 import java.time.LocalDateTime
 
-// 공유 링크로 보는 펀딩 상세. 금액은 다른 참여자에게 노출하지 않도록 달성률만 반환한다
+// 공유 링크로 보는 펀딩 상세. 모인 금액은 다른 참여자에게 노출하지 않도록 달성률만 반환하고, 목표 금액은 보여준다
 data class FundingDetailResponse(
     val fundingId: Long,
     val type: FundingType,
     val title: String?,
+    // '{이름}의 생일' 제목용 주인공. 생일 펀딩은 개설자, 서프라이즈는 받는 사람이다
+    val celebrantName: String,
+    val celebrantProfileImageUrl: String?,
+    val targetAmount: Long,
     val product: FundingDetailProductResponse,
     val productChanged: Boolean,
     val productChangedAt: LocalDateTime?,
     val story: String?,
     val promise: String?,
     val deadline: LocalDateTime,
+    val extended: Boolean,
     val remainingDays: Long?,
     val confirmedPercentage: Int,
     val pendingPercentage: Int,

@@ -19,4 +19,6 @@ data class HomeFundingCardResponse(
     val recipientName: String? = null,
     // 마감 전이지만 목표를 달성하고 확인 대기가 없어 지금 결과를 열 수 있는 생일 펀딩
     val earlyOpenable: Boolean = false,
+    // 서프라이즈 카드의 진행 단계. 생일 펀딩은 null
+    val surpriseStage: SurpriseStage? = null,
 )

@@ -11,6 +11,7 @@ import com.botem.domain.home.dto.response.HomeFundingCardResponse
 import com.botem.domain.home.dto.response.HomeFundingCardType
 import com.botem.domain.home.dto.response.HomeFundingListResponse
 import com.botem.domain.home.dto.response.HomeFundingParticipantPreviewResponse
+import com.botem.domain.home.dto.response.SurpriseStage
 import com.botem.domain.user.repository.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -121,8 +122,16 @@ class HomeFundingService(
                 funding.type == FundingType.BIRTHDAY &&
                 summary.confirmedAmount >= funding.targetAmount &&
                 summary.pendingCount == 0L,
+            surpriseStage = if (funding.type == FundingType.SURPRISE) surpriseStageOf(funding, now) else null,
         )
     }
+
+    private fun surpriseStageOf(funding: Funding, now: LocalDateTime): SurpriseStage =
+        when {
+            funding.isSurpriseGiftPrepared() -> SurpriseStage.GIFT_PREPARED
+            funding.earlyClosedAt != null || !funding.deadline.isAfter(now) -> SurpriseStage.GIFT_PREPARING
+            else -> SurpriseStage.IN_PROGRESS
+        }
 
     private fun isClosedUnopened(
         funding: Funding,

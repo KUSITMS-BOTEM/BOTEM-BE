@@ -321,6 +321,7 @@ class FundingResultServiceTest {
 
         assertEquals(null, viewed.resultOpenedAt)
         assertEquals(NOW, opened.resultOpenedAt)
+        assertEquals("https://shop.example.com/product", opened.productUrl)
         assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
         // 연 뒤에는 마감 전이어도 결과를 다시 조회할 수 있다
         assertEquals(NOW, service.getResult(USER_ID, FUNDING_ID).resultOpenedAt)
