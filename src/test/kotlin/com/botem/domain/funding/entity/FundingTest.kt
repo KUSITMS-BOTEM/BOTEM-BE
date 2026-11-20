@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class FundingTest {
@@ -594,6 +596,78 @@ class FundingTest {
         }
         assertEquals(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE, extensionException.errorCode)
     }
+
+    @Test
+    fun `결과를 연 생일 펀딩은 구매 전까지 상품을 바꾸고, 선물을 정하면 인증 대기가 되며 연장과 상품 변경이 막힌다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+        assertTrue(funding.isExtendable(OPENED_AT, confirmedAmount = 80_000L))
+        funding.openResult(OPENED_AT)
+
+        funding.changeProduct(newProduct(), OPENED_AT.plusMinutes(1))
+        assertEquals("새 상품", funding.product.name)
+        assertTrue(funding.isExtendable(OPENED_AT, confirmedAmount = 80_000L))
+
+        funding.chooseGift()
+        funding.chooseGift()
+
+        assertEquals(FundingStatus.WAITING_GIFT_VERIFICATION, funding.status)
+        assertFalse(funding.isExtendable(OPENED_AT, confirmedAmount = 80_000L))
+        val changeException = assertFailsWith<BusinessException> {
+            funding.changeProduct(newProduct(), OPENED_AT.plusMinutes(2))
+        }
+        assertEquals(FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE, changeException.errorCode)
+        val extensionException = assertFailsWith<BusinessException> {
+            funding.extendDeadline(
+                OPENED_AT.plusDays(5),
+                requestedAt = OPENED_AT,
+                extendedAt = OPENED_AT,
+                confirmedAmount = 80_000L,
+            )
+        }
+        assertEquals(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE, extensionException.errorCode)
+    }
+
+    @Test
+    fun `결과를 열기 전이거나 인증을 마친 생일 펀딩과 서프라이즈는 선물을 정할 수 없다`() {
+        val notOpened = funding(deadline = OPENED_AT.minusDays(1))
+        assertEquals(
+            FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE,
+            assertFailsWith<BusinessException> { notOpened.chooseGift() }.errorCode,
+        )
+        assertEquals(
+            FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE,
+            assertFailsWith<BusinessException> { notOpened.changeProduct(newProduct(), OPENED_AT) }.errorCode,
+        )
+
+        val completed = funding(deadline = OPENED_AT.minusDays(1))
+        setField(completed, "status", FundingStatus.COMPLETED)
+        assertEquals(
+            FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE,
+            assertFailsWith<BusinessException> { completed.chooseGift() }.errorCode,
+        )
+
+        val surprise = funding(FundingType.SURPRISE, OPENED_AT.minusDays(1), OPENED_AT.minusDays(1))
+        assertEquals(
+            FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED,
+            assertFailsWith<BusinessException> { surprise.chooseGift() }.errorCode,
+        )
+    }
+
+    @Test
+    fun `기간 연장 가능 여부는 마감 후 목표 미달이고 연장하지 않은 생일 펀딩만 true다`() {
+        val funding = funding(deadline = OPENED_AT.minusDays(1))
+
+        assertFalse(funding(deadline = OPENED_AT.plusDays(1)).isExtendable(OPENED_AT, 0L))
+        assertFalse(funding.isExtendable(OPENED_AT, confirmedAmount = 100_000L))
+        assertFalse(funding(FundingType.SURPRISE, OPENED_AT.minusDays(1), OPENED_AT).isExtendable(OPENED_AT, 0L))
+
+        funding.extendDeadline(OPENED_AT.plusDays(3), OPENED_AT, OPENED_AT, confirmedAmount = 0L)
+
+        assertFalse(funding.isExtendable(OPENED_AT.plusDays(4), confirmedAmount = 0L))
+    }
+
+    private fun newProduct(): FundingProductSnapshot =
+        FundingProductSnapshot(2L, "새 상품", "https://image.example.com/new.jpg", 1L, "https://shop.example.com/new")
 
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,

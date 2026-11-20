@@ -14,6 +14,7 @@ import com.botem.domain.funding.dto.response.FundingManagementActionsResponse
 import com.botem.domain.funding.dto.response.FundingManagementState
 import com.botem.domain.funding.dto.response.FundingResultContributionResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.GiftChoiceResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
@@ -26,6 +27,7 @@ import com.botem.domain.funding.service.FundingEarlyCloseService
 import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
+import com.botem.domain.funding.service.GiftChoiceService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.domain.funding.service.SurpriseGiftPreparationService
 import org.junit.jupiter.api.Test
@@ -76,6 +78,9 @@ class FundingControllerTest {
 
     @MockitoBean
     private lateinit var surpriseGiftPreparationService: SurpriseGiftPreparationService
+
+    @MockitoBean
+    private lateinit var giftChoiceService: GiftChoiceService
 
     @Test
     fun `로그인 사용자는 본인 ID로 펀딩 상세를 조회한다`() {
@@ -297,6 +302,30 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.contributions[0].hasMessage").value(true))
 
         verify(fundingResultService).openResult(USER_ID, FUNDING_ID, false)
+    }
+
+    @Test
+    fun `로그인한 개설자가 구매할 선물을 정한다`() {
+        given(giftChoiceService.choose(USER_ID, FUNDING_ID)).willReturn(
+            GiftChoiceResponse(
+                fundingId = FUNDING_ID,
+                giftVerificationId = 7L,
+                productName = "무선 헤드폰",
+                productImageUrl = "https://image.example.com/product.jpg",
+                productUrl = "https://shop.example.com/product",
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/gift-choice", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf()),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.giftVerificationId").value(7))
+            .andExpect(jsonPath("$.data.productUrl").value("https://shop.example.com/product"))
+
+        verify(giftChoiceService).choose(USER_ID, FUNDING_ID)
     }
 
     @Test
@@ -542,6 +571,7 @@ class FundingControllerTest {
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
             productUrl = "https://shop.example.com/product",
+            productChanged = false,
             targetAmount = 100_000L,
             confirmedAmount = 80_000L,
             achievementPercentage = 80,
@@ -551,6 +581,8 @@ class FundingControllerTest {
             pendingContributionCount = 0L,
             pendingCleanupRequired = false,
             resultOpenedAt = resultOpenedAt,
+            canExtend = false,
+            giftChosen = false,
             contributions = listOf(
                 FundingResultContributionResponse(
                     contributionId = 31L,

@@ -446,6 +446,7 @@ class HomeDomainPersistenceTest {
         )
         assertEquals(2L, targets[0].participantCount)
         assertEquals("스피커", targets[0].replacementProductName)
+        assertEquals("https://shop.example.com/product", targets[0].productUrl)
         assertEquals(0L, targets[1].participantCount)
     }
 

@@ -217,6 +217,7 @@ class HomeControllerTest {
                         fundingId = 12L,
                         productName = "무선 헤드폰",
                         productImageUrl = "https://image.example.com/product.jpg",
+                        productUrl = "https://shop.example.com/product",
                         fundingDeadline = LocalDateTime.of(2026, 11, 1, 23, 59),
                         participantCount = 6L,
                         replacementProductName = null,
