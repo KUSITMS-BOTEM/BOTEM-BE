@@ -3,6 +3,7 @@ package com.botem.domain.funding.controller.docs
 import com.botem.domain.funding.dto.request.SendContributionThankCardRequest
 import com.botem.domain.funding.dto.response.ContributionThankCardDetailResponse
 import com.botem.domain.funding.dto.response.ContributionThankCardResponse
+import com.botem.domain.funding.dto.response.SurpriseThankCardFriendsResponse
 import com.botem.global.response.ApiResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -115,6 +116,26 @@ interface ContributionThankCardControllerDocs {
     fun getSharedThankCard(
         @Parameter(description = "감사카드 공유 키") shareKey: String,
     ): ApiResponse<ContributionThankCardDetailResponse>
+
+    @Operation(
+        summary = "서프라이즈 고마운 친구 목록 조회",
+        description = """
+            공개된 서프라이즈를 연 수신자가 참여자별 감사카드 발송 대상을 조회합니다.
+            취소된 보탬은 제외하며, 참여 순서대로 보탬 ID·이름·메시지 구성·보탠 날짜·감사카드 발송 여부를 반환합니다.
+            organizer가 true인 항목은 서프라이즈를 연 주최자의 보탬입니다.
+        """,
+    )
+    @ApiResponses(
+        SwaggerApiResponse(responseCode = "200", description = "조회 성공"),
+        SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
+        SwaggerApiResponse(responseCode = "403", description = "서프라이즈 수신자가 아님"),
+        SwaggerApiResponse(responseCode = "404", description = "펀딩 없음 또는 공개 전 서프라이즈"),
+        SwaggerApiResponse(responseCode = "409", description = "서프라이즈를 열기 전"),
+    )
+    fun getSurpriseThankCardFriends(
+        @Parameter(hidden = true) userId: Long,
+        @Parameter(description = "서프라이즈 펀딩 ID") fundingId: Long,
+    ): ApiResponse<SurpriseThankCardFriendsResponse>
 
     companion object {
         private const val SEND_REQUEST_EXAMPLE = """
