@@ -125,6 +125,7 @@ class FundingDetailService(
                 order = index + 1,
                 name = contribution.participantName,
                 profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
+                contributedDate = contribution.createdAt.toLocalDate(),
             )
         }
     }
