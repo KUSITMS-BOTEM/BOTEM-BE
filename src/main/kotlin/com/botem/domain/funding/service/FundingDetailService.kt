@@ -55,17 +55,22 @@ class FundingDetailService(
         val displayStatus = displayStatus(funding, confirmedAmount, now)
         val beforeDeadline = funding.deadline.isAfter(now)
         val participationOpen = beforeDeadline && funding.status in PARTICIPATABLE_STATUSES
+        val celebrant = userRepository.findById(funding.recipientId ?: funding.ownerId).orElse(null)
 
         return FundingDetailResponse(
             fundingId = funding.id,
             type = funding.type,
             title = funding.title,
+            celebrantName = celebrant?.let { it.name ?: it.nickname }.orEmpty(),
+            celebrantProfileImageUrl = celebrant?.profileImageUrl,
+            targetAmount = funding.targetAmount,
             product = FundingDetailProductResponse.from(funding.product),
             productChanged = funding.productChangedAt != null,
             productChangedAt = funding.productChangedAt,
             story = funding.story,
             promise = funding.promise,
             deadline = funding.deadline,
+            extended = funding.extensionCount > 0,
             remainingDays = if (beforeDeadline) {
                 ChronoUnit.DAYS.between(now.toLocalDate(), funding.deadline.toLocalDate())
             } else {
