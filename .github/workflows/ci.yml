@@ -3,6 +3,10 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  # setup-gradle은 기본 브랜치(develop) 실행에서만 캐시를 저장하므로, 머지 후에도 테스트를 돌려
+  # 테스트 의존성까지 담긴 캐시를 남긴다. PR CI는 이 캐시를 읽어 Maven Central 다운로드(429)를 피한다
+  push:
+    branches: [develop]
 
 permissions:
   contents: read
@@ -34,7 +38,7 @@ jobs:
 
       # 기준 미달이어도 결과를 확인할 수 있도록 검증 전에 코멘트를 남긴다
       - name: PR 커버리지 코멘트
-        if: ${{ !cancelled() && steps.report.outcome == 'success' }}
+        if: ${{ github.event_name == 'pull_request' && !cancelled() && steps.report.outcome == 'success' }}
         uses: madrapps/jacoco-report@v1.8.0
         with:
           paths: build/reports/kover/report.xml
@@ -49,6 +53,7 @@ jobs:
 
       # 엔티티만 바꾸고 마이그레이션을 빠뜨린 경우도 잡도록 엔티티·설정 변경도 함께 감지한다
       - name: 마이그레이션 관련 변경 감지
+        if: github.event_name == 'pull_request'
         id: migration-changes
         env:
           BASE_REF: ${{ github.base_ref }}
