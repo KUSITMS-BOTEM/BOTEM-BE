@@ -30,6 +30,7 @@ import com.botem.domain.funding.service.FundingResultService
 import com.botem.domain.funding.service.GiftChoiceService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.domain.funding.service.SurpriseGiftPreparationService
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
@@ -96,6 +97,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.ownerPreview").value(true))
             .andExpect(jsonPath("$.data.celebrantName").value("지유"))
             .andExpect(jsonPath("$.data.targetAmount").value(100_000))
+            .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
     }
 
     @Test
@@ -340,6 +342,7 @@ class FundingControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.confirmedAmount").value(80_000))
+            .andExpect(jsonPath("$.data.productSellerName").value("BOTEM 브랜드샵"))
             .andExpect(jsonPath("$.data.giftPreparedAt").isEmpty)
 
         verify(surpriseGiftPreparationService).getPreparation(USER_ID, FUNDING_ID)
@@ -359,6 +362,7 @@ class FundingControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.recipientName").value("지유"))
+            .andExpect(jsonPath("$.data.productSellerName").value("BOTEM 브랜드샵"))
             .andExpect(jsonPath("$.data.giftPreparedAt").value("2026-11-15T00:00:00"))
 
         verify(surpriseGiftPreparationService).prepare(USER_ID, FUNDING_ID, true)
@@ -415,6 +419,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.managementState").value("NO_PARTICIPANTS"))
             .andExpect(jsonPath("$.data.pendingContributionCount").value(1))
             .andExpect(jsonPath("$.data.actions.canCloseEarly").value(true))
+            .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
     }
 
     @Test
@@ -497,6 +502,8 @@ class FundingControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.product.name").value("새 헤드폰"))
+            // 추천 상품이 아닌 위시로 바꾸면 판매자명이 없어도 필드는 null로 내려준다
+            .andExpect(jsonPath("$.data.product.sellerName").value(nullValue()))
             .andExpect(jsonPath("$.data.productChangedAt").value("2026-11-18T12:00:00"))
 
         verify(fundingProductChangeService).change(USER_ID, FUNDING_ID, 7L)
