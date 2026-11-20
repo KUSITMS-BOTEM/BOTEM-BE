@@ -7,6 +7,7 @@ data class PendingGiftVerificationTarget(
     val fundingId: Long,
     val productName: String,
     val productImageUrl: String,
+    val productUrl: String,
     val fundingDeadline: LocalDateTime,
     val participantCount: Long,
     val replacementProductName: String?,

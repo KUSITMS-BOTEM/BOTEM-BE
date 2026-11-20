@@ -238,4 +238,9 @@ enum class FundingErrorCode(
         "FUNDING_058",
         "펀딩 결과를 연 뒤 롤링페이퍼를 볼 수 있습니다.",
     ),
+    GIFT_CHOICE_NOT_AVAILABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_059",
+        "펀딩 결과를 연 뒤 구매 전까지만 선물을 고를 수 있습니다.",
+    ),
 }

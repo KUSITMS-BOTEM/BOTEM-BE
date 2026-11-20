@@ -2,6 +2,7 @@ package com.botem.domain.funding.dto.response
 
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import java.time.LocalDateTime
 
@@ -10,6 +11,7 @@ data class FundingResultResponse(
     val productName: String,
     val productImageUrl: String,
     val productUrl: String,
+    val productChanged: Boolean,
     val targetAmount: Long,
     val confirmedAmount: Long,
     val achievementPercentage: Int,
@@ -19,14 +21,19 @@ data class FundingResultResponse(
     val pendingContributionCount: Long,
     val pendingCleanupRequired: Boolean,
     val resultOpenedAt: LocalDateTime?,
+    val canExtend: Boolean,
+    val giftChosen: Boolean,
     val contributions: List<FundingResultContributionResponse>,
 ) {
     companion object {
+        private val GIFT_CHOSEN_STATUSES = setOf(FundingStatus.WAITING_GIFT_VERIFICATION, FundingStatus.COMPLETED)
+
         fun from(
             funding: Funding,
             summary: FundingContributionSummary,
             achievementPercentage: Int,
             messageCount: Long,
+            canExtend: Boolean,
             contributions: List<FundingResultContributionResponse>,
         ): FundingResultResponse =
             FundingResultResponse(
@@ -34,6 +41,7 @@ data class FundingResultResponse(
                 productName = funding.product.name,
                 productImageUrl = funding.product.imageUrl,
                 productUrl = funding.product.url,
+                productChanged = funding.productChangedAt != null,
                 targetAmount = funding.targetAmount,
                 confirmedAmount = summary.confirmedAmount,
                 achievementPercentage = achievementPercentage,
@@ -43,6 +51,8 @@ data class FundingResultResponse(
                 pendingContributionCount = summary.pendingCount,
                 pendingCleanupRequired = funding.resultOpenedAt == null && summary.pendingCount > 0,
                 resultOpenedAt = funding.resultOpenedAt,
+                canExtend = canExtend,
+                giftChosen = funding.status in GIFT_CHOSEN_STATUSES,
                 contributions = contributions,
             )
     }

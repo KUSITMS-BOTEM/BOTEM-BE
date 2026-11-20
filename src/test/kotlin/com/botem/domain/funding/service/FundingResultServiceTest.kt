@@ -66,6 +66,10 @@ class FundingResultServiceTest {
         assertFalse(result.targetReached)
         assertEquals(4L, result.participantCount)
         assertEquals(null, result.resultOpenedAt)
+        // 마감 후 목표 미달이면 기간 연장을 보여주고, 아직 선물을 고르지 않았다
+        assertTrue(result.canExtend)
+        assertFalse(result.giftChosen)
+        assertFalse(result.productChanged)
     }
 
     @Test
@@ -155,6 +159,7 @@ class FundingResultServiceTest {
         assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
         assertEquals(120, result.achievementPercentage)
         assertTrue(result.targetReached)
+        assertFalse(result.canExtend)
     }
 
     @Test
