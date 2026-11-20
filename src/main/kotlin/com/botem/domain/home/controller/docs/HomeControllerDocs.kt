@@ -29,6 +29,7 @@ interface HomeControllerDocs {
             recipientName은 서프라이즈 카드 제목에 쓰는 받는 사람 이름(이름이 없으면 닉네임)이며, 생일 펀딩은 null입니다.
             earlyOpenable은 마감 전이지만 확정 금액이 목표에 닿았고 확인 대기가 0건이라 지금 결과를 열 수 있는 생일 펀딩이면 true입니다.
             true면 '마감일이 아직 안 지났지만 지금 펑! 열까요?' 카드를 보여주고 결과 조회·팡 열기 API를 바로 호출할 수 있습니다.
+            surpriseStage는 서프라이즈 카드의 단계로 IN_PROGRESS(진행 중), GIFT_PREPARING(마감·조기 마감 후 선물 준비 전, SUR-PG-007), GIFT_PREPARED(선물 준비 완료, SUR-PG-008)이며 생일 펀딩은 null입니다.
         """,
     )
     @ApiResponses(
@@ -190,7 +191,8 @@ interface HomeControllerDocs {
                     "pendingPercentage": 0,
                     "pendingContributionCount": 0,
                     "recipientName": null,
-                    "earlyOpenable": false
+                    "earlyOpenable": false,
+                    "surpriseStage": null
                   },
                   {
                     "fundingId": 15,
@@ -215,7 +217,8 @@ interface HomeControllerDocs {
                     "pendingPercentage": 15,
                     "pendingContributionCount": 2,
                     "recipientName": "서준",
-                    "earlyOpenable": false
+                    "earlyOpenable": false,
+                    "surpriseStage": "IN_PROGRESS"
                   }
                 ],
                 "activeFundingCount": 1,
