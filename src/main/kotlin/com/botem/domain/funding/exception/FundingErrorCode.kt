@@ -228,4 +228,9 @@ enum class FundingErrorCode(
         "FUNDING_056",
         "실행 취소 가능 시간이 지났습니다.",
     ),
+    CONTRIBUTION_ALREADY_PARTICIPATED(
+        HttpStatus.CONFLICT,
+        "FUNDING_057",
+        "이미 이 펀딩에 보탰습니다. 내 보탬을 수정해 주세요.",
+    ),
 }

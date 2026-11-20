@@ -113,6 +113,19 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         @Param("now") now: LocalDateTime,
     ): Int
 
+    fun existsByFundingIdAndParticipantUserIdAndStatusNot(
+        fundingId: Long,
+        participantUserId: Long,
+        status: ContributionStatus,
+    ): Boolean
+
+    fun existsByFundingIdAndParticipantUserIdAndStatusNotAndCreatedAtAfter(
+        fundingId: Long,
+        participantUserId: Long,
+        status: ContributionStatus,
+        createdAt: LocalDateTime,
+    ): Boolean
+
     fun existsByFundingIdAndStatus(
         fundingId: Long,
         status: ContributionStatus,
