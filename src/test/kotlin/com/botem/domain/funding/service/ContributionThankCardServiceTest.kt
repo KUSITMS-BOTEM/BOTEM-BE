@@ -5,6 +5,7 @@ import com.botem.domain.funding.dto.request.SendContributionThankCardRequest
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.ContributionThankCard
+import com.botem.domain.funding.entity.ThankCardColor
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
@@ -63,13 +64,15 @@ class ContributionThankCardServiceTest {
             OWNER_ID,
             FUNDING_ID,
             CONTRIBUTION_ID,
-            SendContributionThankCardRequest("  정말 고마워!  "),
+            SendContributionThankCardRequest("  정말 고마워!  ", ThankCardColor.BLUE),
         )
 
         val captor = ArgumentCaptor.forClass(ContributionThankCard::class.java)
         verify(thankCardRepository).save(captor.capture())
         assertEquals("정말 고마워!", captor.value.message)
         assertEquals(NOW, captor.value.sentAt)
+        assertEquals(ThankCardColor.BLUE, captor.value.paperColor)
+        assertEquals(ThankCardColor.BLUE, response.paperColor)
         assertEquals(THANK_CARD_ID, response.thankCardId)
         assertEquals("https://botem.me/thank-cards/${captor.value.shareKey}", response.shareUrl)
     }
@@ -103,10 +106,12 @@ class ContributionThankCardServiceTest {
             OWNER_ID,
             FUNDING_ID,
             CONTRIBUTION_ID,
-            SendContributionThankCardRequest("변경 메시지"),
+            SendContributionThankCardRequest("변경 메시지", ThankCardColor.ORANGE),
         )
 
+        // 다시 보내도 처음 고른 색상을 바꾸지 않는다
         assertEquals("최초 메시지", response.message)
+        assertEquals(ThankCardColor.LIME, response.paperColor)
         assertEquals(NOW.minusMinutes(1), response.sentAt)
         verify(thankCardRepository, never()).save(any())
     }
@@ -227,6 +232,7 @@ class ContributionThankCardServiceTest {
 
         assertEquals(THANK_CARD_ID, response.thankCardId)
         assertEquals("고마워", response.message)
+        assertEquals(ThankCardColor.LIME, response.paperColor)
     }
 
     @Test
