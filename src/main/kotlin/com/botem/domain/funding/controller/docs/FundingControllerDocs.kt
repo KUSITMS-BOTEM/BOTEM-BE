@@ -200,6 +200,7 @@ interface FundingControllerDocs {
             참여자 목록은 취소된 참여를 제외하고 첫 참여 순서대로 반환합니다. 로그인 참여자는 한 번만,
             비로그인 참여는 각각 한 명으로 집계하며 메시지만 남긴 참여자도 포함합니다.
             order는 참여 순서(1부터)이며 역할 배지 문구는 이 값으로 결정합니다.
+            contributedDate는 해당 참여가 처음 생성된 날짜이며 yyyy-MM-dd 형식으로 반환합니다.
             displayStatus는 IN_PROGRESS(진행 중), TARGET_REACHED(목표 금액 달성), CLOSED(마감),
             GIFT_PREPARING(선물 준비 중), COMPLETED(인증 완료) 중 하나입니다.
             목표 금액 달성 후에는 canContributeAmount가 false, 마감 후에는 canParticipate도 false입니다.
@@ -998,8 +999,8 @@ interface FundingControllerDocs {
                 "pendingPercentage": 10,
                 "participantCount": 2,
                 "participants": [
-                  { "order": 1, "name": "지유", "profileImageUrl": "https://image.example.com/profile.jpg" },
-                  { "order": 2, "name": "익명 친구", "profileImageUrl": null }
+                  { "order": 1, "name": "지유", "profileImageUrl": "https://image.example.com/profile.jpg", "contributedDate": "2026-11-12" },
+                  { "order": 2, "name": "익명 친구", "profileImageUrl": null, "contributedDate": "2026-11-13" }
                 ],
                 "displayStatus": "IN_PROGRESS",
                 "canContributeAmount": true,
