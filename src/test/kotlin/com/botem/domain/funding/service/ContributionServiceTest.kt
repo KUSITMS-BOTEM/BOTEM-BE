@@ -172,6 +172,70 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `이미 보탠 회원은 금액도 메시지도 다시 보탤 수 없다`() {
+        givenFunding(confirmedAmount = 0L)
+        given(
+            contributionRepository.existsByFundingIdAndParticipantUserIdAndStatusNot(
+                FUNDING_ID,
+                USER_ID,
+                ContributionStatus.CANCELLED,
+            ),
+        ).willReturn(true)
+
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_ALREADY_PARTICIPATED) {
+            service.contribute(USER_ID, FUNDING_ID, request(guestPassword = null))
+        }
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_ALREADY_PARTICIPATED) {
+            service.leaveMessage(USER_ID, FUNDING_ID, messageRequest(guestPassword = null))
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
+    fun `연장한 펀딩은 연장 이후 보탬만 세어 회원이 다시 보탤 수 있다`() {
+        givenFunding(confirmedAmount = 0L)
+        val extendedAt = NOW.minusDays(1)
+        val funding = requireNotNull(fundingRepository.findByIdForUpdate(FUNDING_ID))
+        funding.javaClass.getDeclaredField("extendedAt").apply {
+            isAccessible = true
+            set(funding, extendedAt)
+        }
+        // 연장 전 보탬은 있어도 연장 이후 보탬이 없으면 허용한다
+        given(
+            contributionRepository.existsByFundingIdAndParticipantUserIdAndStatusNot(
+                FUNDING_ID,
+                USER_ID,
+                ContributionStatus.CANCELLED,
+            ),
+        ).willReturn(true)
+        givenSaveReturnsArgument()
+        given(userRepository.findById(USER_ID))
+            .willReturn(Optional.of(User(kakaoId = 1L, nickname = "지유친구", profileImageUrl = null)))
+
+        service.contribute(USER_ID, FUNDING_ID, request(guestPassword = null))
+
+        verify(contributionRepository).existsByFundingIdAndParticipantUserIdAndStatusNotAndCreatedAtAfter(
+            FUNDING_ID,
+            USER_ID,
+            ContributionStatus.CANCELLED,
+            extendedAt,
+        )
+        assertEquals(USER_ID, captureSavedContribution().participantUserId)
+
+        given(
+            contributionRepository.existsByFundingIdAndParticipantUserIdAndStatusNotAndCreatedAtAfter(
+                FUNDING_ID,
+                USER_ID,
+                ContributionStatus.CANCELLED,
+                extendedAt,
+            ),
+        ).willReturn(true)
+        assertErrorCode(FundingErrorCode.CONTRIBUTION_ALREADY_PARTICIPATED) {
+            service.leaveMessage(USER_ID, FUNDING_ID, messageRequest(guestPassword = null))
+        }
+    }
+
+    @Test
     fun `비회원은 이름과 숫자 4자리 비밀번호가 필수다`() {
         givenFunding(confirmedAmount = 0L)
 
