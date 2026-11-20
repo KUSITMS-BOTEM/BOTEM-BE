@@ -11,6 +11,7 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.funding.repository.projection.FundingParticipantPreviewProjection
 import com.botem.domain.home.dto.response.HomeFundingCardType
+import com.botem.domain.home.dto.response.SurpriseStage
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import org.junit.jupiter.api.Test
@@ -104,6 +105,41 @@ class HomeFundingServiceTest {
         val earlyOpenable = service.getHomeFundings(USER_ID).fundingCards.associate { it.fundingId to it.earlyOpenable }
 
         assertEquals(mapOf(1L to true, 2L to false, 3L to false, 4L to false), earlyOpenable)
+    }
+
+    @Test
+    fun `서프라이즈 카드는 진행 중·선물 준비·준비 완료 단계를 구분하고 생일 카드는 null이다`() {
+        val revealAt = LocalDateTime.of(2026, 11, 11, 0, 0)
+        val inProgress = funding(id = 1L, type = FundingType.SURPRISE, deadline = LocalDateTime.of(2026, 11, 9, 23, 59), revealAt = revealAt)
+        val preparing = funding(
+            id = 2L,
+            type = FundingType.SURPRISE,
+            status = FundingStatus.CLOSED,
+            deadline = LocalDateTime.of(2026, 11, 7, 23, 59),
+            revealAt = revealAt,
+        )
+        val prepared = funding(
+            id = 3L,
+            type = FundingType.SURPRISE,
+            status = FundingStatus.WAITING_REVEAL,
+            deadline = LocalDateTime.of(2026, 11, 7, 23, 59),
+            revealAt = revealAt,
+        )
+        val birthday = funding(id = 4L, type = FundingType.BIRTHDAY, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
+        given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
+            .willReturn(listOf(inProgress, preparing, prepared, birthday))
+
+        val stages = service.getHomeFundings(USER_ID).fundingCards.associate { it.fundingId to it.surpriseStage }
+
+        assertEquals(
+            mapOf(
+                1L to SurpriseStage.IN_PROGRESS,
+                2L to SurpriseStage.GIFT_PREPARING,
+                3L to SurpriseStage.GIFT_PREPARED,
+                4L to null,
+            ),
+            stages,
+        )
     }
 
     @Test
