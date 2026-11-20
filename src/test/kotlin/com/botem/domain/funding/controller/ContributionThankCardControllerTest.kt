@@ -60,6 +60,8 @@ class ContributionThankCardControllerTest {
 
     @Test
     fun `지원하지 않는 편지지 색상이면 400을 반환한다`() {
+        // 숫자는 enum 순서로 바뀌지 않고 거부한다
+        listOf("\"GOLD\"", "0").forEach { paperColor ->
         mockMvc.perform(
             post(
                 "/api/fundings/{fundingId}/contributions/{contributionId}/thank-card",
@@ -69,9 +71,10 @@ class ContributionThankCardControllerTest {
                 .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
                 .with(csrf())
                 .contentType("application/json")
-                .content("""{ "message": "고마워", "paperColor": "GOLD" }"""),
+                .content("""{ "message": "고마워", "paperColor": $paperColor }"""),
         )
             .andExpect(status().isBadRequest)
+        }
 
         verifyNoInteractions(contributionThankCardService)
     }
