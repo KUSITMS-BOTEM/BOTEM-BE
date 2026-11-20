@@ -80,6 +80,33 @@ class HomeFundingServiceTest {
     }
 
     @Test
+    fun `마감 전 목표를 달성하고 확인 대기가 없는 생일 펀딩만 지금 열 수 있다고 표시한다`() {
+        val openable = funding(id = 1L, type = FundingType.BIRTHDAY, status = FundingStatus.CLOSED, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
+        val pending = funding(id = 2L, type = FundingType.BIRTHDAY, status = FundingStatus.CLOSED, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
+        val notReached = funding(id = 3L, type = FundingType.BIRTHDAY, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
+        val surprise = funding(
+            id = 4L,
+            type = FundingType.SURPRISE,
+            deadline = LocalDateTime.of(2026, 11, 9, 23, 59),
+            revealAt = LocalDateTime.of(2026, 11, 11, 0, 0),
+        )
+        given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
+            .willReturn(listOf(openable, pending, notReached, surprise))
+        given(contributionRepository.summarizeByFundingIds(listOf(1L, 2L, 3L, 4L))).willReturn(
+            listOf(
+                summary(fundingId = 1L, confirmedAmount = 100_000L),
+                summary(fundingId = 2L, confirmedAmount = 100_000L, pendingAmount = 10_000L, pendingCount = 1L),
+                summary(fundingId = 3L, confirmedAmount = 99_999L),
+                summary(fundingId = 4L, confirmedAmount = 100_000L),
+            ),
+        )
+
+        val earlyOpenable = service.getHomeFundings(USER_ID).fundingCards.associate { it.fundingId to it.earlyOpenable }
+
+        assertEquals(mapOf(1L to true, 2L to false, 3L to false, 4L to false), earlyOpenable)
+    }
+
+    @Test
     fun `서프라이즈 카드에는 받는 사람 이름을, 생일 카드에는 null을 담는다`() {
         val birthday = funding(id = 2L, type = FundingType.BIRTHDAY, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
         val surprise = funding(

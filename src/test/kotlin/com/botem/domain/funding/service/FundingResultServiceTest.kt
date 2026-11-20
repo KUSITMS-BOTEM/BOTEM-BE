@@ -309,6 +309,47 @@ class FundingResultServiceTest {
         assertFalse(second.thankCardSent)
     }
 
+    @Test
+    fun `마감 전이라도 목표를 달성하고 확인 대기가 없으면 결과를 조회하고 열 수 있다`() {
+        val funding = funding(deadline = NOW.plusDays(3))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 4L)))
+
+        val viewed = service.getResult(USER_ID, FUNDING_ID)
+        val opened = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
+
+        assertEquals(null, viewed.resultOpenedAt)
+        assertEquals(NOW, opened.resultOpenedAt)
+        assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
+        // 연 뒤에는 마감 전이어도 결과를 다시 조회할 수 있다
+        assertEquals(NOW, service.getResult(USER_ID, FUNDING_ID).resultOpenedAt)
+    }
+
+    @Test
+    fun `마감 전에는 목표 미달이거나 확인 대기가 있으면 결과를 볼 수 없다`() {
+        val funding = funding(deadline = NOW.plusDays(3))
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 99_999L, participantCount = 4L)))
+        assertEquals(
+            FundingErrorCode.FUNDING_NOT_ENDED,
+            assertFailsWith<BusinessException> { service.getResult(USER_ID, FUNDING_ID) }.errorCode,
+        )
+
+        // 확인 대기를 결과에서 빼고 여는 것도 마감 전에는 허용하지 않는다
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 100_000L, participantCount = 4L, pendingCount = 1L)))
+        assertEquals(
+            FundingErrorCode.FUNDING_NOT_ENDED,
+            assertFailsWith<BusinessException> {
+                service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = true)
+            }.errorCode,
+        )
+        assertEquals(null, funding.resultOpenedAt)
+    }
+
     private fun contribution(id: Long, userId: Long?, name: String, status: ContributionStatus): Contribution =
         Contribution(
             fundingId = FUNDING_ID,

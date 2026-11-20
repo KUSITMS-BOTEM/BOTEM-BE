@@ -26,6 +26,8 @@ class ClosedFundingPersistenceTest {
         val deadlinePassed = save(birthday(deadline = NOW.minusDays(3)))
         val deadlineNow = save(birthday(deadline = NOW))
         val earlyClosed = save(birthday(deadline = NOW.plusDays(5)).also { it.closeEarly(NOW.minusHours(1)) })
+        // 목표를 달성해 마감 전에 결과를 연 펀딩도 마감된 펀딩으로 본다
+        val earlyOpened = save(birthday(deadline = NOW.plusDays(3)).also { it.openResult(NOW.minusHours(1), earlyOpenable = true) })
         val revealedSurprise = save(surprise(deadline = NOW.minusDays(1), revealAt = NOW.minusMinutes(1)))
         save(birthday(deadline = NOW.plusMinutes(1)))
         save(surprise(deadline = NOW.minusDays(1), revealAt = NOW.plusMinutes(1)))
@@ -35,7 +37,7 @@ class ClosedFundingPersistenceTest {
         val closed = fundingRepository.findClosedFundingsByOwnerId(OWNER_ID, NOW)
 
         assertEquals(
-            listOf(earlyClosed.id, deadlineNow.id, revealedSurprise.id, deadlinePassed.id),
+            listOf(earlyClosed.id, earlyOpened.id, deadlineNow.id, revealedSurprise.id, deadlinePassed.id),
             closed.map(Funding::id),
         )
     }
