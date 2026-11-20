@@ -28,6 +28,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -101,6 +102,7 @@ class ContributionServiceTest {
                 photoUrl = PHOTO_URL,
                 voiceUrl = VOICE_URL,
                 voiceDurationSeconds = 12,
+                voiceTranscript = "  생일 축하해  ",
             ),
         )
 
@@ -120,6 +122,28 @@ class ContributionServiceTest {
         assertEquals(PHOTO_URL, captor.value.photoUrl)
         assertEquals(VOICE_URL, captor.value.voiceUrl)
         assertEquals(12, captor.value.voiceDurationSeconds)
+        assertEquals("생일 축하해", captor.value.voiceTranscript)
+    }
+
+    @Test
+    fun `메시지로 보탤 때도 음성 자막을 저장하고 공백 자막은 저장하지 않는다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+
+        service.leaveMessage(
+            null,
+            FUNDING_ID,
+            messageRequest(voiceUrl = VOICE_URL, voiceDurationSeconds = 12, voiceTranscript = "다 모였네"),
+        )
+        service.leaveMessage(
+            null,
+            FUNDING_ID,
+            messageRequest(voiceUrl = VOICE_URL, voiceDurationSeconds = 12, voiceTranscript = "  "),
+        )
+
+        val captor = ArgumentCaptor.forClass(RollingPaperMessage::class.java)
+        verify(rollingPaperMessageRepository, times(2)).save(captor.capture())
+        assertEquals(listOf("다 모였네", null), captor.allValues.map { it.voiceTranscript })
     }
 
     @Test
@@ -148,6 +172,10 @@ class ContributionServiceTest {
         }
         assertInvalidInput {
             service.contribute(null, FUNDING_ID, request(voiceDurationSeconds = 12))
+        }
+        // 음성 없이 자막만 보내면 거부한다
+        assertInvalidInput {
+            service.leaveMessage(null, FUNDING_ID, messageRequest(voiceTranscript = "음성 없는 자막"))
         }
         verifyNoInteractions(rollingPaperAttachmentService)
     }
@@ -663,6 +691,7 @@ class ContributionServiceTest {
         photoUrl: String? = null,
         voiceUrl: String? = null,
         voiceDurationSeconds: Int? = null,
+        voiceTranscript: String? = null,
         guestPassword: String? = "1234",
     ) = CreateContributionRequest(
         requestKey = REQUEST_KEY,
@@ -674,6 +703,7 @@ class ContributionServiceTest {
         photoUrl = photoUrl,
         voiceUrl = voiceUrl,
         voiceDurationSeconds = voiceDurationSeconds,
+        voiceTranscript = voiceTranscript,
         guestPassword = guestPassword,
     )
 
@@ -684,6 +714,7 @@ class ContributionServiceTest {
         photoUrl: String? = null,
         voiceUrl: String? = null,
         voiceDurationSeconds: Int? = null,
+        voiceTranscript: String? = null,
         guestPassword: String? = "1234",
     ) = CreateMessageContributionRequest(
         requestKey = REQUEST_KEY,
@@ -694,6 +725,7 @@ class ContributionServiceTest {
         photoUrl = photoUrl,
         voiceUrl = voiceUrl,
         voiceDurationSeconds = voiceDurationSeconds,
+        voiceTranscript = voiceTranscript,
         guestPassword = guestPassword,
     )
 

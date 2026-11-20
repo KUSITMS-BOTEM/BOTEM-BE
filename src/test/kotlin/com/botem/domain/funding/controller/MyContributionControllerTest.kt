@@ -102,6 +102,7 @@ class MyContributionControllerTest {
             photoUrl = PHOTO_URL,
             voiceUrl = null,
             voiceDurationSeconds = null,
+            voiceTranscript = null,
             participatedAt = LocalDateTime.of(2026, 10, 13, 11, 20),
             payoutAccount = null,
         )

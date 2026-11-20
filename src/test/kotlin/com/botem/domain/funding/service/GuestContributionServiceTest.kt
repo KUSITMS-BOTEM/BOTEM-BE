@@ -148,6 +148,7 @@ class GuestContributionServiceTest {
                 photoUrl = PHOTO_URL,
                 voiceUrl = VOICE_URL,
                 voiceDurationSeconds = 12,
+                voiceTranscript = "생일 축하해",
             ),
         )
 
@@ -166,6 +167,7 @@ class GuestContributionServiceTest {
         assertEquals(PHOTO_URL, response.photoUrl)
         assertEquals(VOICE_URL, response.voiceUrl)
         assertEquals(12, response.voiceDurationSeconds)
+        assertEquals("생일 축하해", response.voiceTranscript)
     }
 
     @Test
@@ -201,6 +203,18 @@ class GuestContributionServiceTest {
                     message = "축하해",
                     paperTemplateCode = "BLUE_DOT_GRID",
                     voiceDurationSeconds = 0,
+                ),
+            )
+        }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest(
+                    participantName = "민지",
+                    message = "축하해",
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                    voiceTranscript = "음성 없는 자막",
                 ),
             )
         }

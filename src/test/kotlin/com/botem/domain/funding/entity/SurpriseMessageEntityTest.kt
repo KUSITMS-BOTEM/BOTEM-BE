@@ -84,16 +84,19 @@ class SurpriseMessageEntityTest {
             photoUrl = null,
             voiceUrl = "https://cdn.example.com/voice.m4a",
             voiceDurationSeconds = 12,
+            voiceTranscript = "생일 축하해",
         )
 
         assertNull(message.content)
         assertNull(message.photoUrl)
         assertEquals("HEART", message.decorationCode)
         assertEquals(12, message.voiceDurationSeconds)
+        assertEquals("생일 축하해", message.voiceTranscript)
 
         message.updateTextContent("새 메시지", "BLUE_DOT_GRID")
         assertEquals("새 메시지", message.content)
         assertEquals("https://cdn.example.com/voice.m4a", message.voiceUrl)
+        assertEquals("생일 축하해", message.voiceTranscript)
     }
 
     @Test
@@ -101,14 +104,39 @@ class SurpriseMessageEntityTest {
         val message = RollingPaperMessage(1L, "축하해!", "LIME_DOT_GRID")
 
         assertFailsWith<IllegalArgumentException> {
-            message.updateContent(null, "LIME_DOT_GRID", null, null, null, null)
+            message.updateContent(null, "LIME_DOT_GRID", null, null, null, null, null)
         }
         assertFailsWith<IllegalArgumentException> {
-            message.updateContent("축하해!", " ", null, null, null, null)
+            message.updateContent("축하해!", " ", null, null, null, null, null)
         }
         assertFailsWith<IllegalArgumentException> {
-            message.updateContent("축하해!", "LIME_DOT_GRID", null, null, "voice.m4a", null)
+            message.updateContent("축하해!", "LIME_DOT_GRID", null, null, "voice.m4a", null, null)
         }
+    }
+
+    @Test
+    fun `음성 자막은 음성이 있을 때만 500자까지 저장할 수 있다`() {
+        assertFailsWith<IllegalArgumentException> {
+            RollingPaperMessage(1L, "축하해!", "LIME_DOT_GRID", voiceTranscript = "음성 없는 자막")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            RollingPaperMessage(
+                contributionId = 1L,
+                paperTemplateCode = "LIME_DOT_GRID",
+                voiceUrl = "https://cdn.example.com/voice.m4a",
+                voiceDurationSeconds = 12,
+                voiceTranscript = "가".repeat(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH + 1),
+            )
+        }
+
+        val message = RollingPaperMessage(
+            contributionId = 1L,
+            paperTemplateCode = "LIME_DOT_GRID",
+            voiceUrl = "https://cdn.example.com/voice.m4a",
+            voiceDurationSeconds = 12,
+            voiceTranscript = "가".repeat(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH),
+        )
+        assertEquals(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH, message.voiceTranscript?.length)
     }
 
     @Test

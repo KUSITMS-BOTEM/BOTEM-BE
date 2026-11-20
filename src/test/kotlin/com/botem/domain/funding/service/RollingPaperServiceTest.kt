@@ -37,8 +37,19 @@ class RollingPaperServiceTest {
         )
         given(rollingPaperMessageRepository.findAllByFundingId(FUNDING_ID)).willReturn(
             listOf(
-                RollingPaperMessageProjection(41L, "서준", null, "생일 축하해!", "LIME_DOT_GRID", "CAKE", null, null, null),
-                RollingPaperMessageProjection(42L, "하린", null, null, "BLUE_DOT_GRID", null, null, "https://v.m4a", 12),
+                RollingPaperMessageProjection(41L, "서준", null, "생일 축하해!", "LIME_DOT_GRID", "CAKE", null, null, null, null),
+                RollingPaperMessageProjection(
+                    42L,
+                    "하린",
+                    null,
+                    null,
+                    "BLUE_DOT_GRID",
+                    null,
+                    null,
+                    "https://v.m4a",
+                    12,
+                    "생일 축하해",
+                ),
             ),
         )
 
@@ -49,6 +60,7 @@ class RollingPaperServiceTest {
         assertEquals(listOf(41L, 42L), response.messages.map { it.messageId })
         assertEquals("https://v.m4a", response.messages[1].voiceUrl)
         assertEquals(12, response.messages[1].voiceDurationSeconds)
+        assertEquals("생일 축하해", response.messages[1].voiceTranscript)
     }
 
     @Test
