@@ -68,6 +68,7 @@ class FundingCreationServiceTest {
         verify(fundingRepository).save(saved.capture())
         assertEquals(WISH_ID, saved.value.product.sourceWishId)
         assertEquals("무선 헤드폰", saved.value.product.name)
+        assertEquals("BOTEM 브랜드샵", saved.value.product.sellerName)
         assertEquals(snapshot, saved.value.payoutAccount)
         assertNull(saved.value.title)
         assertEquals(LocalDateTime.of(2026, 11, 30, 23, 59, 59, 999_999_000), saved.value.deadline)
@@ -275,6 +276,7 @@ class FundingCreationServiceTest {
             productImageUrl = "https://image.example.com/product.jpg",
             price = 100_000L,
             productUrl = "https://shop.example.com/product",
+            sellerName = "BOTEM 브랜드샵",
         )
             .also { setField(it, "id", WISH_ID) }
 

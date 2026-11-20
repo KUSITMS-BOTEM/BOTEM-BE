@@ -378,6 +378,7 @@ class FundingControllerTest {
                     imageUrl = "https://image.example.com/product.jpg",
                     price = 100_000L,
                     url = "https://shop.example.com/product",
+                    sellerName = "BOTEM 브랜드샵",
                 ),
                 productChanged = false,
                 productChangedAt = null,
@@ -477,6 +478,7 @@ class FundingControllerTest {
             imageUrl = "https://image.example.com/new-product.jpg",
             price = 120_000L,
             url = "https://shop.example.com/new-product",
+            sellerName = null,
         )
         given(fundingProductChangeService.change(USER_ID, FUNDING_ID, 7L)).willReturn(
             FundingProductChangeResponse(
@@ -545,6 +547,7 @@ class FundingControllerTest {
                 imageUrl = "https://image.example.com/product.jpg",
                 price = 100_000L,
                 url = "https://shop.example.com/product",
+                sellerName = "BOTEM 브랜드샵",
             ),
             productChanged = false,
             productChangedAt = null,
@@ -606,6 +609,7 @@ class FundingControllerTest {
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
             productUrl = "https://shop.example.com/product",
+            productSellerName = "BOTEM 브랜드샵",
             targetAmount = 100_000L,
             confirmedAmount = 80_000L,
             achievementPercentage = 80,
