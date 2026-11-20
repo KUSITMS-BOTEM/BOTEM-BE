@@ -203,6 +203,22 @@ class OwnerFundingDetailServiceTest {
     }
 
     @Test
+    fun `서프라이즈 받는 사람이 탈퇴했으면 관리 상세에 표시한다`() {
+        givenFunding(funding(deadline = NOW, type = FundingType.SURPRISE))
+        givenContributions()
+        val recipient = User(kakaoId = 7L, nickname = "서준", profileImageUrl = null, name = "서준")
+        given(userRepository.findById(MEMBER_ID)).willReturn(Optional.of(recipient))
+        assertFalse(service.getManagementDetail(OWNER_ID, FUNDING_ID).recipientWithdrawn)
+
+        recipient.withdraw(NOW)
+        assertTrue(service.getManagementDetail(OWNER_ID, FUNDING_ID).recipientWithdrawn)
+
+        // 생일 펀딩은 받는 사람이 개설자 본인이므로 항상 false다
+        givenFunding(funding(deadline = NOW))
+        assertFalse(service.getManagementDetail(OWNER_ID, FUNDING_ID).recipientWithdrawn)
+    }
+
+    @Test
     fun `조기 마감 후에는 관리 동작과 기간 연장을 허용하지 않는다`() {
         givenFunding(funding(deadline = NOW, earlyClosedAt = NOW.minusDays(1)))
         givenContributions()

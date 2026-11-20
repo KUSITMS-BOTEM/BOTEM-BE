@@ -338,6 +338,7 @@ class FundingControllerTest {
                 targetAmount = 100_000L,
                 deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
                 revealAt = null,
+                recipientWithdrawn = false,
                 remainingDays = 3L,
                 confirmedPercentage = 40,
                 pendingPercentage = 10,
@@ -547,6 +548,7 @@ class FundingControllerTest {
         SurpriseGiftPreparationResponse(
             fundingId = FUNDING_ID,
             recipientName = "지유",
+            recipientWithdrawn = false,
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
             productUrl = "https://shop.example.com/product",
