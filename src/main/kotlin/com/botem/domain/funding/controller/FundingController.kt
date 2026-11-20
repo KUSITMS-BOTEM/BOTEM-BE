@@ -11,6 +11,7 @@ import com.botem.domain.funding.dto.response.FundingEarlyCloseResponse
 import com.botem.domain.funding.dto.response.FundingExtensionResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.FundingResultResponse
+import com.botem.domain.funding.dto.response.GiftChoiceResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
 import com.botem.domain.funding.service.FundingCreationService
@@ -19,6 +20,7 @@ import com.botem.domain.funding.service.FundingEarlyCloseService
 import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
+import com.botem.domain.funding.service.GiftChoiceService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.domain.funding.service.SurpriseGiftPreparationService
 import com.botem.global.exception.BusinessException
@@ -50,6 +52,7 @@ class FundingController(
     private val fundingEarlyCloseService: FundingEarlyCloseService,
     private val fundingProductChangeService: FundingProductChangeService,
     private val surpriseGiftPreparationService: SurpriseGiftPreparationService,
+    private val giftChoiceService: GiftChoiceService,
 ) : FundingControllerDocs {
 
     @PostMapping
@@ -132,6 +135,13 @@ class FundingController(
         @RequestParam(defaultValue = "false") excludePendingContributions: Boolean,
     ): ApiResponse<FundingResultResponse> =
         ApiResponse.success(fundingResultService.openResult(userId, fundingId, excludePendingContributions))
+
+    @PostMapping("/{fundingId}/gift-choice")
+    override fun chooseGift(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+    ): ApiResponse<GiftChoiceResponse> =
+        ApiResponse.success(giftChoiceService.choose(userId, fundingId))
 
     @GetMapping("/{fundingId}/surprise/gift-preparation")
     override fun getSurpriseGiftPreparation(

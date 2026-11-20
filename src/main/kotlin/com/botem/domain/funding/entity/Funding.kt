@@ -175,7 +175,9 @@ class Funding(
         newProduct: FundingProductSnapshot,
         changedAt: LocalDateTime,
     ): FundingProductChangeHistory {
-        if (!deadline.isAfter(changedAt) || status !in PRODUCT_CHANGEABLE_STATUSES || earlyClosedAt != null) {
+        val inProgress = deadline.isAfter(changedAt) && status in PRODUCT_CHANGEABLE_STATUSES && earlyClosedAt == null
+        // 생일 펀딩은 결과를 연 뒤 구매 전까지 '다른 선물 고르기'로 바꿀 수 있다 (FUND-PG-012)
+        if (!inProgress && !isGiftChoosable()) {
             throw BusinessException(FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE)
         }
 
@@ -209,10 +211,7 @@ class Funding(
         if (extensionCount >= MAX_EXTENSION_COUNT) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_LIMIT_EXCEEDED)
         }
-        if (
-            status !in EXTENDABLE_STATUSES ||
-            (status == FundingStatus.GIFT_PREPARING) != (resultOpenedAt != null)
-        ) {
+        if (!hasExtendableStatus()) {
             throw BusinessException(FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE)
         }
         if (confirmedAmount >= targetAmount) {
@@ -250,6 +249,37 @@ class Funding(
 
         resultOpenedAt = openedAt
         status = FundingStatus.GIFT_PREPARING
+    }
+
+    // 연장 API와 같은 조건이라 결과·관리 화면의 '기간 연장' 노출이 실제 요청 결과와 어긋나지 않는다
+    fun isExtendable(now: LocalDateTime, confirmedAmount: Long): Boolean =
+        type == FundingType.BIRTHDAY &&
+            earlyClosedAt == null &&
+            !deadline.isAfter(now) &&
+            extensionCount < MAX_EXTENSION_COUNT &&
+            hasExtendableStatus() &&
+            confirmedAmount < targetAmount
+
+    private fun hasExtendableStatus(): Boolean =
+        status in EXTENDABLE_STATUSES && (status == FundingStatus.GIFT_PREPARING) == (resultOpenedAt != null)
+
+    private fun isGiftChoosable(): Boolean =
+        type == FundingType.BIRTHDAY && status == FundingStatus.GIFT_PREPARING && resultOpenedAt != null
+
+    // 결과를 연 생일 펀딩에서 구매(쿠팡 이동)를 누르면 지금 상품으로 선물을 정하고 인증 대기로 넘긴다.
+    // 인증 대기와 진행 중이 겹치지 않도록 이후에는 기간 연장과 상품 변경이 막힌다
+    fun chooseGift() {
+        if (type != FundingType.BIRTHDAY) {
+            throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
+        }
+        if (status == FundingStatus.WAITING_GIFT_VERIFICATION) {
+            return
+        }
+        if (!isGiftChoosable()) {
+            throw BusinessException(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE)
+        }
+
+        status = FundingStatus.WAITING_GIFT_VERIFICATION
     }
 
     fun isGiftRecipient(userId: Long): Boolean =

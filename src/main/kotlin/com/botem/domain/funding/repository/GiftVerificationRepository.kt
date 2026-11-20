@@ -43,6 +43,7 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
             funding.id,
             funding.product.name,
             funding.product.imageUrl,
+            funding.product.url,
             funding.deadline,
             COUNT(DISTINCT contribution.participantUserId)
                 + COALESCE(SUM(CASE
@@ -66,6 +67,7 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
             funding.id,
             funding.product.name,
             funding.product.imageUrl,
+            funding.product.url,
             funding.deadline,
             verification.replacementProductName
         ORDER BY funding.deadline ASC, verification.id ASC

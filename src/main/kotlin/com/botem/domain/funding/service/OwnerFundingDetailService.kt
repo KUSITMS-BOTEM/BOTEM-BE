@@ -10,7 +10,6 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.ContributionThankCard
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
-import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.ContributionThankCardRepository
@@ -102,21 +101,12 @@ class OwnerFundingDetailService(
             },
             actions = FundingManagementActionsResponse(
                 canCloseEarly = inProgress,
-                canExtend = canExtend(funding, beforeDeadline, targetReached),
+                canExtend = funding.isExtendable(now, confirmedAmount),
                 canChangeProduct = inProgress,
                 canReissueShareCard = inProgress,
             ),
         )
     }
-
-    // 기간 연장은 마감 후 목표 미달 결과 화면에서 1회만 가능하다 (FUND-BS-018)
-    private fun canExtend(funding: Funding, beforeDeadline: Boolean, targetReached: Boolean): Boolean =
-        funding.type == FundingType.BIRTHDAY &&
-            !beforeDeadline &&
-            !targetReached &&
-            funding.earlyClosedAt == null &&
-            funding.extensionCount == 0 &&
-            funding.status in EXTENDABLE_STATUSES
 
     // 로그인 참여자는 첫 참여 순서를 공유하고, 비로그인 참여는 각각 한 명으로 센다
     private fun toParticipants(
@@ -151,10 +141,5 @@ class OwnerFundingDetailService(
 
     companion object {
         private val IN_PROGRESS_STATUSES = setOf(FundingStatus.FUNDING, FundingStatus.CLOSED)
-        private val EXTENDABLE_STATUSES = setOf(
-            FundingStatus.FUNDING,
-            FundingStatus.CLOSED,
-            FundingStatus.GIFT_PREPARING,
-        )
     }
 }
