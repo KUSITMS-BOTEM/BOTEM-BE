@@ -25,6 +25,11 @@ interface ContributionControllerDocs {
             로그인 또는 비로그인 사용자가 보탤 금액과 메시지를 등록합니다. 참여는 AWAITING_TRANSFER(송금 대기) 상태로 저장됩니다.
             requestKey는 클라이언트가 생성한 고유 값(UUID 권장, 최대 64자)이며, 같은 펀딩에 같은 키·같은 금액으로 다시 요청하면
             새로 만들지 않고 기존 참여를 그대로 반환합니다. 같은 키로 금액이 다르거나 다른 참여자가 요청하면 FUNDING_027을 반환합니다.
+            한 펀딩에 금액 보태기와 메시지로 보태기를 합쳐 1인 1회만 보탤 수 있습니다(취소한 보탬 제외).
+            로그인 회원이 이미 보탰으면 FUNDING_057을 반환하며, '내 보탬 수정하기'(내 보탬 조회·수정 API)로 안내합니다.
+            기간을 연장한 펀딩은 연장 이후의 보탬만 세므로, 연장 전에 보탠 회원도 연장 기간에 한 번 더 보탤 수 있습니다.
+            비회원은 같은 펀딩에서 같은 이름을 다시 쓸 수 없고(FUNDING_032), 본인이면 이름과 비밀번호로 비회원 보탬을 조회해 수정하고
+            다른 사람이면 이름을 바꿔 보태도록 안내합니다. 비회원은 로그인 없이 같은 사람을 구분할 수 없어 이름을 바꾸면 다시 보탤 수 있습니다.
             participantName은 비로그인 시 필수이고, 로그인 시 생략하면 회원 닉네임을 사용합니다.
             guestPassword는 비로그인 시 숫자 4자리로 필수이며 해시로 저장합니다. 로그인 시에는 저장하지 않습니다.
             paperTemplateCode(편지지)는 필수이며 message(최대 460자), decorationCode, photoUrl, voiceUrl 중 하나 이상을 전달합니다.
@@ -73,7 +78,7 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감, 목표 달성, 남은 목표 금액 초과, 이미 사용된 requestKey 또는 중복 비회원 이름",
+            description = "마감, 목표 달성, 남은 목표 금액 초과, 이미 사용된 requestKey, 이미 보탠 회원 또는 중복 비회원 이름",
             content = [
                 Content(
                     examples = [
@@ -93,6 +98,11 @@ interface ContributionControllerDocs {
                             name = "FUNDING_032",
                             summary = "중복 비회원 이름",
                             value = GUEST_IDENTITY_DUPLICATED_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_057",
+                            summary = "이미 보탠 회원",
+                            value = ALREADY_PARTICIPATED_EXAMPLE,
                         ),
                     ],
                 ),
@@ -114,6 +124,7 @@ interface ContributionControllerDocs {
             목표 금액을 달성해 금액 보태기가 닫힌 뒤에도 마감 전까지는 남길 수 있고, 마감된 펀딩에는 FUNDING_020을 반환합니다.
             requestKey, participantName, 롤링페이퍼 콘텐츠, paperTemplateCode, guestPassword 규칙은 금액 보태기와 같습니다.
             같은 키로 다시 요청하면 기존 참여를 반환하고, 다른 참여자의 키이거나 금액 보태기에 쓴 키면 FUNDING_027을 반환합니다.
+            1인 1회 규칙(FUNDING_057, FUNDING_032)은 금액 보태기와 같습니다.
             Authorization 헤더 없이 호출하면 비로그인으로 처리하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
         """,
     )
@@ -145,7 +156,7 @@ interface ContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "마감된 펀딩, 이미 사용된 requestKey 또는 중복 비회원 이름",
+            description = "마감된 펀딩, 이미 사용된 requestKey, 이미 보탠 회원 또는 중복 비회원 이름",
             content = [
                 Content(
                     examples = [
@@ -159,6 +170,11 @@ interface ContributionControllerDocs {
                             name = "FUNDING_032",
                             summary = "중복 비회원 이름",
                             value = GUEST_IDENTITY_DUPLICATED_EXAMPLE,
+                        ),
+                        ExampleObject(
+                            name = "FUNDING_057",
+                            summary = "이미 보탠 회원",
+                            value = ALREADY_PARTICIPATED_EXAMPLE,
                         ),
                     ],
                 ),
@@ -425,6 +441,17 @@ interface ContributionControllerDocs {
               "error": {
                 "code": "FUNDING_027",
                 "message": "이미 다른 요청에 사용된 요청 키입니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val ALREADY_PARTICIPATED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_057",
+                "message": "이미 이 펀딩에 보탰습니다. 내 보탬을 수정해 주세요.",
                 "detail": null
               }
             }
