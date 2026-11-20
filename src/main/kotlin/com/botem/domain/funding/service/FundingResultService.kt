@@ -38,7 +38,7 @@ class FundingResultService(
     // READ COMMITTED로 잠금 이후 집계가 최신 커밋 값을 읽게 한다
     @Transactional(isolation = Isolation.READ_COMMITTED)
     fun getResult(userId: Long, fundingId: Long): FundingResultResponse =
-        resultOf(lockResultAccessibleFunding(userId, fundingId, LocalDateTime.now(clock)))
+        resultOf(lockResultAccessibleFunding(userId, fundingId, LocalDateTime.now(clock), opening = false))
 
     // 확인 대기는 자동으로 확정하지 않는다. 개설자가 모두 처리하거나, 결과에서 제외하겠다고 선택해야 연다.
     // 제외된 확인 대기는 상태를 그대로 두어 참여자에게는 '확인 중'으로 보이고 결과 금액에는 반영되지 않는다.
@@ -47,7 +47,7 @@ class FundingResultService(
     @Transactional(noRollbackFor = [BusinessException::class])
     fun openResult(userId: Long, fundingId: Long, excludePendingContributions: Boolean): FundingResultResponse {
         val now = LocalDateTime.now(clock)
-        val funding = lockResultAccessibleFunding(userId, fundingId, now)
+        val funding = lockResultAccessibleFunding(userId, fundingId, now, opening = true)
 
         if (funding.resultOpenedAt == null) {
             if (!excludePendingContributions && summaryOf(funding).pendingCount > 0) {
@@ -60,10 +60,15 @@ class FundingResultService(
         return resultOf(funding)
     }
 
-    private fun lockResultAccessibleFunding(userId: Long, fundingId: Long, now: LocalDateTime): Funding {
+    private fun lockResultAccessibleFunding(
+        userId: Long,
+        fundingId: Long,
+        now: LocalDateTime,
+        opening: Boolean,
+    ): Funding {
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        validateResultAccess(funding, userId, now)
+        validateResultAccess(funding, userId, now, opening)
 
         if (funding.resultOpenedAt == null) {
             fundingContributionCloser.close(funding, now)
@@ -125,6 +130,7 @@ class FundingResultService(
         funding: Funding,
         userId: Long,
         now: LocalDateTime,
+        opening: Boolean,
     ) {
         if (funding.ownerId != userId) {
             throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
@@ -135,15 +141,23 @@ class FundingResultService(
         if (funding.status !in RESULT_VIEWABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE)
         }
-        if (funding.deadline.isAfter(now) && funding.resultOpenedAt == null && !isEarlyOpenable(funding)) {
-            throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
+        if (funding.deadline.isAfter(now) && funding.resultOpenedAt == null) {
+            validateEarlyAccess(funding, opening)
         }
     }
 
-    // 마감 전에는 목표를 달성하고 확인 대기가 없을 때만 결과를 볼 수 있다. 확인 대기를 결과에서 빼고 일찍 여는 것은 허용하지 않는다
-    private fun isEarlyOpenable(funding: Funding): Boolean {
+    // 마감 전에는 목표를 달성하고 확인 대기가 없을 때만 결과를 볼 수 있다. 확인 대기를 결과에서 빼고 일찍 여는 것은 허용하지 않는다.
+    // 목표를 달성했는데 확인 대기만 남은 열기 요청은 확인 대기를 먼저 처리하도록 FUNDING_007로 알린다
+    private fun validateEarlyAccess(funding: Funding, opening: Boolean) {
         val summary = summaryOf(funding)
-        return summary.confirmedAmount >= funding.targetAmount && summary.pendingCount == 0L
+        if (summary.confirmedAmount < funding.targetAmount) {
+            throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
+        }
+        if (summary.pendingCount > 0) {
+            throw BusinessException(
+                if (opening) FundingErrorCode.PENDING_CONTRIBUTION_EXISTS else FundingErrorCode.FUNDING_NOT_ENDED,
+            )
+        }
     }
 
     companion object {
