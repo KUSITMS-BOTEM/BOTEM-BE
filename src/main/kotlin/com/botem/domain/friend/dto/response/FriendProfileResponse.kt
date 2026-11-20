@@ -21,6 +21,7 @@ data class FriendProfileResponse(
 
 data class FriendProfileFundingResponse(
     val fundingId: Long,
+    val shareKey: String,
     val type: FundingType,
     val productName: String,
     val productImageUrl: String,

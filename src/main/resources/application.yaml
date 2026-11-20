@@ -16,7 +16,7 @@ wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}
 
 funding-share:
-  base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/fundings}
+  base-url: ${FUNDING_SHARE_BASE_URL:https://botem.me/share}
 
 contribution-thank-card:
   base-url: ${CONTRIBUTION_THANK_CARD_BASE_URL:https://botem.me/thank-cards}

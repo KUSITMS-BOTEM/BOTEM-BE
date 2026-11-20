@@ -41,6 +41,7 @@ class ClosedFundingService(
 
                 ClosedFundingResponse(
                     fundingId = funding.id,
+                    shareKey = funding.shareKey,
                     type = funding.type,
                     productName = funding.product.name,
                     productImageUrl = funding.product.imageUrl,

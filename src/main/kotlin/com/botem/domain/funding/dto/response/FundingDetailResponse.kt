@@ -9,6 +9,7 @@ import java.time.LocalDateTime
 // 공유 링크로 보는 펀딩 상세. 모인 금액은 다른 참여자에게 노출하지 않도록 달성률만 반환하고, 목표 금액은 보여준다
 data class FundingDetailResponse(
     val fundingId: Long,
+    val shareKey: String,
     val type: FundingType,
     val title: String?,
     // '{이름}의 생일' 제목용 주인공. 생일 펀딩은 개설자, 서프라이즈는 받는 사람이다

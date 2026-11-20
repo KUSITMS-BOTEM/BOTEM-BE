@@ -105,6 +105,7 @@ class HomeFundingService(
 
         return HomeFundingCardResponse(
             fundingId = funding.id,
+            shareKey = funding.shareKey,
             cardType = cardType,
             fundingType = funding.type,
             productName = funding.product.name,

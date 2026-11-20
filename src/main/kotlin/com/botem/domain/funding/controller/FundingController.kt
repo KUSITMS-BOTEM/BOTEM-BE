@@ -1,8 +1,8 @@
 package com.botem.domain.funding.controller
 
 import com.botem.domain.funding.controller.docs.FundingControllerDocs
-import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.ChangeFundingProductRequest
+import com.botem.domain.funding.dto.request.CreateBirthdayFundingRequest
 import com.botem.domain.funding.dto.request.CreateSurpriseFundingRequest
 import com.botem.domain.funding.dto.request.ExtendFundingRequest
 import com.botem.domain.funding.dto.response.CreateFundingResponse
@@ -20,6 +20,7 @@ import com.botem.domain.funding.service.FundingEarlyCloseService
 import com.botem.domain.funding.service.FundingExtensionService
 import com.botem.domain.funding.service.FundingProductChangeService
 import com.botem.domain.funding.service.FundingResultService
+import com.botem.domain.funding.service.FundingShareKeyResolver
 import com.botem.domain.funding.service.GiftChoiceService
 import com.botem.domain.funding.service.OwnerFundingDetailService
 import com.botem.domain.funding.service.SurpriseGiftPreparationService
@@ -31,8 +32,8 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestAttribute
 import org.springframework.web.bind.annotation.RequestBody
@@ -53,6 +54,7 @@ class FundingController(
     private val fundingProductChangeService: FundingProductChangeService,
     private val surpriseGiftPreparationService: SurpriseGiftPreparationService,
     private val giftChoiceService: GiftChoiceService,
+    private val fundingShareKeyResolver: FundingShareKeyResolver,
 ) : FundingControllerDocs {
 
     @PostMapping
@@ -72,17 +74,17 @@ class FundingController(
         ApiResponse.success(fundingCreationService.createSurpriseFunding(userId, request))
 
     // 비로그인도 허용하지만, 토큰을 보냈는데 유효하지 않으면 재발급할 수 있도록 401로 응답한다
-    @GetMapping("/{fundingId}")
+    @GetMapping("/share/{shareKey}")
     override fun getFundingDetail(
         @AuthenticationPrincipal userId: Long?,
         @RequestAttribute(JwtAuthenticationFilter.ERROR_CODE_ATTRIBUTE, required = false) tokenErrorCode: ErrorCode?,
-        @PathVariable fundingId: Long,
+        @PathVariable shareKey: String,
     ): ApiResponse<FundingDetailResponse> {
         if (tokenErrorCode != null) {
             throw BusinessException(tokenErrorCode)
         }
 
-        return ApiResponse.success(fundingDetailService.getDetail(userId, fundingId))
+        return ApiResponse.success(fundingDetailService.getDetail(userId, fundingShareKeyResolver.fundingIdOf(shareKey)))
     }
 
     @GetMapping("/{fundingId}/management")

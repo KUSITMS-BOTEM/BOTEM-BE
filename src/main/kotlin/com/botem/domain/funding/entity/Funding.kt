@@ -15,6 +15,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Entity
 @Table(
@@ -55,6 +56,10 @@ class Funding(
 
     @Column(nullable = false, updatable = false)
     val notifyRecipientFriends: Boolean = false,
+
+    // 공유 링크용 키. 순차 ID로 다른 펀딩을 훑어볼 수 없도록 참여자 API는 이 키로만 펀딩을 찾는다
+    @Column(nullable = false, updatable = false, unique = true, length = SHARE_KEY_LENGTH)
+    val shareKey: String = generateShareKey(),
 ) : BaseEntity() {
 
     @Id
@@ -357,7 +362,13 @@ class Funding(
     }
 
     companion object {
+        private const val SHARE_KEY_LENGTH = 32
+        private val SHARE_KEY_REGEX = Regex("[0-9a-f]{$SHARE_KEY_LENGTH}")
         private const val MAX_TARGET_AMOUNT = 10_000_000L
+
+        fun generateShareKey(): String = UUID.randomUUID().toString().replace("-", "")
+
+        fun isShareKeyFormat(value: String): Boolean = SHARE_KEY_REGEX.matches(value)
         private const val MAX_STORY_LENGTH = 300
         private const val MAX_PROMISE_LENGTH = 300
         private const val MAX_EXTENSION_COUNT = 1

@@ -62,6 +62,7 @@ class OwnerFundingDetailService(
 
         return OwnerFundingDetailResponse(
             fundingId = funding.id,
+            shareKey = funding.shareKey,
             type = funding.type,
             title = funding.title,
             story = funding.story,
