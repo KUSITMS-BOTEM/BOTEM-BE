@@ -151,6 +151,52 @@ class RollingPaperAttachmentServiceTest {
     }
 
     @Test
+    fun `지원하는 모든 형식의 파일 서명을 확인하고 서명이 다르면 거부한다`() {
+        val id3 = "ID3".encodeToByteArray()
+        listOf(
+            Triple(RollingPaperAttachmentType.PHOTO, "image/png", bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)),
+            Triple(RollingPaperAttachmentType.PHOTO, "image/webp", "RIFF".encodeToByteArray() + bytes(0, 0, 0, 0) + "WEBP".encodeToByteArray()),
+            Triple(RollingPaperAttachmentType.VOICE, "audio/mp4", bytes(0, 0, 0, 0x20) + "ftyp".encodeToByteArray()),
+            Triple(RollingPaperAttachmentType.VOICE, "audio/mpeg", id3),
+            Triple(RollingPaperAttachmentType.VOICE, "audio/mpeg", bytes(0xff, 0xfb)),
+            Triple(RollingPaperAttachmentType.VOICE, "audio/ogg", "OggS".encodeToByteArray()),
+        ).forEach { (type, contentType, signature) ->
+            val url = if (type == RollingPaperAttachmentType.PHOTO) validPhotoUrl() else validVoiceUrl()
+
+            givenS3Object(contentType, 1024, signature)
+            service.validateUploadedAttachment(FUNDING_ID, type, url)
+
+            // 확장자·Content-Type만 바꾼 다른 파일은 거부한다
+            givenS3Object(contentType, 1024, bytes(0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b))
+            val exception = assertFailsWith<BusinessException> { service.validateUploadedAttachment(FUNDING_ID, type, url) }
+            assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        }
+    }
+
+    @Test
+    fun `파일 앞부분을 읽지 못하면 없는 파일과 확인 장애를 구분해 거부한다`() {
+        doReturn(HeadObjectResponse.builder().contentType("image/jpeg").contentLength(1024).build())
+            .`when`(s3Client).headObject(any(HeadObjectRequest::class.java))
+        listOf(
+            S3Exception.builder().statusCode(404).message("not found").build() to
+                FundingErrorCode.ROLLING_PAPER_ATTACHMENT_NOT_UPLOADED,
+            S3Exception.builder().statusCode(500).message("unavailable").build() to
+                FundingErrorCode.ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE,
+            SdkClientException.create("connection timeout") to
+                FundingErrorCode.ROLLING_PAPER_ATTACHMENT_CHECK_UNAVAILABLE,
+        ).forEach { (failure, expectedError) ->
+            doThrow(failure).`when`(s3Client).getObject(
+                any(GetObjectRequest::class.java),
+                any<ResponseTransformer<GetObjectResponse, ResponseBytes<GetObjectResponse>>>(),
+            )
+
+            assertError(expectedError) {
+                service.validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.PHOTO, validPhotoUrl())
+            }
+        }
+    }
+
+    @Test
     fun `메타데이터와 실제 파일 형식이 다르면 첨부를 거부한다`() {
         givenS3Object("image/jpeg", 1024, byteArrayOf(0x00))
 
@@ -258,6 +304,8 @@ class RollingPaperAttachmentServiceTest {
 
     private fun validVoiceUrl(): String =
         "$PUBLIC_BASE_URL/rolling-paper/$FUNDING_ID/voice/$VOICE_FILE_NAME"
+
+    private fun bytes(vararg values: Int): ByteArray = ByteArray(values.size) { values[it].toByte() }
 
     private fun assertError(expected: FundingErrorCode, block: () -> Unit) {
         assertEquals(expected, assertFailsWith<BusinessException>(block = block).errorCode)
