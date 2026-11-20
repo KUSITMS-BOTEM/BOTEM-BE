@@ -558,7 +558,8 @@ interface FundingControllerDocs {
         description = """
             마감된 생일 펀딩의 결과를 열고 선물 준비 단계로 전환합니다. 결과를 연 뒤에는 참여 상태와 결과 금액을 바꿀 수 없습니다.
             마감 전이라도 확정 금액이 목표에 닿았고 확인 대기가 0건이면 열 수 있으며, 연 뒤에는 마감일 전이어도 금액 보태기·메시지·보탬 수정이 모두 막힙니다.
-            마감 전에는 excludePendingContributions=true여도 확인 대기가 있으면 열 수 없고 FUNDING_005를 반환합니다.
+            마감 전에는 목표를 달성했어도 확인 대기가 있으면 excludePendingContributions 값과 관계없이 열 수 없고 FUNDING_007을 반환합니다.
+            마감 전 목표 미달이면 FUNDING_005를 반환합니다.
             입금 확인 대기 참여가 남아 있으면 FUNDING_007을 반환합니다. 확인 대기는 자동으로 확정하지 않습니다.
             excludePendingContributions=true로 요청하면 남은 확인 대기를 결과 금액에서 제외하고 엽니다.
             제외된 참여는 상태를 그대로 유지해 참여자에게는 '확인 중'으로 보입니다.
