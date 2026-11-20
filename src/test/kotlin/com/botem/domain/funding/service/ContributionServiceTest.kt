@@ -148,6 +148,22 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `이모지 자막은 한 글자로 세어 500자까지 저장한다`() {
+        givenFunding(confirmedAmount = 0L)
+        givenSaveReturnsArgument()
+
+        service.leaveMessage(
+            null,
+            FUNDING_ID,
+            messageRequest(voiceUrl = VOICE_URL, voiceDurationSeconds = 12, voiceTranscript = "🎉".repeat(500)),
+        )
+
+        val captor = ArgumentCaptor.forClass(RollingPaperMessage::class.java)
+        verify(rollingPaperMessageRepository).save(captor.capture())
+        assertEquals(1000, captor.value.voiceTranscript?.length)
+    }
+
+    @Test
     fun `첨부 확인은 펀딩 잠금 전에 하고, 실패하면 펀딩을 잠그지 않는다`() {
         givenFunding(confirmedAmount = 0L)
         givenSaveReturnsArgument()
@@ -202,6 +218,14 @@ class ContributionServiceTest {
         // 음성 없이 자막만 보내면 거부한다
         assertInvalidInput {
             service.leaveMessage(null, FUNDING_ID, messageRequest(voiceTranscript = "음성 없는 자막"))
+        }
+        // 자막은 코드 포인트 500자까지 받는다
+        assertInvalidInput {
+            service.leaveMessage(
+                null,
+                FUNDING_ID,
+                messageRequest(voiceUrl = VOICE_URL, voiceDurationSeconds = 12, voiceTranscript = "🎉".repeat(501)),
+            )
         }
         verifyNoInteractions(rollingPaperAttachmentService)
     }

@@ -236,6 +236,12 @@ class ContributionService(
         if (normalizedVoiceTranscript != null && normalizedVoiceUrl == null) {
             throw invalidInput("음성 자막은 음성과 함께 입력해야 합니다.")
         }
+        if (
+            normalizedVoiceTranscript != null &&
+            !RollingPaperMessage.hasValidVoiceTranscriptLength(normalizedVoiceTranscript)
+        ) {
+            throw invalidInput("음성 자막은 ${RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH}자 이하여야 합니다.")
+        }
         if (userId == null && participantName.normalizeOptional() == null) {
             throw invalidInput("참여자 이름은 필수입니다.")
         }
