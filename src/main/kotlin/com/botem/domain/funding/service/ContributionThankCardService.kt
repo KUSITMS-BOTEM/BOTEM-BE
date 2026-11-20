@@ -62,6 +62,7 @@ class ContributionThankCardService(
                 senderUserId = userId,
                 message = message,
                 sentAt = LocalDateTime.now(clock),
+                paperColor = request.paperColor,
             ),
         )
 

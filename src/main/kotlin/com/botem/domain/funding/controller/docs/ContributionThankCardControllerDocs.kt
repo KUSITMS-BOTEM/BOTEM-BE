@@ -21,7 +21,8 @@ interface ContributionThankCardControllerDocs {
         description = """
             펀딩 개설자가 입금 확인이 완료된 보탬에 감사카드를 보냅니다.
             메시지는 공백 제거 후 Unicode 코드 포인트 기준 1~50자이며, 보탬 한 건에 한 번만 전송할 수 있습니다.
-            같은 보탬에 다시 요청하면 최초 감사카드를 반환하고 메시지와 전송 시각은 변경하지 않습니다.
+            paperColor는 편지지 색상으로 ORANGE·LIME·PINK·BLUE 중 하나이며, 생략하면 LIME입니다.
+            같은 보탬에 다시 요청하면 최초 감사카드를 반환하고 메시지·색상·전송 시각은 변경하지 않습니다.
             응답의 shareUrl은 이미지 저장·공유하기·카카오톡 공유 화면 진입에 사용합니다.
         """,
     )
@@ -70,6 +71,7 @@ interface ContributionThankCardControllerDocs {
             로그인 참여자가 자신의 보탬으로 받은 감사카드를 조회합니다.
             다른 회원의 보탬이거나 감사카드가 없으면 동일하게 404를 반환합니다.
             감사카드에는 보탠 금액을 포함하지 않습니다.
+            paperColor는 보낸 사람이 고른 편지지 색상입니다.
         """,
     )
     @ApiResponses(
@@ -95,6 +97,7 @@ interface ContributionThankCardControllerDocs {
         description = """
             로그인 없이 공유 링크의 키로 감사카드를 조회합니다.
             응답에는 보탠 금액이 포함되지 않으며 공유 키가 올바르지 않거나 카드가 없으면 404를 반환합니다.
+            paperColor는 보낸 사람이 고른 편지지 색상입니다.
         """,
     )
     @ApiResponses(
@@ -116,7 +119,8 @@ interface ContributionThankCardControllerDocs {
     companion object {
         private const val SEND_REQUEST_EXAMPLE = """
             {
-              "message": "덕분에 정말 행복한 생일이 됐어!"
+              "message": "덕분에 정말 행복한 생일이 됐어!",
+              "paperColor": "PINK"
             }
         """
         private const val SEND_RESPONSE_EXAMPLE = """
@@ -126,6 +130,7 @@ interface ContributionThankCardControllerDocs {
                 "thankCardId": 15,
                 "contributionId": 31,
                 "message": "덕분에 정말 행복한 생일이 됐어!",
+                "paperColor": "PINK",
                 "sentAt": "2026-11-19T20:00:00",
                 "shareUrl": "https://botem.me/thank-cards/550e8400e29b41d4a716446655440000"
               },
@@ -144,6 +149,7 @@ interface ContributionThankCardControllerDocs {
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "message": "덕분에 정말 행복한 생일이 됐어!",
+                "paperColor": "PINK",
                 "sentAt": "2026-11-19T20:00:00",
                 "shareUrl": "https://botem.me/thank-cards/550e8400e29b41d4a716446655440000"
               },
