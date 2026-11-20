@@ -33,31 +33,31 @@ class ApiIntegrationStatusServiceTest {
     }
 
     @Test
-    fun `저장된 상태가 있으면 담당자와 연동 여부를 바꾼다`() {
+    fun `저장된 상태가 있으면 담당자와 연동 여부, 프론트 담당자를 바꾼다`() {
         val status = ApiIntegrationStatus("GET", "/api/wishes", "정푸름")
         given(repository.findByHttpMethodAndPath("GET", "/api/wishes")).willReturn(status)
 
         val result = service.updateStatus(
-            UpdateApiIntegrationStatusRequest("GET", "/api/wishes", owner = " 이준교 ", integrated = true, memo = "  "),
+            UpdateApiIntegrationStatusRequest("GET", "/api/wishes", owner = " 이준교 ", integrated = true, frontendOwner = " 김산호 "),
         )
 
         assertEquals("이준교", result.owner)
         assertTrue(result.integrated)
-        assertNull(result.memo)
+        assertEquals("김산호", result.frontendOwner)
         verify(repository, never()).save(any(ApiIntegrationStatus::class.java))
     }
 
     @Test
-    fun `공백 담당자와 빈 메모는 미정으로 저장한다`() {
+    fun `공백 담당자와 공백 프론트 담당자는 미정으로 저장한다`() {
         val status = ApiIntegrationStatus("DELETE", "/api/wishes/{wishId}")
         given(repository.findByHttpMethodAndPath("DELETE", "/api/wishes/{wishId}")).willReturn(status)
 
         val result = service.updateStatus(
-            UpdateApiIntegrationStatusRequest("DELETE", "/api/wishes/{wishId}", owner = "  ", integrated = true),
+            UpdateApiIntegrationStatusRequest("DELETE", "/api/wishes/{wishId}", owner = "  ", integrated = true, frontendOwner = "  "),
         )
 
         assertNull(result.owner)
-        assertNull(result.memo)
+        assertNull(result.frontendOwner)
         assertTrue(result.integrated)
     }
 
@@ -66,7 +66,7 @@ class ApiIntegrationStatusServiceTest {
         given(repository.findByHttpMethodAndPath("POST", "/api/new")).willReturn(null)
         given(repository.save(any(ApiIntegrationStatus::class.java))).willAnswer { it.arguments[0] }
 
-        val result = service.updateStatus(UpdateApiIntegrationStatusRequest("POST", "/api/new", memo = "프론트 확인 필요"))
+        val result = service.updateStatus(UpdateApiIntegrationStatusRequest("POST", "/api/new", frontendOwner = "임세윤"))
 
         val saved = ArgumentCaptor.forClass(ApiIntegrationStatus::class.java)
         verify(repository).save(saved.capture())
@@ -74,6 +74,6 @@ class ApiIntegrationStatusServiceTest {
         assertEquals("/api/new", saved.value.path)
         assertNull(result.owner)
         assertFalse(result.integrated)
-        assertEquals("프론트 확인 필요", result.memo)
+        assertEquals("임세윤", result.frontendOwner)
     }
 }
