@@ -19,4 +19,8 @@ class FundingProductSnapshot(
 
     @Column(name = "product_url", nullable = false, length = 2048)
     val url: String,
+
+    // 추천 상품에서 담은 위시만 판매처를 알 수 있어 그 외에는 null
+    @Column(name = "product_seller_name", length = 100)
+    val sellerName: String? = null,
 )

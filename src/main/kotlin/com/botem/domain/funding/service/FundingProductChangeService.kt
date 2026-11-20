@@ -53,6 +53,7 @@ class FundingProductChangeService(
                 imageUrl = wish.productImageUrl,
                 price = wish.price,
                 url = wish.productUrl,
+                sellerName = wish.sellerName,
             ),
             changedAt = changedAt,
         )

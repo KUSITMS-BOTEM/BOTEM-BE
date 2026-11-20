@@ -151,6 +151,7 @@ class FundingCreationService(
             imageUrl = productImageUrl,
             price = price,
             url = productUrl,
+            sellerName = sellerName,
         )
 
     private fun validateActiveFundingCount(userId: Long, now: LocalDateTime) {
