@@ -142,6 +142,7 @@ interface MyContributionControllerDocs {
                     "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
                     "voiceUrl": null,
                     "voiceDurationSeconds": null,
+                    "voiceTranscript": null,
                     "participatedAt": "2026-10-13T11:20:00",
                     "payoutAccount": {
                       "bank": "TOSS_BANK",
@@ -177,6 +178,7 @@ interface MyContributionControllerDocs {
                 "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
                 "voiceUrl": null,
                 "voiceDurationSeconds": null,
+                "voiceTranscript": null,
                 "participatedAt": "2026-10-13T11:20:00",
                 "payoutAccount": null
               },

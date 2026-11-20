@@ -35,6 +35,7 @@ interface ContributionControllerDocs {
             paperTemplateCode(편지지)는 필수이며 message(최대 460자), decorationCode, photoUrl, voiceUrl 중 하나 이상을 전달합니다.
             사진·음성은 롤링페이퍼 첨부 업로드 URL API로 먼저 업로드한 fileUrl만 사용할 수 있습니다.
             voiceUrl과 voiceDurationSeconds는 함께 전달해야 하며, 전달된 파일이 S3에 없으면 저장하지 않습니다.
+            voiceTranscript는 음성 아래에 보여줄 자막으로, 프론트가 만들어 보내며 음성이 있을 때만 500자까지 저장합니다. 음성 없이 보내면 400입니다.
             amount는 0원보다 크고 남은 목표 금액(목표 금액 − 입금 확인 완료 금액) 이하여야 합니다.
             입력 금액이 남은 금액보다 크면 FUNDING_022를 반환하고 error.detail에 남은 금액(원, 숫자 문자열)을 담습니다.
             남은 금액이 0원이면 FUNDING_021을 반환합니다. 두 경우 모두 아무것도 저장하지 않습니다.
@@ -296,6 +297,7 @@ interface ContributionControllerDocs {
               "photoUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/photo/3f2b8c1e-7a4d-4e9b-9c2a-1d5e6f7a8b9c.jpg",
               "voiceUrl": null,
               "voiceDurationSeconds": null,
+              "voiceTranscript": null,
               "guestPassword": "1234"
             }
         """
@@ -308,7 +310,8 @@ interface ContributionControllerDocs {
               "decorationCode": null,
               "photoUrl": null,
               "voiceUrl": "https://botem-bucket.s3.ap-northeast-2.amazonaws.com/rolling-paper/7/voice/8a7b6c5d-4e3f-2a1b-9c8d-7e6f5a4b3c2d.m4a",
-              "voiceDurationSeconds": 12
+              "voiceDurationSeconds": 12,
+              "voiceTranscript": "생일 진짜 축하해!"
             }
         """
         private const val CONTRIBUTE_RESPONSE_EXAMPLE = """
@@ -339,6 +342,7 @@ interface ContributionControllerDocs {
               "photoUrl": null,
               "voiceUrl": null,
               "voiceDurationSeconds": null,
+              "voiceTranscript": null,
               "guestPassword": "1234"
             }
         """
