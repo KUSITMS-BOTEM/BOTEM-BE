@@ -275,6 +275,9 @@ class Funding(
         if (status == FundingStatus.WAITING_GIFT_VERIFICATION) {
             return
         }
+        if (!isGiftChoosable()) {
+            throw BusinessException(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE)
+        }
         transitionTo(FundingStatus.WAITING_GIFT_VERIFICATION, FundingStateTransition.GIFT_CHOICE)
     }
 
