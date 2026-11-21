@@ -1,6 +1,9 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.account.entity.PayoutAccount
+import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
@@ -37,11 +40,15 @@ class SurpriseGiftPreparationServiceTest {
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val rollingPaperMessageRepository = mock(RollingPaperMessageRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
+    private val payoutAccountRepository = mock(PayoutAccountRepository::class.java)
+    private val accountNumberCipher = mock(AccountNumberCipher::class.java)
     private val service = SurpriseGiftPreparationService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
         userRepository = userRepository,
+        payoutAccountRepository = payoutAccountRepository,
+        accountNumberCipher = accountNumberCipher,
         fundingContributionCloser = FundingContributionCloser(contributionRepository),
         clock = Clock.fixed(Instant.parse("2026-11-14T15:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
@@ -80,6 +87,45 @@ class SurpriseGiftPreparationServiceTest {
         assertEquals(NOW, response.giftPreparedAt)
         assertEquals(30, response.achievementPercentage)
         assertFalse(response.pendingCleanupRequired)
+    }
+
+    @Test
+    fun `목표 미달인 서프라이즈는 활성 수신자의 대표계좌만 반환한다`() {
+        val account = defaultPayoutAccount()
+        givenFunding(funding())
+        givenSummary(confirmedAmount = 30_000L, participantCount = 2L)
+        given(payoutAccountRepository.findFirstByUserIdAndIsDefaultTrue(RECIPIENT_ID)).willReturn(account)
+        given(accountNumberCipher.decrypt(account.encryptedAccountNumber)).willReturn(ACCOUNT_NUMBER)
+
+        val response = service.getPreparation(OWNER_ID, FUNDING_ID)
+
+        assertEquals(Bank.KAKAO_BANK, response.recipientPayoutAccount?.bank)
+        assertEquals("카카오뱅크", response.recipientPayoutAccount?.bankName)
+        assertEquals(ACCOUNT_NUMBER, response.recipientPayoutAccount?.accountNumber)
+        assertEquals("김지유", response.recipientPayoutAccount?.accountHolder)
+        verify(userRepository).findByIdForUpdate(RECIPIENT_ID)
+    }
+
+    @Test
+    fun `목표를 달성했거나 수신자 대표계좌가 없으면 수신자 계좌를 반환하지 않는다`() {
+        givenFunding(funding())
+        givenSummary(confirmedAmount = 100_000L, participantCount = 4L)
+
+        val targetReachedResponse = service.getPreparation(OWNER_ID, FUNDING_ID)
+
+        assertNull(targetReachedResponse.recipientPayoutAccount)
+        verifyNoInteractions(payoutAccountRepository, accountNumberCipher)
+        verify(userRepository).findById(RECIPIENT_ID)
+
+        givenFunding(funding())
+        givenSummary(confirmedAmount = 30_000L, participantCount = 2L)
+        given(payoutAccountRepository.findFirstByUserIdAndIsDefaultTrue(RECIPIENT_ID)).willReturn(null)
+
+        val missingAccountResponse = service.getPreparation(OWNER_ID, FUNDING_ID)
+
+        assertNull(missingAccountResponse.recipientPayoutAccount)
+        verify(payoutAccountRepository).findFirstByUserIdAndIsDefaultTrue(RECIPIENT_ID)
+        verifyNoInteractions(accountNumberCipher)
     }
 
     @Test
@@ -148,6 +194,7 @@ class SurpriseGiftPreparationServiceTest {
         assertEquals(FundingErrorCode.SURPRISE_FUNDING_REQUIRED, notSurprise.errorCode)
 
         verifyNoInteractions(contributionRepository)
+        verifyNoInteractions(payoutAccountRepository, accountNumberCipher)
     }
 
     @Test
@@ -163,24 +210,24 @@ class SurpriseGiftPreparationServiceTest {
     fun `받는 사람이 탈퇴해도 선물 준비 화면을 조회하고 탈퇴 여부를 알려준다`() {
         givenFunding(funding(status = FundingStatus.FUNDING))
         givenSummary(confirmedAmount = 80_000L, participantCount = 4L)
-        given(userRepository.findById(RECIPIENT_ID)).willReturn(
-            Optional.of(
-                User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
-                    .also { it.withdraw(NOW) },
-            ),
+        given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(
+            User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
+                .also { it.withdraw(NOW) },
         )
 
         val response = service.getPreparation(OWNER_ID, FUNDING_ID)
 
         assertTrue(response.recipientWithdrawn)
         assertEquals("탈퇴한 사용자", response.recipientName)
+        assertNull(response.recipientPayoutAccount)
+        verifyNoInteractions(payoutAccountRepository, accountNumberCipher)
     }
 
     private fun givenFunding(funding: Funding) {
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
-        given(userRepository.findById(RECIPIENT_ID)).willReturn(
-            Optional.of(User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")),
-        )
+        val recipient = User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
+        given(userRepository.findById(RECIPIENT_ID)).willReturn(Optional.of(recipient))
+        given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(recipient)
     }
 
     private fun givenSummary(confirmedAmount: Long, participantCount: Long, pendingCount: Long = 0L) {
@@ -231,6 +278,15 @@ class SurpriseGiftPreparationServiceTest {
             setField(funding, "createdAt", NOW.minusDays(10))
         }
 
+    private fun defaultPayoutAccount(): PayoutAccount =
+        PayoutAccount(
+            userId = RECIPIENT_ID,
+            bank = Bank.KAKAO_BANK,
+            encryptedAccountNumber = "encrypted-recipient-account-number",
+            accountHolder = "김지유",
+            isDefault = true,
+        ).also { setField(it, "id", 31L) }
+
     private fun setField(target: Any, fieldName: String, value: Any) {
         var type: Class<*>? = target.javaClass
         while (type != null) {
@@ -248,6 +304,7 @@ class SurpriseGiftPreparationServiceTest {
         private const val OWNER_ID = 1L
         private const val RECIPIENT_ID = 2L
         private const val FUNDING_ID = 12L
+        private const val ACCOUNT_NUMBER = "3333012345678"
         private val NOW = LocalDateTime.of(2026, 11, 15, 0, 0)
     }
 }

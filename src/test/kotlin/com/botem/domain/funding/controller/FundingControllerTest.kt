@@ -20,6 +20,7 @@ import com.botem.domain.funding.dto.response.GiftChoiceResponse
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.dto.response.OwnerFundingDetailResponse
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
+import com.botem.domain.funding.dto.response.SurpriseRecipientPayoutAccountResponse
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
@@ -362,6 +363,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.confirmedAmount").value(80_000))
             .andExpect(jsonPath("$.data.productSellerName").value("BOTEM 브랜드샵"))
+            .andExpect(jsonPath("$.data.recipientPayoutAccount.accountNumber").value("3333012345678"))
             .andExpect(jsonPath("$.data.giftPreparedAt").isEmpty)
 
         verify(surpriseGiftPreparationService).getPreparation(USER_ID, FUNDING_ID)
@@ -643,6 +645,12 @@ class FundingControllerTest {
             shareKey = "0123456789abcdef0123456789abcdef",
             recipientName = "지유",
             recipientWithdrawn = false,
+            recipientPayoutAccount = SurpriseRecipientPayoutAccountResponse(
+                bank = Bank.KAKAO_BANK,
+                bankName = "카카오뱅크",
+                accountNumber = "3333012345678",
+                accountHolder = "김지유",
+            ),
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
             productUrl = "https://shop.example.com/product",

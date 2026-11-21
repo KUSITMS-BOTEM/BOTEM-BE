@@ -10,6 +10,8 @@ interface PayoutAccountRepository : JpaRepository<PayoutAccount, Long> {
 
     fun findAllByUserIdOrderByCreatedAtAsc(userId: Long): List<PayoutAccount>
 
+    fun findFirstByUserIdAndIsDefaultTrue(userId: Long): PayoutAccount?
+
     fun existsByUserId(userId: Long): Boolean
 
     @Modifying

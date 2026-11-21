@@ -1,6 +1,9 @@
 package com.botem.domain.funding.service
 
+import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
+import com.botem.domain.funding.dto.response.SurpriseRecipientPayoutAccountResponse
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
@@ -25,6 +28,8 @@ class SurpriseGiftPreparationService(
     private val contributionRepository: ContributionRepository,
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
     private val userRepository: UserRepository,
+    private val payoutAccountRepository: PayoutAccountRepository,
+    private val accountNumberCipher: AccountNumberCipher,
     private val fundingContributionCloser: FundingContributionCloser,
     private val clock: Clock,
 ) {
@@ -78,15 +83,45 @@ class SurpriseGiftPreparationService(
 
     private fun responseOf(funding: Funding): SurpriseGiftPreparationResponse {
         val summary = summaryOf(funding)
-        val recipient = funding.recipientId?.let { userRepository.findById(it).orElse(null) }
+        val shouldExposeRecipientPayoutAccount = summary.confirmedAmount < funding.targetAmount
+        val recipient = funding.recipientId?.let { recipientId ->
+            // 수신자 탈퇴는 계좌 삭제·개인정보 익명화와 함께 처리되므로, 계좌를 반환하는 경우에는 같은 행을 잠가 경합을 막는다.
+            if (shouldExposeRecipientPayoutAccount) {
+                userRepository.findByIdForUpdate(recipientId)
+            } else {
+                userRepository.findById(recipientId).orElse(null)
+            }
+        }
 
         return SurpriseGiftPreparationResponse.from(
             funding = funding,
             recipientName = recipient?.let { it.name ?: it.nickname },
             recipientWithdrawn = recipient?.status == UserStatus.WITHDRAWN,
+            recipientPayoutAccount = recipientPayoutAccountOf(
+                recipientId = funding.recipientId,
+                recipientStatus = recipient?.status,
+                shouldExpose = shouldExposeRecipientPayoutAccount,
+            ),
             summary = summary,
             achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messageCount = rollingPaperMessageRepository.countByFundingId(funding.id),
+        )
+    }
+
+    private fun recipientPayoutAccountOf(
+        recipientId: Long?,
+        recipientStatus: UserStatus?,
+        shouldExpose: Boolean,
+    ): SurpriseRecipientPayoutAccountResponse? {
+        if (!shouldExpose || recipientStatus != UserStatus.ACTIVE || recipientId == null) {
+            return null
+        }
+        val account = payoutAccountRepository.findFirstByUserIdAndIsDefaultTrue(recipientId)
+            ?: return null
+
+        return SurpriseRecipientPayoutAccountResponse.from(
+            account = account,
+            accountNumber = accountNumberCipher.decrypt(account.encryptedAccountNumber),
         )
     }
 

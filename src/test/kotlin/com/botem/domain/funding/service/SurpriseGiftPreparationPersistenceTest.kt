@@ -1,6 +1,9 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.account.entity.PayoutAccount
+import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
@@ -15,6 +18,7 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
+import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -55,10 +59,17 @@ class SurpriseGiftPreparationPersistenceTest {
     @Autowired
     private lateinit var contributionRepository: ContributionRepository
 
+    @Autowired
+    private lateinit var payoutAccountRepository: PayoutAccountRepository
+
+    @Autowired
+    private lateinit var accountNumberCipher: AccountNumberCipher
+
     @AfterEach
     fun tearDown() {
         contributionRepository.deleteAll()
         fundingRepository.deleteAll()
+        payoutAccountRepository.deleteAll()
         userRepository.deleteAll()
     }
 
@@ -66,6 +77,7 @@ class SurpriseGiftPreparationPersistenceTest {
     fun `확인 대기로 준비를 거부해도 보태기 마감은 커밋되고, 제외하고 완료하면 공개 카드 대상이 된다`() {
         val owner = userRepository.save(User(kakaoId = 1L, nickname = "민지", profileImageUrl = null))
         val recipient = userRepository.save(User(kakaoId = 2L, nickname = "지유", profileImageUrl = null))
+        saveDefaultPayoutAccount(recipient.id)
         val funding = saveSurprise(owner.id, recipient.id)
         val awaiting = saveContribution(funding.id, 10_000L)
         val pending = saveContribution(funding.id, 20_000L, ContributionStatus.PENDING_CONFIRMATION)
@@ -88,6 +100,8 @@ class SurpriseGiftPreparationPersistenceTest {
 
         assertEquals(30_000L, response.confirmedAmount)
         assertEquals("지유", response.recipientName)
+        assertEquals("3333012345678", response.recipientPayoutAccount?.accountNumber)
+        assertEquals("김지유", response.recipientPayoutAccount?.accountHolder)
         val preparedFunding = fundingRepository.findById(funding.id).orElseThrow()
         assertEquals(FundingStatus.WAITING_REVEAL, preparedFunding.status)
         assertEquals(NOW, preparedFunding.giftPreparedAt)
@@ -152,11 +166,26 @@ class SurpriseGiftPreparationPersistenceTest {
             ),
         )
 
+    private fun saveDefaultPayoutAccount(userId: Long): PayoutAccount =
+        payoutAccountRepository.saveAndFlush(
+            PayoutAccount(
+                userId = userId,
+                bank = Bank.KAKAO_BANK,
+                encryptedAccountNumber = accountNumberCipher.encrypt("3333012345678"),
+                accountHolder = "김지유",
+                isDefault = true,
+            ),
+        )
+
     @TestConfiguration
     class FixedClockConfig {
 
         @Bean
         fun clock(): Clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul"))
+
+        @Bean
+        fun accountNumberCipher(): AccountNumberCipher =
+            AccountNumberCipher(PayoutAccountEncryptionProperties(key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="))
     }
 
     companion object {
