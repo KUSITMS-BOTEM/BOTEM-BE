@@ -4,6 +4,7 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtAuthenticationFilter
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.logging.RequestIdFilter
 import com.botem.global.property.AdminProperties
 import com.botem.global.security.AdminApiKeyFilter
 import org.springframework.context.annotation.Bean
@@ -70,6 +71,8 @@ class SecurityConfig(
                 "sentry-trace",
                 "baggage",
             )
+            // 프론트가 오류 문의 때 요청 ID를 읽을 수 있도록 노출한다
+            exposedHeaders = listOf(RequestIdFilter.HEADER_NAME)
             allowCredentials = true
         }
 

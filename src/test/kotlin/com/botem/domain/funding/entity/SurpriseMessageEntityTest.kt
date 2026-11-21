@@ -3,6 +3,8 @@ package com.botem.domain.funding.entity
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class SurpriseMessageEntityTest {
@@ -134,6 +136,11 @@ class SurpriseMessageEntityTest {
             voiceTranscript = "가".repeat(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH),
         )
         assertEquals(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH, message.voiceTranscript?.length)
+
+        // 이모지는 UTF-16으로 2자리지만 1자로 센다
+        val emojiTranscript = "🎉".repeat(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH)
+        assertTrue(RollingPaperMessage.hasValidVoiceTranscriptLength(emojiTranscript))
+        assertFalse(RollingPaperMessage.hasValidVoiceTranscriptLength(emojiTranscript + "🎉"))
     }
 
 }

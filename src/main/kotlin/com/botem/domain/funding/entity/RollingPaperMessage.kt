@@ -123,12 +123,16 @@ class RollingPaperMessage(
             "음성 메시지 URL과 재생 시간은 함께 입력해야 합니다"
         }
         require(voiceTranscript == null || voiceUrl != null) { "음성 자막은 음성 메시지가 있을 때만 입력할 수 있습니다" }
-        require(voiceTranscript == null || voiceTranscript.length <= MAX_VOICE_TRANSCRIPT_LENGTH) {
+        require(voiceTranscript == null || hasValidVoiceTranscriptLength(voiceTranscript)) {
             "음성 자막은 ${MAX_VOICE_TRANSCRIPT_LENGTH}자 이하여야 합니다"
         }
     }
 
     companion object {
         const val MAX_VOICE_TRANSCRIPT_LENGTH = 500
+
+        // 감사카드 메시지와 같이 Unicode 코드 포인트로 센다 (이모지 1개 = 1자, DB VARCHAR도 문자 단위)
+        fun hasValidVoiceTranscriptLength(voiceTranscript: String): Boolean =
+            voiceTranscript.codePointCount(0, voiceTranscript.length) <= MAX_VOICE_TRANSCRIPT_LENGTH
     }
 }

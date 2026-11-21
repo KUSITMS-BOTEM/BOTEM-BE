@@ -61,9 +61,7 @@ class GuestContributionService(
         accessToken: String,
         request: UpdateGuestContributionRequest,
     ): UpdatedGuestContributionResponse {
-        val authenticated = authenticateAndLock(fundingId, accessToken)
-        val contribution = authenticated.contribution
-        validateEditable(authenticated.funding)
+        val principal = authenticateToken(fundingId, accessToken)
         val participantName = normalizeParticipantName(request.participantName)
         val message = normalizeOptional(request.message, MAX_MESSAGE_LENGTH, "축하 메시지는 460자 이하여야 합니다.")
         val paperTemplateCode = normalizeRequired(
@@ -80,7 +78,11 @@ class GuestContributionService(
         val voiceUrl = normalizeOptional(request.voiceUrl, MAX_URL_LENGTH, "음성 URL은 2048자 이하여야 합니다.")
         val voiceTranscript = request.voiceTranscript?.trim()?.takeIf(String::isNotEmpty)
         validateContent(message, decorationCode, photoUrl, voiceUrl, request.voiceDurationSeconds, voiceTranscript)
+        // S3 확인은 느릴 수 있어 펀딩 잠금 전에 끝낸다. 토큰은 먼저 확인해 인증 없이 S3를 호출하지 않는다
         validateUploadedAttachments(fundingId, photoUrl, voiceUrl)
+        val authenticated = lock(fundingId, principal)
+        val contribution = authenticated.contribution
+        validateEditable(authenticated.funding)
 
         if (participantName != contribution.participantName) {
             validateParticipantNameAvailable(fundingId, contribution.id, participantName)
@@ -122,11 +124,19 @@ class GuestContributionService(
         contribution.cancel()
     }
 
-    private fun authenticateAndLock(fundingId: Long, accessToken: String): AuthenticatedGuestContribution {
+    private fun authenticateAndLock(fundingId: Long, accessToken: String): AuthenticatedGuestContribution =
+        lock(fundingId, authenticateToken(fundingId, accessToken))
+
+    private fun authenticateToken(fundingId: Long, accessToken: String): GuestContributionAccessPrincipal {
         val principal = accessTokenProvider.parse(accessToken)
         if (principal.fundingId != fundingId) {
             throw BusinessException(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID)
         }
+
+        return principal
+    }
+
+    private fun lock(fundingId: Long, principal: GuestContributionAccessPrincipal): AuthenticatedGuestContribution {
         val funding = lockFunding(fundingId)
 
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(
@@ -229,6 +239,12 @@ class GuestContributionService(
         }
         if (voiceTranscript != null && voiceUrl == null) {
             throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "음성 자막은 음성과 함께 입력해야 합니다.")
+        }
+        if (voiceTranscript != null && !RollingPaperMessage.hasValidVoiceTranscriptLength(voiceTranscript)) {
+            throw BusinessException(
+                CommonErrorCode.INVALID_INPUT_VALUE,
+                "음성 자막은 ${RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH}자 이하여야 합니다.",
+            )
         }
     }
 

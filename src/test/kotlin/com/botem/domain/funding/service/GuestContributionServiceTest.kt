@@ -21,8 +21,10 @@ import com.botem.global.exception.CommonErrorCode
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.util.ReflectionTestUtils.setField
@@ -171,6 +173,37 @@ class GuestContributionServiceTest {
     }
 
     @Test
+    fun `비회원 수정은 토큰을 먼저 확인하고 첨부 확인은 펀딩 잠금 전에 한다`() {
+        val contribution = contribution()
+        val message = message()
+        givenToken(contribution)
+        given(rollingPaperMessageRepository.findByContributionId(CONTRIBUTION_ID)).willReturn(message)
+        val request = UpdateGuestContributionRequest(
+            participantName = "민지",
+            message = null,
+            paperTemplateCode = "BLACK_CONFETTI",
+            photoUrl = PHOTO_URL,
+        )
+
+        service.update(FUNDING_ID, ACCESS_TOKEN, request)
+
+        val order = inOrder(accessTokenProvider, rollingPaperAttachmentService, fundingRepository)
+        order.verify(accessTokenProvider).parse(ACCESS_TOKEN)
+        order.verify(rollingPaperAttachmentService)
+            .validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.PHOTO, PHOTO_URL)
+        order.verify(fundingRepository).findByIdForUpdate(FUNDING_ID)
+
+        // 다른 펀딩의 토큰이면 S3를 호출하지 않는다
+        given(accessTokenProvider.parse(OTHER_FUNDING_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID + 1, CONTRIBUTION_ID))
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            service.update(FUNDING_ID, OTHER_FUNDING_TOKEN, request)
+        }
+        verify(rollingPaperAttachmentService, times(1))
+            .validateUploadedAttachment(FUNDING_ID, RollingPaperAttachmentType.PHOTO, PHOTO_URL)
+    }
+
+    @Test
     fun `롤링페이퍼 콘텐츠가 모두 비거나 음성 입력 조합이 다르면 수정할 수 없다`() {
         val contribution = contribution()
         givenToken(contribution)
@@ -215,6 +248,20 @@ class GuestContributionServiceTest {
                     message = "축하해",
                     paperTemplateCode = "BLUE_DOT_GRID",
                     voiceTranscript = "음성 없는 자막",
+                ),
+            )
+        }
+        assertInvalidInput {
+            service.update(
+                FUNDING_ID,
+                ACCESS_TOKEN,
+                UpdateGuestContributionRequest(
+                    participantName = "민지",
+                    message = "축하해",
+                    paperTemplateCode = "BLUE_DOT_GRID",
+                    voiceUrl = VOICE_URL,
+                    voiceDurationSeconds = 12,
+                    voiceTranscript = "🎉".repeat(501),
                 ),
             )
         }
@@ -490,6 +537,7 @@ class GuestContributionServiceTest {
     }
 
     companion object {
+        private const val OTHER_FUNDING_TOKEN = "other-funding-token"
         private const val FUNDING_ID = 12L
         private const val OTHER_FUNDING_ID = 13L
         private const val CONTRIBUTION_ID = 31L

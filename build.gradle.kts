@@ -43,6 +43,9 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+	testImplementation("org.testcontainers:testcontainers-mysql")
 	testRuntimeOnly("com.h2database:h2")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -61,8 +64,37 @@ allOpen {
 }
 
 tasks.withType<Test> {
-	useJUnitPlatform()
 	systemProperty("spring.profiles.active", "test")
+}
+
+// 실제 MySQL(Testcontainers)이 필요한 마이그레이션 검증은 일반 테스트에서 빼고 별도 작업으로 실행한다.
+// CI는 마이그레이션·엔티티·빌드 설정이 바뀐 PR에서만 migrationTest를 돌린다
+tasks.test {
+	useJUnitPlatform {
+		excludeTags("migration", "erd")
+	}
+}
+
+val migrationTest by tasks.registering(Test::class) {
+	description = "Docker의 MySQL에 Flyway 마이그레이션을 적용하고 엔티티 매핑을 검증합니다."
+	group = "verification"
+	testClassesDirs = sourceSets.test.get().output.classesDirs
+	classpath = sourceSets.test.get().runtimeClasspath
+	useJUnitPlatform {
+		includeTags("migration")
+	}
+}
+
+// README의 ERD를 실제 MySQL 스키마로 다시 쓴다. 파일을 고치는 작업이라 결과를 캐시하지 않는다
+val generateErd by tasks.registering(Test::class) {
+	description = "Docker의 MySQL에 마이그레이션을 적용한 스키마로 README의 ERD를 갱신합니다."
+	group = "documentation"
+	testClassesDirs = sourceSets.test.get().output.classesDirs
+	classpath = sourceSets.test.get().runtimeClasspath
+	useJUnitPlatform {
+		includeTags("erd")
+	}
+	outputs.upToDateWhen { false }
 }
 
 tasks.jar {
@@ -70,6 +102,12 @@ tasks.jar {
 }
 
 kover {
+	currentProject {
+		instrumentation {
+			// 커버리지 리포트가 Docker가 필요한 migrationTest를 끌어오지 않도록 제외한다
+			disabledForTestTasks.addAll("migrationTest", "generateErd")
+		}
+	}
 	reports {
 		filters {
 			excludes {
