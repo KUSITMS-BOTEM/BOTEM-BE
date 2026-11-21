@@ -29,8 +29,7 @@ class PayoutAccountEncryptionRotationService(
             return PayoutAccountEncryptionRotationResponse(processedCount = 0, rotatedCount = 0, nextAfterAccountId = null)
         }
 
-        payoutAccountRepository.findAllByIdInOrderByIdAsc(targetAccountIds)
-            .map { it.userId }
+        payoutAccountRepository.findUserIdsByIdIn(targetAccountIds)
             .distinct()
             .sorted()
             .forEach(userRepository::findByIdForUpdate)

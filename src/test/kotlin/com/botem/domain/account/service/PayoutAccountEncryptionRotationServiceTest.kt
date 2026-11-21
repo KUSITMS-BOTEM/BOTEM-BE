@@ -31,7 +31,7 @@ class PayoutAccountEncryptionRotationServiceTest {
         val first = payoutAccount(id = 10L, userId = 2L, encryptedAccountNumber = "v1:first")
         val second = payoutAccount(id = 11L, userId = 1L, encryptedAccountNumber = "v2:second")
         given(payoutAccountRepository.findIdsAfter(0L, PageRequest.of(0, 3))).willReturn(listOf(10L, 11L, 12L))
-        given(payoutAccountRepository.findAllByIdInOrderByIdAsc(listOf(10L, 11L))).willReturn(listOf(first, second))
+        given(payoutAccountRepository.findUserIdsByIdIn(listOf(10L, 11L))).willReturn(listOf(2L, 1L))
         given(payoutAccountRepository.findAllByIdInForUpdate(listOf(10L, 11L))).willReturn(listOf(first, second))
         given(accountNumberCipher.isEncryptedWithCurrentKey("v1:first")).willReturn(false)
         given(accountNumberCipher.isEncryptedWithCurrentKey("v2:second")).willReturn(true)
@@ -46,7 +46,7 @@ class PayoutAccountEncryptionRotationServiceTest {
         assertEquals("v2:rotated", first.encryptedAccountNumber)
         assertEquals("v2:second", second.encryptedAccountNumber)
         inOrder(payoutAccountRepository, userRepository).apply {
-            verify(payoutAccountRepository).findAllByIdInOrderByIdAsc(listOf(10L, 11L))
+            verify(payoutAccountRepository).findUserIdsByIdIn(listOf(10L, 11L))
             verify(userRepository).findByIdForUpdate(1L)
             verify(userRepository).findByIdForUpdate(2L)
             verify(payoutAccountRepository).findAllByIdInForUpdate(listOf(10L, 11L))
@@ -57,7 +57,7 @@ class PayoutAccountEncryptionRotationServiceTest {
     fun `재실행 시 현재 키로 암호화된 계좌는 건너뛴다`() {
         val account = payoutAccount(id = 10L, userId = 1L, encryptedAccountNumber = "v2:already-rotated")
         given(payoutAccountRepository.findIdsAfter(10L, PageRequest.of(0, 2))).willReturn(listOf(10L))
-        given(payoutAccountRepository.findAllByIdInOrderByIdAsc(listOf(10L))).willReturn(listOf(account))
+        given(payoutAccountRepository.findUserIdsByIdIn(listOf(10L))).willReturn(listOf(1L))
         given(payoutAccountRepository.findAllByIdInForUpdate(listOf(10L))).willReturn(listOf(account))
         given(accountNumberCipher.isEncryptedWithCurrentKey(account.encryptedAccountNumber)).willReturn(true)
 

@@ -23,8 +23,8 @@ interface PayoutAccountRepository : JpaRepository<PayoutAccount, Long> {
         pageable: Pageable,
     ): List<Long>
 
-    @Query("SELECT account FROM PayoutAccount account WHERE account.id IN :accountIds ORDER BY account.id ASC")
-    fun findAllByIdInOrderByIdAsc(@Param("accountIds") accountIds: Collection<Long>): List<PayoutAccount>
+    @Query("SELECT account.userId FROM PayoutAccount account WHERE account.id IN :accountIds")
+    fun findUserIdsByIdIn(@Param("accountIds") accountIds: Collection<Long>): List<Long>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT account FROM PayoutAccount account WHERE account.id IN :accountIds ORDER BY account.id ASC")
