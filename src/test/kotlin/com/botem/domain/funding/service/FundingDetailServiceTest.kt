@@ -34,6 +34,7 @@ import java.util.TimeZone
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -205,10 +206,15 @@ class FundingDetailServiceTest {
         assertEquals("https://image.example.com/jiyu.jpg", birthday.celebrantProfileImageUrl)
         assertEquals(100_000L, birthday.targetAmount)
         assertFalse(birthday.extended)
+        assertNull(birthday.revealAt)
 
-        givenFunding(funding(type = FundingType.SURPRISE))
+        val surpriseFunding = funding(type = FundingType.SURPRISE)
+        givenFunding(surpriseFunding)
+        val surprise = service.getDetail(OWNER_ID, FUNDING_ID)
         // 이름이 없으면 닉네임을 쓴다
-        assertEquals("서준닉", service.getDetail(OWNER_ID, FUNDING_ID).celebrantName)
+        assertEquals("서준닉", surprise.celebrantName)
+        assertEquals(surpriseFunding.revealAt, surprise.revealAt)
+        assertNotNull(surprise.revealAt)
 
         givenFunding(funding().also { setField(it, "extensionCount", 1) })
         assertTrue(service.getDetail(null, FUNDING_ID).extended)
