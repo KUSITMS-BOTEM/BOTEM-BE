@@ -10,7 +10,7 @@ class PayoutAccountEncryptionPropertiesTest {
     private val validator = Validation.buildDefaultValidatorFactory().validator
 
     @Test
-    fun `계좌 암호화 키는 Base64로 인코딩한 AES 키여야 한다`() {
+    fun `계좌 암호화 Key Ring의 모든 키는 Base64로 인코딩한 AES 키여야 한다`() {
         val invalidKeys = listOf(
             "not-base64",
             "c2hvcnQ=",
@@ -20,7 +20,7 @@ class PayoutAccountEncryptionPropertiesTest {
             val violations = validator.validate(PayoutAccountEncryptionProperties(key))
 
             assertEquals(1, violations.size, key)
-            assertEquals("keyValid", violations.single().propertyPath.toString(), key)
+            assertEquals("keyRingValid", violations.single().propertyPath.toString(), key)
         }
     }
 
@@ -31,5 +31,23 @@ class PayoutAccountEncryptionPropertiesTest {
         )
 
         assertTrue(validator.validate(properties).isEmpty())
+    }
+
+    @Test
+    fun `현재 키와 레거시 키가 Key Ring에 없으면 거부한다`() {
+        val properties = PayoutAccountEncryptionProperties(
+            currentKeyId = "v2",
+            legacyKeyId = "v1",
+            keys = mapOf("v1" to VALID_KEY),
+        )
+
+        val violations = validator.validate(properties)
+
+        assertEquals(1, violations.size)
+        assertEquals("keyRingValid", violations.single().propertyPath.toString())
+    }
+
+    companion object {
+        private const val VALID_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
     }
 }

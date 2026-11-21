@@ -3,7 +3,9 @@ package com.botem.domain.account.service
 import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class AccountNumberCipherTest {
 
@@ -33,5 +35,34 @@ class AccountNumberCipherTest {
         assertNotEquals(first, second)
         assertEquals(accountNumber, cipher.decrypt(first))
         assertEquals(accountNumber, cipher.decrypt(second))
+    }
+
+    @Test
+    fun `이전 키와 버전 없는 기존 암호문을 복호화하고 현재 키로 식별한다`() {
+        val keyRingCipher = AccountNumberCipher(
+            PayoutAccountEncryptionProperties(
+                currentKeyId = "v2",
+                legacyKeyId = "v1",
+                keys = mapOf(
+                    "v1" to KEY,
+                    "v2" to "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=",
+                ),
+            ),
+        )
+        val encryptedWithPreviousKey = cipher.encrypt("100012345678")
+        val unversionedLegacyCiphertext = encryptedWithPreviousKey.substringAfter("v1:")
+
+        assertEquals("100012345678", keyRingCipher.decrypt(encryptedWithPreviousKey))
+        assertEquals("100012345678", keyRingCipher.decrypt(unversionedLegacyCiphertext))
+        assertFalse(keyRingCipher.isEncryptedWithCurrentKey(encryptedWithPreviousKey))
+
+        val encryptedWithCurrentKey = keyRingCipher.encrypt("100012345678")
+
+        assertTrue(encryptedWithCurrentKey.startsWith("v2:"))
+        assertTrue(keyRingCipher.isEncryptedWithCurrentKey(encryptedWithCurrentKey))
+    }
+
+    companion object {
+        private const val KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
     }
 }

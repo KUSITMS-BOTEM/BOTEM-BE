@@ -17,6 +17,11 @@ data class PayoutAccountEncryptionProperties(
 
     val keys: Map<String, String>,
 ) {
+    constructor(key: String) : this(
+        currentKeyId = DEFAULT_KEY_ID,
+        legacyKeyId = DEFAULT_KEY_ID,
+        keys = mapOf(DEFAULT_KEY_ID to key),
+    )
     @get:AssertTrue(message = "현재 키·레거시 키가 Key Ring에 있고, 모든 키는 Base64로 인코딩한 16, 24 또는 32바이트 AES 키여야 합니다")
     val isKeyRingValid: Boolean
         get() {
@@ -40,6 +45,7 @@ data class PayoutAccountEncryptionProperties(
     }
 
     companion object {
+        private const val DEFAULT_KEY_ID = "v1"
         private val KEY_ID_PATTERN = Regex("[A-Za-z0-9_-]+")
     }
 }
