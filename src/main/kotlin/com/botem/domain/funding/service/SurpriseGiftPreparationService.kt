@@ -83,13 +83,25 @@ class SurpriseGiftPreparationService(
 
     private fun responseOf(funding: Funding): SurpriseGiftPreparationResponse {
         val summary = summaryOf(funding)
-        val recipient = funding.recipientId?.let { userRepository.findById(it).orElse(null) }
+        val shouldExposeRecipientPayoutAccount = summary.confirmedAmount < funding.targetAmount
+        val recipient = funding.recipientId?.let { recipientId ->
+            // 수신자 탈퇴는 계좌 삭제·개인정보 익명화와 함께 처리되므로, 계좌를 반환하는 경우에는 같은 행을 잠가 경합을 막는다.
+            if (shouldExposeRecipientPayoutAccount) {
+                userRepository.findByIdForUpdate(recipientId)
+            } else {
+                userRepository.findById(recipientId).orElse(null)
+            }
+        }
 
         return SurpriseGiftPreparationResponse.from(
             funding = funding,
             recipientName = recipient?.let { it.name ?: it.nickname },
             recipientWithdrawn = recipient?.status == UserStatus.WITHDRAWN,
-            recipientPayoutAccount = recipientPayoutAccountOf(funding, recipient?.status, summary.confirmedAmount),
+            recipientPayoutAccount = recipientPayoutAccountOf(
+                recipientId = funding.recipientId,
+                recipientStatus = recipient?.status,
+                shouldExpose = shouldExposeRecipientPayoutAccount,
+            ),
             summary = summary,
             achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messageCount = rollingPaperMessageRepository.countByFundingId(funding.id),
@@ -97,14 +109,14 @@ class SurpriseGiftPreparationService(
     }
 
     private fun recipientPayoutAccountOf(
-        funding: Funding,
+        recipientId: Long?,
         recipientStatus: UserStatus?,
-        confirmedAmount: Long,
+        shouldExpose: Boolean,
     ): SurpriseRecipientPayoutAccountResponse? {
-        if (confirmedAmount >= funding.targetAmount || recipientStatus != UserStatus.ACTIVE) {
+        if (!shouldExpose || recipientStatus != UserStatus.ACTIVE || recipientId == null) {
             return null
         }
-        val account = payoutAccountRepository.findFirstByUserIdAndIsDefaultTrue(requireNotNull(funding.recipientId))
+        val account = payoutAccountRepository.findFirstByUserIdAndIsDefaultTrue(recipientId)
             ?: return null
 
         return SurpriseRecipientPayoutAccountResponse.from(
