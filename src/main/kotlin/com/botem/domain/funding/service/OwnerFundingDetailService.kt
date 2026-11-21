@@ -59,12 +59,15 @@ class OwnerFundingDetailService(
         val beforeDeadline = funding.deadline.isAfter(now)
         val inProgress = beforeDeadline && funding.status in IN_PROGRESS_STATUSES && funding.earlyClosedAt == null
         val targetReached = confirmedAmount >= funding.targetAmount
+        // 참여자 상세와 같은 기준: 서프라이즈는 받는 사람, 생일 펀딩은 개설자 본인
+        val celebrant = userRepository.findById(funding.recipientId ?: funding.ownerId).orElse(null)
 
         return OwnerFundingDetailResponse(
             fundingId = funding.id,
             shareKey = funding.shareKey,
             type = funding.type,
             title = funding.title,
+            celebrantName = celebrant?.let { it.name ?: it.nickname }.orEmpty(),
             story = funding.story,
             promise = funding.promise,
             product = FundingDetailProductResponse.from(funding.product),
@@ -73,9 +76,7 @@ class OwnerFundingDetailService(
             targetAmount = funding.targetAmount,
             deadline = funding.deadline,
             revealAt = funding.revealAt,
-            recipientWithdrawn = funding.recipientId
-                ?.let { userRepository.findById(it).orElse(null) }
-                ?.status == UserStatus.WITHDRAWN,
+            recipientWithdrawn = funding.recipientId != null && celebrant?.status == UserStatus.WITHDRAWN,
             remainingDays = if (beforeDeadline) {
                 ChronoUnit.DAYS.between(now.toLocalDate(), funding.deadline.toLocalDate())
             } else {
