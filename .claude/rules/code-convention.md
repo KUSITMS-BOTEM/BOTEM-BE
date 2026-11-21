@@ -18,6 +18,8 @@ paths:
 - Controller는 요청 검증과 응답 변환을 담당합니다.
 - 비즈니스 로직은 Service 또는 도메인 객체에 둡니다.
 - Repository에는 데이터 접근 책임만 둡니다.
+- 다른 도메인 데이터의 저장·삭제·비관적 락은 해당 도메인 Service를 통해서만 합니다. 단순 조회는 해당 도메인 Repository를 직접 써도 됩니다.
+- 호출한 쪽 트랜잭션 안에서만 의미가 있는 위임 메서드(락, 묶음 삭제 등)는 `@Transactional(propagation = Propagation.MANDATORY)`로 트랜잭션 밖 호출을 막습니다.
 - Entity를 API 요청이나 응답으로 직접 사용하지 않습니다.
 - API 성공 응답은 `ApiResponse`, 비즈니스 오류는 `BusinessException`과 `ErrorCode`를 사용합니다.
 
