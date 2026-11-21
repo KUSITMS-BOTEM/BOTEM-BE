@@ -8,16 +8,17 @@ import com.botem.domain.account.entity.PayoutAccount
 import com.botem.domain.account.exception.PayoutAccountErrorCode
 import com.botem.domain.account.repository.PayoutAccountRepository
 import com.botem.domain.user.exception.UserErrorCode
-import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
 class PayoutAccountService(
     private val payoutAccountRepository: PayoutAccountRepository,
-    private val userRepository: UserRepository,
+    private val userService: UserService,
     private val accountNumberCipher: AccountNumberCipher,
 ) {
 
@@ -26,6 +27,12 @@ class PayoutAccountService(
         payoutAccountRepository.findAllByUserIdOrderByCreatedAtAsc(userId)
             .sortedByDescending(PayoutAccount::isDefault)
             .map(::toResponse)
+
+    // 회원 탈퇴 트랜잭션 안에서 회원 상태 변경과 함께 삭제한다
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun deleteAllOf(userId: Long) {
+        payoutAccountRepository.deleteAllByUserId(userId)
+    }
 
     @Transactional(readOnly = true)
     fun hasPayoutAccount(userId: Long): Boolean =
@@ -95,7 +102,7 @@ class PayoutAccountService(
     }
 
     private fun lockUser(userId: Long) {
-        userRepository.findByIdForUpdate(userId)
+        userService.lockUser(userId)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
     }
 

@@ -8,19 +8,21 @@ import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
+import java.security.MessageDigest
+import java.util.HexFormat
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
-import java.security.MessageDigest
-import java.util.HexFormat
 
 @Service
 class AuthService(
     private val kakaoOAuthClient: KakaoOAuthClient,
     private val userRepository: UserRepository,
+    private val userService: UserService,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val payoutAccountService: PayoutAccountService,
     private val jwtProvider: JwtProvider,
@@ -44,7 +46,7 @@ class AuthService(
                 throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
             }
             val user = existingUser
-                ?: userRepository.save(
+                ?: userService.createUser(
                     User(
                         kakaoId = userInfo.id,
                         nickname = nickname,
@@ -54,7 +56,7 @@ class AuthService(
                 )
 
             // 이메일은 필수 동의 항목이라 로그인마다 카카오 값으로 덮어써, 만료·미인증된 이메일이 남지 않게 함
-            existingUser?.updateEmail(email)
+            existingUser?.let { userService.updateEmail(it, email) }
 
             // 온보딩 마지막 단계인 받을 계좌 등록을 마치지 않았으면 신규 회원으로 보고 온보딩을 다시 진행
             val isNewUser = existingUser == null || !payoutAccountService.hasPayoutAccount(user.id)

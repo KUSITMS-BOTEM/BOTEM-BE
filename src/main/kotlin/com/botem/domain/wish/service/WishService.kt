@@ -15,6 +15,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
@@ -124,4 +125,10 @@ class WishService(
             Sort.Order.desc("id"),
         )
     }
+
+    // 펀딩 개설처럼 위시를 기준으로 다른 데이터를 만들 때, 같은 위시의 동시 요청을 막기 위해 잠근다
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun lockOwnedWish(userId: Long, wishId: Long): Wish? =
+        wishRepository.findByIdAndUserIdForUpdate(wishId, userId)
+
 }

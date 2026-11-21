@@ -6,21 +6,18 @@ import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingProductChangeHistoryRepository
 import com.botem.domain.funding.repository.FundingRepository
-import com.botem.domain.user.entity.UserStatus
-import com.botem.domain.user.exception.UserErrorCode
-import com.botem.domain.user.repository.UserRepository
-import com.botem.global.exception.AuthErrorCode
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.BusinessException
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class FundingProductChangeService(
     private val fundingRepository: FundingRepository,
     private val productChangeHistoryRepository: FundingProductChangeHistoryRepository,
-    private val userRepository: UserRepository,
+    private val userService: UserService,
     private val resourceResolver: FundingCreationResourceResolver,
     private val clock: Clock,
 ) {
@@ -31,7 +28,7 @@ class FundingProductChangeService(
         fundingId: Long,
         wishId: Long,
     ): FundingProductChangeResponse {
-        lockActiveUser(userId)
+        userService.lockActiveUser(userId)
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
@@ -62,11 +59,4 @@ class FundingProductChangeService(
         return FundingProductChangeResponse.from(funding)
     }
 
-    private fun lockActiveUser(userId: Long) {
-        val user = userRepository.findByIdForUpdate(userId)
-            ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
-        if (user.status != UserStatus.ACTIVE) {
-            throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
-        }
-    }
 }

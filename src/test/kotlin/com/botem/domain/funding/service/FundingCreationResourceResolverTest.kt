@@ -5,17 +5,19 @@ import com.botem.domain.account.exception.PayoutAccountErrorCode
 import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.product.service.RecommendedProductService
 import com.botem.domain.wish.entity.Wish
 import com.botem.domain.wish.exception.WishErrorCode
 import com.botem.domain.wish.repository.WishRepository
+import com.botem.domain.wish.service.WishService
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.PayoutAccountEncryptionProperties
-import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import org.junit.jupiter.api.Test
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.mock
 
 class FundingCreationResourceResolverTest {
 
@@ -25,7 +27,7 @@ class FundingCreationResourceResolverTest {
         PayoutAccountEncryptionProperties(key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="),
     )
     private val resolver = FundingCreationResourceResolver(
-        wishRepository = wishRepository,
+        wishService = WishService(wishRepository, fundingRepository, mock(RecommendedProductService::class.java)),
         fundingRepository = fundingRepository,
         accountNumberCipher = cipher,
     )

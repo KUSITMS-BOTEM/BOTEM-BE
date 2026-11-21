@@ -11,6 +11,7 @@ import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.time.MonthDay
 
@@ -79,6 +80,26 @@ class UserService(
 
         return userRepository.findWishProfileKeyForUpdate(user.id)
             ?: throw BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR)
+    }
+
+    // 다른 도메인이 회원 행을 잠글 때 쓴다. 잠금은 호출한 쪽 트랜잭션이 끝날 때까지 유지돼야 하므로 트랜잭션 안에서만 호출할 수 있다
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun lockUser(userId: Long): User? =
+        userRepository.findByIdForUpdate(userId)
+
+    // 회원 행을 잠그고 활성 회원인지 확인한다. 없으면 USER_NOT_FOUND, 탈퇴했으면 WITHDRAWN_USER
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun lockActiveUser(userId: Long): User =
+        findActiveUserForUpdate(userId)
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun createUser(user: User): User =
+        userRepository.save(user)
+
+    // 조회한 회원 엔티티의 이메일을 바꾼다. 변경은 호출한 쪽 트랜잭션이 커밋될 때 반영된다
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun updateEmail(user: User, email: String?) {
+        user.updateEmail(email)
     }
 
     private fun findActiveUserForUpdate(userId: Long): User {

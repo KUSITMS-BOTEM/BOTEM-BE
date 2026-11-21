@@ -14,9 +14,18 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.domain.wish.entity.Wish
-import com.botem.global.exception.BusinessException
 import com.botem.global.exception.AuthErrorCode
+import com.botem.global.exception.BusinessException
+import com.botem.global.property.WishProfileProperties
+import java.time.Clock
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
@@ -24,12 +33,6 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
-import java.time.Clock
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class FundingProductChangeServiceTest {
 
@@ -40,7 +43,7 @@ class FundingProductChangeServiceTest {
     private val service = FundingProductChangeService(
         fundingRepository = fundingRepository,
         productChangeHistoryRepository = historyRepository,
-        userRepository = userRepository,
+        userService = UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
         resourceResolver = resourceResolver,
         clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )

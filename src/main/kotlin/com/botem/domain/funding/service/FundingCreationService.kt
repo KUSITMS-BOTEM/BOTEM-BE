@@ -12,22 +12,22 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
-import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserService
 import com.botem.domain.wish.entity.Wish
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class FundingCreationService(
     private val fundingRepository: FundingRepository,
-    private val userRepository: UserRepository,
+    private val userService: UserService,
     private val resourceResolver: FundingCreationResourceResolver,
     private val fundingShareProperties: FundingShareProperties,
     private val clock: Clock,
@@ -40,7 +40,7 @@ class FundingCreationService(
     ): CreateFundingResponse {
         // 입력만으로 판단하는 계좌번호 검증은 잠금 전에 끝낸다
         val payoutAccount = resourceResolver.resolveDirectPayoutAccount(request.bank, request.accountNumber)
-        lockUser(userId)
+        userService.lockActiveUser(userId)
         val now = LocalDateTime.now(clock)
         validateActiveFundingCount(userId, now)
 
@@ -72,7 +72,7 @@ class FundingCreationService(
         val payoutAccount = resourceResolver.resolveDirectPayoutAccount(request.bank, request.accountNumber)
         // 서로에게 동시에 서프라이즈를 여는 요청의 교착을 막기 위해 ID 순서로 잠근다
         val lockedUsers = listOf(userId, request.recipientId).sorted()
-            .associateWith { userRepository.findByIdForUpdate(it) }
+            .associateWith { userService.lockUser(it) }
         validateActiveUser(lockedUsers[userId])
         if (lockedUsers[request.recipientId]?.status != UserStatus.ACTIVE) {
             throw BusinessException(UserErrorCode.USER_NOT_FOUND)
@@ -129,10 +129,6 @@ class FundingCreationService(
             deadline = nextBirthday.minusDays(1).atTime(LocalTime.MAX).truncatedTo(ChronoUnit.MICROS),
             revealAt = nextBirthday.atStartOfDay().truncatedTo(ChronoUnit.MICROS),
         )
-    }
-
-    private fun lockUser(userId: Long) {
-        validateActiveUser(userRepository.findByIdForUpdate(userId))
     }
 
     private fun validateActiveUser(user: User?) {

@@ -5,9 +5,12 @@ import com.botem.domain.auth.client.KakaoOAuthClient
 import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
+import java.security.MessageDigest
+import java.util.HexFormat
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
@@ -15,8 +18,6 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.transaction.support.TransactionTemplate
-import java.security.MessageDigest
-import java.util.HexFormat
 
 class AuthServiceLogoutTest {
 
@@ -25,6 +26,7 @@ class AuthServiceLogoutTest {
     private val authService = AuthService(
         mock(KakaoOAuthClient::class.java),
         mock(UserRepository::class.java),
+        mock(UserService::class.java),
         refreshTokenRepository,
         mock(PayoutAccountService::class.java),
         jwtProvider,

@@ -13,16 +13,13 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.domain.wish.entity.Wish
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
-import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
-import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
+import com.botem.global.property.WishProfileProperties
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -34,6 +31,12 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 
 class FundingCreationServiceTest {
 
@@ -42,7 +45,7 @@ class FundingCreationServiceTest {
     private val resourceResolver = mock(FundingCreationResourceResolver::class.java)
     private val service = FundingCreationService(
         fundingRepository = fundingRepository,
-        userRepository = userRepository,
+        userService = UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
         resourceResolver = resourceResolver,
         fundingShareProperties = FundingShareProperties("https://botem.me/share/"),
         clock = Clock.fixed(Instant.parse("2026-11-17T03:00:00Z"), ZoneId.of("Asia/Seoul")),

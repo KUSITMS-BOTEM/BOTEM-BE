@@ -1,18 +1,15 @@
 package com.botem.domain.user.service
 
 import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
+import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.auth.repository.RefreshTokenRepository
+import com.botem.domain.auth.service.RefreshTokenService
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
-import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
-import org.mockito.Mockito.`when`
-import org.springframework.context.ApplicationEventPublisher
 import java.time.LocalDateTime
 import java.time.MonthDay
 import kotlin.test.assertEquals
@@ -20,6 +17,12 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
+import org.springframework.context.ApplicationEventPublisher
 
 class UserWithdrawalServiceTest {
 
@@ -31,8 +34,12 @@ class UserWithdrawalServiceTest {
 
     private val service = UserWithdrawalService(
         userRepository = userRepository,
-        refreshTokenRepository = refreshTokenRepository,
-        payoutAccountRepository = payoutAccountRepository,
+        refreshTokenService = RefreshTokenService(refreshTokenRepository),
+        payoutAccountService = PayoutAccountService(
+            payoutAccountRepository,
+            mock(UserService::class.java),
+            mock(AccountNumberCipher::class.java),
+        ),
         activeFundingChecker = activeFundingChecker,
         eventPublisher = eventPublisher,
     )

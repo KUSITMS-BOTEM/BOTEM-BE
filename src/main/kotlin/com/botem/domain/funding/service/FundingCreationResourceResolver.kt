@@ -7,19 +7,19 @@ import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.wish.entity.Wish
 import com.botem.domain.wish.exception.WishErrorCode
-import com.botem.domain.wish.repository.WishRepository
+import com.botem.domain.wish.service.WishService
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Component
 
 @Component
 class FundingCreationResourceResolver(
-    private val wishRepository: WishRepository,
+    private val wishService: WishService,
     private val fundingRepository: FundingRepository,
     private val accountNumberCipher: AccountNumberCipher,
 ) {
 
     fun resolveWish(userId: Long, wishId: Long): Wish {
-        val wish = wishRepository.findByIdAndUserIdForUpdate(wishId, userId)
+        val wish = wishService.lockOwnedWish(userId, wishId)
             ?: throw BusinessException(WishErrorCode.WISH_NOT_FOUND)
 
         if (fundingRepository.existsByOwnerIdAndProductSourceWishIdAndStatusNotIn(

@@ -5,21 +5,18 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
-import com.botem.domain.user.entity.UserStatus
-import com.botem.domain.user.exception.UserErrorCode
-import com.botem.domain.user.repository.UserRepository
-import com.botem.global.exception.AuthErrorCode
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.BusinessException
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class FundingExtensionService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
-    private val userRepository: UserRepository,
+    private val userService: UserService,
     private val fundingContributionCloser: FundingContributionCloser,
     private val clock: Clock,
 ) {
@@ -31,7 +28,7 @@ class FundingExtensionService(
         newDeadline: LocalDateTime,
     ): FundingExtensionResponse {
         val requestedAt = LocalDateTime.now(clock)
-        lockActiveUser(userId)
+        userService.lockActiveUser(userId)
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
 
@@ -60,13 +57,6 @@ class FundingExtensionService(
         return FundingExtensionResponse.from(funding)
     }
 
-    private fun lockActiveUser(userId: Long) {
-        val user = userRepository.findByIdForUpdate(userId)
-            ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
-        if (user.status != UserStatus.ACTIVE) {
-            throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
-        }
-    }
 
     companion object {
         private const val MAX_ACTIVE_FUNDING_COUNT = 5

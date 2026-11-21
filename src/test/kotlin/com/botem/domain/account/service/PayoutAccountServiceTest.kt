@@ -9,19 +9,22 @@ import com.botem.domain.account.repository.PayoutAccountRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.PayoutAccountEncryptionProperties
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.`when`
-import org.mockito.Mockito.mock
+import com.botem.global.property.WishProfileProperties
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
 
 class PayoutAccountServiceTest {
 
@@ -34,7 +37,7 @@ class PayoutAccountServiceTest {
     )
     private val service = PayoutAccountService(
         payoutAccountRepository = payoutAccountRepository,
-        userRepository = userRepository,
+        userService = UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
         accountNumberCipher = cipher,
     )
     private val user = User(

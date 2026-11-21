@@ -6,9 +6,16 @@ import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.WishProfileProperties
+import java.security.MessageDigest
+import java.util.HexFormat
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
@@ -16,10 +23,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.springframework.transaction.support.TransactionTemplate
-import java.security.MessageDigest
-import java.util.HexFormat
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class AuthServiceReissueTest {
 
@@ -29,6 +32,7 @@ class AuthServiceReissueTest {
     private val authService = AuthService(
         mock(KakaoOAuthClient::class.java),
         userRepository,
+        UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
         refreshTokenRepository,
         mock(PayoutAccountService::class.java),
         jwtProvider,
