@@ -395,6 +395,7 @@ class FundingControllerTest {
                 shareKey = "0123456789abcdef0123456789abcdef",
                 type = FundingType.BIRTHDAY,
                 title = "생일 선물 펀딩",
+                celebrantName = "지유",
                 story = "새 헤드폰이 필요해요",
                 promise = null,
                 product = FundingDetailProductResponse(
@@ -436,6 +437,7 @@ class FundingControllerTest {
                 .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
         )
             .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.celebrantName").value("지유"))
             .andExpect(jsonPath("$.data.managementState").value("NO_PARTICIPANTS"))
             .andExpect(jsonPath("$.data.pendingContributionCount").value(1))
             .andExpect(jsonPath("$.data.actions.canCloseEarly").value(true))

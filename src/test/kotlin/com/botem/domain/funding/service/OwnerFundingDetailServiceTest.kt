@@ -219,6 +219,26 @@ class OwnerFundingDetailServiceTest {
     }
 
     @Test
+    fun `화면 제목용 주인공 이름은 생일 펀딩이면 개설자, 서프라이즈면 받는 사람이다`() {
+        givenContributions()
+        given(userRepository.findById(OWNER_ID)).willReturn(
+            Optional.of(User(kakaoId = 1L, nickname = "지유닉", profileImageUrl = null, name = "지유")),
+        )
+        val recipient = User(kakaoId = 7L, nickname = "서준닉", profileImageUrl = null, name = null)
+        given(userRepository.findById(MEMBER_ID)).willReturn(Optional.of(recipient))
+
+        givenFunding(funding())
+        assertEquals("지유", service.getManagementDetail(OWNER_ID, FUNDING_ID).celebrantName)
+
+        // 실명이 없으면 닉네임, 탈퇴했으면 '탈퇴한 사용자'
+        givenFunding(funding(type = FundingType.SURPRISE))
+        assertEquals("서준닉", service.getManagementDetail(OWNER_ID, FUNDING_ID).celebrantName)
+
+        recipient.withdraw(NOW)
+        assertEquals("탈퇴한 사용자", service.getManagementDetail(OWNER_ID, FUNDING_ID).celebrantName)
+    }
+
+    @Test
     fun `조기 마감 후에는 관리 동작과 기간 연장을 허용하지 않는다`() {
         givenFunding(funding(deadline = NOW, earlyClosedAt = NOW.minusDays(1)))
         givenContributions()

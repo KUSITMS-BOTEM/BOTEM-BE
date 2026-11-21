@@ -10,6 +10,8 @@ data class OwnerFundingDetailResponse(
     val shareKey: String,
     val type: FundingType,
     val title: String?,
+    // 화면 제목('{이름}의 펀딩', '{이름}의 서프라이즈')에 쓰는 주인공 이름. 실명이 없으면 닉네임
+    val celebrantName: String,
     val story: String?,
     val promise: String?,
     val product: FundingDetailProductResponse,
