@@ -3,15 +3,13 @@ package com.botem.domain.user.service
 import com.botem.domain.account.repository.PayoutAccountRepository
 import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.account.service.PayoutAccountService
-import com.botem.domain.auth.client.KakaoOAuthClient
 import com.botem.domain.auth.repository.RefreshTokenRepository
-import com.botem.domain.auth.service.AuthService
+import com.botem.domain.auth.service.RefreshTokenService
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
-import com.botem.global.jwt.JwtProvider
 import java.time.LocalDateTime
 import java.time.MonthDay
 import kotlin.test.assertEquals
@@ -25,7 +23,6 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.transaction.support.TransactionTemplate
 
 class UserWithdrawalServiceTest {
 
@@ -37,15 +34,7 @@ class UserWithdrawalServiceTest {
 
     private val service = UserWithdrawalService(
         userRepository = userRepository,
-        authService = AuthService(
-            mock(KakaoOAuthClient::class.java),
-            userRepository,
-            mock(UserService::class.java),
-            refreshTokenRepository,
-            mock(PayoutAccountService::class.java),
-            mock(JwtProvider::class.java),
-            mock(TransactionTemplate::class.java),
-        ),
+        refreshTokenService = RefreshTokenService(refreshTokenRepository),
         payoutAccountService = PayoutAccountService(
             payoutAccountRepository,
             mock(UserService::class.java),
