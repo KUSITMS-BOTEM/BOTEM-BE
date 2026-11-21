@@ -62,6 +62,10 @@ class PayoutAccount(
         verificationStatus = AccountVerificationStatus.UNVERIFIED
     }
 
+    fun rotateEncryption(encryptedAccountNumber: String) {
+        this.encryptedAccountNumber = encryptedAccountNumber
+    }
+
     fun designateAsDefault() {
         isDefault = true
     }
