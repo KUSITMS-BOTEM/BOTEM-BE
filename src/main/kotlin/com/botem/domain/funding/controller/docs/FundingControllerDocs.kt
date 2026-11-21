@@ -686,6 +686,8 @@ interface FundingControllerDocs {
             선물 준비를 완료한 뒤에도 같은 API로 준비 완료 · 공유 화면 데이터를 조회할 수 있습니다.
             recipientName은 받는 사람의 이름이며, 이름이 없으면 닉네임을 반환합니다.
             recipientWithdrawn은 받는 사람이 탈퇴했으면 true이며, 이때 recipientName은 '탈퇴한 사용자'입니다. 탈퇴해도 선물 준비와 공개 일정은 그대로 진행합니다.
+            recipientPayoutAccount는 목표 미달(targetReached=false)인 경우에만 받는 사람의 대표계좌를 반환합니다.
+            주최자만 호출할 수 있는 마감된 서프라이즈 API에서만 노출되며, 받는 사람이 탈퇴했거나 대표계좌가 없거나 목표를 달성한 경우에는 null입니다.
         """,
     )
     @ApiResponses(
@@ -727,6 +729,8 @@ interface FundingControllerDocs {
             주최자가 마감된 서프라이즈의 선물 준비를 완료합니다. giftPreparedAt을 저장하고 WAITING_REVEAL 상태로 전환합니다.
             공개 시각(revealAt)이 지나면 받는 사람 홈 공개 카드와 서프라이즈 공개 API의 대상이 됩니다.
             준비를 완료하지 않은 서프라이즈는 공개 시각이 지나도 받는 사람에게 공개 카드가 노출되지 않습니다.
+            응답의 recipientPayoutAccount는 목표 미달(targetReached=false)이고 받는 사람이 활성 상태이며 대표계좌가 있을 때만 반환합니다.
+            목표 달성, 받는 사람 탈퇴 또는 대표계좌 미등록 시에는 null입니다.
             입금 확인 대기 참여가 남아 있으면 FUNDING_007을 반환합니다. 확인 대기는 자동으로 확정하지 않습니다.
             excludePendingContributions=true로 요청하면 남은 확인 대기를 확정 금액에서 제외하고 완료합니다.
             이미 준비를 완료한 서프라이즈에 다시 요청하면 상태를 변경하지 않고 기존 결과를 반환합니다.
@@ -1433,6 +1437,12 @@ interface FundingControllerDocs {
                 "shareKey": "0123456789abcdef0123456789abcdef",
                 "recipientName": "지유",
                 "recipientWithdrawn": false,
+                "recipientPayoutAccount": {
+                  "bank": "KAKAO_BANK",
+                  "bankName": "카카오뱅크",
+                  "accountNumber": "3333012345678",
+                  "accountHolder": "김지유"
+                },
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://shop.example.com/product",
@@ -1462,6 +1472,12 @@ interface FundingControllerDocs {
                 "shareKey": "0123456789abcdef0123456789abcdef",
                 "recipientName": "지유",
                 "recipientWithdrawn": false,
+                "recipientPayoutAccount": {
+                  "bank": "KAKAO_BANK",
+                  "bankName": "카카오뱅크",
+                  "accountNumber": "3333012345678",
+                  "accountHolder": "김지유"
+                },
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://shop.example.com/product",
