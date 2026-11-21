@@ -52,8 +52,9 @@ class FundingArchiveServiceTest {
         val participated = funding(id = 3L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2025, 12, 31, 23, 59))
         given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(opened, received, participated))
         given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L, 3L), ME_ID)).willReturn(listOf(3L))
+        val archiveSummary = summary(fundingId = 3L)
         given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(listOf(1L, 2L, 3L)))
-            .willReturn(listOf(summary(fundingId = 3L)))
+            .willReturn(listOf(archiveSummary))
         given(userRepository.findAllById(listOf(ME_ID, OPENER_ID))).willReturn(
             listOf(user(ME_ID, "지유"), user(OPENER_ID, "서준", "https://image.example.com/seojun.jpg")),
         )

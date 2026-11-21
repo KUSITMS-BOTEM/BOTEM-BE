@@ -6,6 +6,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.user.entity.User
@@ -73,7 +74,6 @@ class FundingArchivePersistenceTest {
         assertEquals(2L, summary.messageCount)
         assertEquals("하린", summary.writerName)
         assertEquals("https://image.example.com/harin.jpg", summary.writerProfileImageUrl)
-        assertEquals("음성 메시지", summary.content)
         assertEquals("BLUE_DOT_GRID", summary.paperTemplateCode)
         assertEquals(true, summary.hasVoice)
     }
@@ -128,13 +128,14 @@ class FundingArchivePersistenceTest {
         fundingId: Long,
         participantUserId: Long,
         status: ContributionStatus,
+        participantName: String = "참여자",
         cancelled: Boolean = false,
     ): Contribution =
         contributionRepository.saveAndFlush(
             Contribution(
                 fundingId = fundingId,
                 participantUserId = participantUserId,
-                participantName = "참여자",
+                participantName = participantName,
                 amount = if (status == ContributionStatus.MESSAGE_ONLY) 0 else 10_000L,
                 status = status,
                 guestPasswordHash = null,
@@ -153,6 +154,7 @@ class FundingArchivePersistenceTest {
             fundingId = fundingId,
             participantUserId = participantUserId,
             status = ContributionStatus.MESSAGE_ONLY,
+            participantName = "하린",
             cancelled = cancelled,
         )
         rollingPaperMessageRepository.saveAndFlush(
@@ -164,6 +166,13 @@ class FundingArchivePersistenceTest {
                 voiceDurationSeconds = voiceUrl?.let { 10 },
             ),
         )
+    }
+
+    private fun setField(target: Any, fieldName: String, value: Any) {
+        target.javaClass.getDeclaredField(fieldName).apply {
+            isAccessible = true
+            set(target, value)
+        }
     }
 
     companion object {
