@@ -111,6 +111,32 @@ class RollingPaperServiceTest {
     }
 
     @Test
+    fun `공개 시각이 지나도 선물이 준비되지 않은 서프라이즈는 롤링페이퍼를 조회할 수 없다`() {
+        givenFunding(
+            funding(
+                type = FundingType.SURPRISE,
+                status = FundingStatus.FUNDING,
+                revealAt = NOW.minusMinutes(1),
+            ),
+        )
+
+        assertErrorCode(FundingErrorCode.SURPRISE_NOT_REVEALED) { service.getRollingPaper(OTHER_ID, FUNDING_ID) }
+        verifyNoInteractions(userRepository, rollingPaperMessageRepository)
+    }
+
+    @Test
+    fun `주인공 정보가 없으면 빈 이름으로 롤링페이퍼를 반환한다`() {
+        givenFunding(funding().also { it.openResult(NOW) })
+        given(userRepository.findById(OWNER_ID)).willReturn(Optional.empty())
+        given(rollingPaperMessageRepository.findAllByFundingId(FUNDING_ID)).willReturn(emptyList())
+
+        val response = service.getRollingPaper(OWNER_ID, FUNDING_ID)
+
+        assertEquals("", response.celebrantName)
+        assertEquals(0, response.messageCount)
+    }
+
+    @Test
     fun `아카이브 대상이 아니거나 아직 공개되지 않은 펀딩은 조회할 수 없다`() {
         givenFunding(funding().also { it.openResult(NOW) })
         given(contributionRepository.existsByFundingIdAndParticipantUserIdAndStatusNot(FUNDING_ID, OTHER_ID, ContributionStatus.CANCELLED))

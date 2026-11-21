@@ -108,6 +108,29 @@ class FundingArchiveServiceTest {
         verifyNoInteractions(contributionRepository, rollingPaperMessageRepository, userRepository)
     }
 
+    @Test
+    fun `사용자 프로필이 없거나 이름이 없으면 비어 있는 이름 또는 닉네임으로 아카이브를 반환한다`() {
+        val received = funding(
+            id = 1L,
+            ownerId = OPENER_ID,
+            recipientId = ME_ID,
+            type = FundingType.SURPRISE,
+            deadline = LocalDateTime.of(2026, 10, 13, 23, 59),
+            revealAt = LocalDateTime.of(2026, 10, 14, 0, 0),
+        )
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(received))
+        given(contributionRepository.findParticipatedFundingIds(listOf(1L), ME_ID)).willReturn(emptyList())
+        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(listOf(1L))).willReturn(emptyList())
+        given(userRepository.findAllById(listOf(OPENER_ID, ME_ID))).willReturn(
+            listOf(User(kakaoId = OPENER_ID, nickname = "서준 닉네임", profileImageUrl = null, name = null).also { setField(it, "id", OPENER_ID) }),
+        )
+
+        val card = service.getArchive(ME_ID, FundingArchiveTab.ALL).years.single().fundings.single()
+
+        assertEquals("서준 닉네임", card.opener.name)
+        assertEquals("", card.celebrantName)
+    }
+
     private fun summary(fundingId: Long): ArchiveRollingPaperSummaryProjection =
         mock(ArchiveRollingPaperSummaryProjection::class.java).also {
             given(it.fundingId).willReturn(fundingId)
