@@ -103,6 +103,7 @@ class SurpriseGiftPreparationServiceTest {
         assertEquals("카카오뱅크", response.recipientPayoutAccount?.bankName)
         assertEquals(ACCOUNT_NUMBER, response.recipientPayoutAccount?.accountNumber)
         assertEquals("김지유", response.recipientPayoutAccount?.accountHolder)
+        verify(userRepository).findByIdForUpdate(RECIPIENT_ID)
     }
 
     @Test
@@ -114,6 +115,7 @@ class SurpriseGiftPreparationServiceTest {
 
         assertNull(targetReachedResponse.recipientPayoutAccount)
         verifyNoInteractions(payoutAccountRepository, accountNumberCipher)
+        verify(userRepository).findById(RECIPIENT_ID)
 
         givenFunding(funding())
         givenSummary(confirmedAmount = 30_000L, participantCount = 2L)
@@ -208,11 +210,9 @@ class SurpriseGiftPreparationServiceTest {
     fun `받는 사람이 탈퇴해도 선물 준비 화면을 조회하고 탈퇴 여부를 알려준다`() {
         givenFunding(funding(status = FundingStatus.FUNDING))
         givenSummary(confirmedAmount = 80_000L, participantCount = 4L)
-        given(userRepository.findById(RECIPIENT_ID)).willReturn(
-            Optional.of(
-                User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
-                    .also { it.withdraw(NOW) },
-            ),
+        given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(
+            User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
+                .also { it.withdraw(NOW) },
         )
 
         val response = service.getPreparation(OWNER_ID, FUNDING_ID)
@@ -225,9 +225,9 @@ class SurpriseGiftPreparationServiceTest {
 
     private fun givenFunding(funding: Funding) {
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
-        given(userRepository.findById(RECIPIENT_ID)).willReturn(
-            Optional.of(User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")),
-        )
+        val recipient = User(kakaoId = 1L, nickname = "지유 닉네임", profileImageUrl = null, name = "지유")
+        given(userRepository.findById(RECIPIENT_ID)).willReturn(Optional.of(recipient))
+        given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(recipient)
     }
 
     private fun givenSummary(confirmedAmount: Long, participantCount: Long, pendingCount: Long = 0L) {
