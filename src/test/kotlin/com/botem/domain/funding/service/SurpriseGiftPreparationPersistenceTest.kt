@@ -16,9 +16,17 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.config.DomainServiceTestConfig
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.PayoutAccountEncryptionProperties
+import java.time.Clock
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,19 +36,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNull
 
 // 서비스 호출마다 커밋·롤백되는지 확인해야 하므로 테스트 트랜잭션 밖에서 실행한다
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import(
     JpaAuditingConfig::class,
+    DomainServiceTestConfig::class,
     SurpriseGiftPreparationService::class,
     FundingContributionCloser::class,
     SurpriseGiftPreparationPersistenceTest.FixedClockConfig::class,

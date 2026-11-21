@@ -3,7 +3,12 @@ package com.botem.domain.friend.service
 import com.botem.domain.friend.repository.FriendshipRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.config.DomainServiceTestConfig
 import com.botem.global.config.JpaAuditingConfig
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -11,15 +16,11 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
 
 // 동시 요청이 실제로 각자 커밋돼야 하므로 테스트 트랜잭션을 사용하지 않는다
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import(JpaAuditingConfig::class, FriendService::class, FriendServiceTest.FixedClockConfig::class)
+@Import(JpaAuditingConfig::class, DomainServiceTestConfig::class, FriendService::class, FriendServiceTest.FixedClockConfig::class)
 class FriendServiceConcurrencyTest {
 
     @Autowired

@@ -1,18 +1,17 @@
 package com.botem.domain.user.service
 
 import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
+import com.botem.domain.account.service.PayoutAccountService
+import com.botem.domain.auth.client.KakaoOAuthClient
 import com.botem.domain.auth.repository.RefreshTokenRepository
+import com.botem.domain.auth.service.AuthService
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
-import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
-import org.mockito.Mockito.`when`
-import org.springframework.context.ApplicationEventPublisher
+import com.botem.global.jwt.JwtProvider
 import java.time.LocalDateTime
 import java.time.MonthDay
 import kotlin.test.assertEquals
@@ -20,6 +19,13 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import org.junit.jupiter.api.Test
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.transaction.support.TransactionTemplate
 
 class UserWithdrawalServiceTest {
 
@@ -31,8 +37,20 @@ class UserWithdrawalServiceTest {
 
     private val service = UserWithdrawalService(
         userRepository = userRepository,
-        refreshTokenRepository = refreshTokenRepository,
-        payoutAccountRepository = payoutAccountRepository,
+        authService = AuthService(
+            mock(KakaoOAuthClient::class.java),
+            userRepository,
+            mock(UserService::class.java),
+            refreshTokenRepository,
+            mock(PayoutAccountService::class.java),
+            mock(JwtProvider::class.java),
+            mock(TransactionTemplate::class.java),
+        ),
+        payoutAccountService = PayoutAccountService(
+            payoutAccountRepository,
+            mock(UserService::class.java),
+            mock(AccountNumberCipher::class.java),
+        ),
         activeFundingChecker = activeFundingChecker,
         eventPublisher = eventPublisher,
     )

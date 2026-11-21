@@ -15,19 +15,11 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.wish.entity.Wish
 import com.botem.domain.wish.repository.WishRepository
+import com.botem.global.config.DomainServiceTestConfig
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
 import com.botem.global.property.FundingShareProperties
 import com.botem.global.property.PayoutAccountEncryptionProperties
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Import
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -38,11 +30,21 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import(
     JpaAuditingConfig::class,
+    DomainServiceTestConfig::class,
     FundingCreationService::class,
     FundingCreationResourceResolver::class,
     FundingCreationConcurrencyTest.FixedConfig::class,

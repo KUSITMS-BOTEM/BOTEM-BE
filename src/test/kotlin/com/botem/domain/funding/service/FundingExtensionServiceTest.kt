@@ -12,18 +12,21 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.BusinessException
-import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
+import com.botem.global.property.WishProfileProperties
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import org.junit.jupiter.api.Test
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 
 class FundingExtensionServiceTest {
 
@@ -146,7 +149,7 @@ class FundingExtensionServiceTest {
         FundingExtensionService(
             fundingRepository = fundingRepository,
             contributionRepository = contributionRepository,
-            userRepository = userRepository,
+            userService = UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
             fundingContributionCloser = FundingContributionCloser(contributionRepository),
             clock = clock,
         )

@@ -13,15 +13,9 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.domain.user.service.UserWithdrawnEvent
 import com.botem.domain.wish.entity.Wish
 import com.botem.domain.wish.repository.WishRepository
+import com.botem.global.config.DomainServiceTestConfig
 import com.botem.global.config.JpaAuditingConfig
 import com.botem.global.exception.BusinessException
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
-import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Import
-import org.springframework.jdbc.core.JdbcTemplate
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -31,9 +25,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 
 @DataJpaTest
-@Import(JpaAuditingConfig::class, FriendService::class, FriendServiceTest.FixedClockConfig::class)
+@Import(JpaAuditingConfig::class, DomainServiceTestConfig::class, FriendService::class, FriendServiceTest.FixedClockConfig::class)
 class FriendServiceTest {
 
     @Autowired

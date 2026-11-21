@@ -7,9 +7,13 @@ import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
+import com.botem.global.property.WishProfileProperties
+import java.time.LocalDateTime
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -29,7 +33,6 @@ import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.SimpleTransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
-import java.time.LocalDateTime
 
 class AuthServiceKakaoLoginTest {
 
@@ -41,6 +44,7 @@ class AuthServiceKakaoLoginTest {
     private val authService = AuthService(
         kakaoOAuthClient,
         userRepository,
+        UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
         refreshTokenRepository,
         payoutAccountService,
         jwtProvider,

@@ -16,13 +16,10 @@ import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.ProfileImageService
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.BusinessException
-import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
+import com.botem.global.property.WishProfileProperties
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -33,6 +30,12 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Test
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 
 class SurpriseGiftPreparationServiceTest {
 
@@ -47,6 +50,7 @@ class SurpriseGiftPreparationServiceTest {
         contributionRepository = contributionRepository,
         rollingPaperMessageRepository = rollingPaperMessageRepository,
         userRepository = userRepository,
+        userService = UserService(userRepository, mock(WishProfileProperties::class.java), mock(ProfileImageService::class.java)),
         payoutAccountRepository = payoutAccountRepository,
         accountNumberCipher = accountNumberCipher,
         fundingContributionCloser = FundingContributionCloser(contributionRepository),
