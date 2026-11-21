@@ -3,6 +3,7 @@ package com.botem.global.property
 import jakarta.validation.Validation
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class PayoutAccountEncryptionPropertiesTest {
@@ -45,6 +46,32 @@ class PayoutAccountEncryptionPropertiesTest {
 
         assertEquals(1, violations.size)
         assertEquals("keyRingValid", violations.single().propertyPath.toString())
+    }
+
+    @Test
+    fun `키 식별자가 잘못되었거나 키가 비어 있으면 거부한다`() {
+        val invalidKeyId = PayoutAccountEncryptionProperties(
+            currentKeyId = "current key",
+            legacyKeyId = "v1",
+            keys = mapOf("current key" to VALID_KEY, "v1" to VALID_KEY),
+        )
+        val blankKey = PayoutAccountEncryptionProperties(
+            currentKeyId = "v1",
+            legacyKeyId = "v1",
+            keys = mapOf("v1" to " "),
+        )
+
+        assertEquals("keyRingValid", validator.validate(invalidKeyId).single().propertyPath.toString())
+        assertEquals("keyRingValid", validator.validate(blankKey).single().propertyPath.toString())
+    }
+
+    @Test
+    fun `없는 키 식별자를 조회하면 원문 키 정보를 노출하지 않고 거부한다`() {
+        val properties = PayoutAccountEncryptionProperties(VALID_KEY)
+
+        val exception = assertFailsWith<IllegalArgumentException> { properties.keyOf("v2") }
+
+        assertEquals("계좌 암호화 키를 찾을 수 없습니다.", exception.message)
     }
 
     companion object {

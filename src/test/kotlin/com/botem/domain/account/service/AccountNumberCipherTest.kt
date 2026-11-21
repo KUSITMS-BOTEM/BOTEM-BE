@@ -3,6 +3,7 @@ package com.botem.domain.account.service
 import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
@@ -61,6 +62,33 @@ class AccountNumberCipherTest {
         assertTrue(encryptedWithCurrentKey.startsWith("v2:"))
         assertTrue(keyRingCipher.isEncryptedWithCurrentKey(encryptedWithCurrentKey))
     }
+
+    @Test
+    fun `등록되지 않은 키 버전이나 잘못된 암호문은 복호화하지 않는다`() {
+        val keyRingCipher = keyRingCipher()
+
+        assertFailsWith<IllegalArgumentException> {
+            keyRingCipher.decrypt("v3:encrypted-payload")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            keyRingCipher.decrypt("v1:not-base64")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            keyRingCipher.decrypt("v1:MTIz")
+        }
+    }
+
+    private fun keyRingCipher(): AccountNumberCipher =
+        AccountNumberCipher(
+            PayoutAccountEncryptionProperties(
+                currentKeyId = "v2",
+                legacyKeyId = "v1",
+                keys = mapOf(
+                    "v1" to KEY,
+                    "v2" to "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=",
+                ),
+            ),
+        )
 
     companion object {
         private const val KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
