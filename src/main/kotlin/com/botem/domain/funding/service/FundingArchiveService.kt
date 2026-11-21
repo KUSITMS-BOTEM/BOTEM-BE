@@ -34,7 +34,8 @@ class FundingArchiveService(
     // 목록이 길어지면 연도 단위 또는 커서 기반 페이지네이션을 추가한다.
     @Transactional(readOnly = true)
     fun getArchive(userId: Long, tab: FundingArchiveTab): FundingArchiveResponse {
-        val fundings = fundingRepository.findArchivedFundingsByUserId(userId, LocalDateTime.now(clock))
+        val now = LocalDateTime.now(clock)
+        val fundings = fundingRepository.findArchivedFundingsByUserId(userId, now)
         if (fundings.isEmpty()) {
             return FundingArchiveResponse(
                 tabCounts = FundingArchiveTabCounts(all = 0, received = 0, participated = 0),
@@ -44,14 +45,25 @@ class FundingArchiveService(
 
         val fundingIds = fundings.map(Funding::id)
         val participatedFundingIds = contributionRepository.findParticipatedFundingIds(fundingIds, userId).toSet()
-        val summariesByFundingId = rollingPaperMessageRepository.findArchiveSummariesByFundingIds(fundingIds)
-            .associateBy(ArchiveRollingPaperSummaryProjection::fundingId)
+        val rollingPaperViewableFundingIds = fundings.filter { it.isRollingPaperViewable(now) }.map(Funding::id).toSet()
+        val summariesByFundingId = if (rollingPaperViewableFundingIds.isEmpty()) {
+            emptyMap()
+        } else {
+            rollingPaperMessageRepository.findArchiveSummariesByFundingIds(rollingPaperViewableFundingIds)
+                .associateBy(ArchiveRollingPaperSummaryProjection::fundingId)
+        }
         val usersById = userRepository.findAllById(
             fundings.flatMap { listOfNotNull(it.ownerId, it.recipientId) }.distinct(),
         ).associateBy(User::id)
 
         val cards = fundings.map { funding ->
-            funding.toArchiveCard(userId, participatedFundingIds, usersById, summariesByFundingId)
+            funding.toArchiveCard(
+                userId,
+                participatedFundingIds,
+                rollingPaperViewableFundingIds,
+                usersById,
+                summariesByFundingId,
+            )
         }
         val tabCounts = FundingArchiveTabCounts(
             all = cards.size,
@@ -78,6 +90,7 @@ class FundingArchiveService(
     private fun Funding.toArchiveCard(
         userId: Long,
         participatedFundingIds: Set<Long>,
+        rollingPaperViewableFundingIds: Set<Long>,
         usersById: Map<Long, User>,
         summariesByFundingId: Map<Long, ArchiveRollingPaperSummaryProjection>,
     ): FundingArchiveCardResponse {
@@ -90,7 +103,8 @@ class FundingArchiveService(
         val opener = usersById[ownerId]
         val celebrantId = if (type == FundingType.BIRTHDAY) ownerId else requireNotNull(recipientId)
         val celebrant = usersById[celebrantId]
-        val summary = summariesByFundingId[id]
+        val isRollingPaperViewable = id in rollingPaperViewableFundingIds
+        val summary = summariesByFundingId[id].takeIf { isRollingPaperViewable }
 
         return FundingArchiveCardResponse(
             fundingId = id,
@@ -104,7 +118,7 @@ class FundingArchiveService(
             deadline = deadline,
             productName = product.name,
             productImageUrl = product.imageUrl,
-            rollingPaperCount = summary?.messageCount ?: 0,
+            rollingPaperCount = if (isRollingPaperViewable) summary?.messageCount ?: 0 else null,
             representativeMessage = summary?.let {
                 FundingArchiveRepresentativeMessageResponse(
                     writerName = it.writerName,

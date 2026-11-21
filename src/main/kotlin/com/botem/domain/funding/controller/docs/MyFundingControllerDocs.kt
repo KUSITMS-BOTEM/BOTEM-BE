@@ -23,7 +23,8 @@ interface MyFundingControllerDocs {
             tabCounts는 선택한 탭과 무관하게 전체 아카이브 기준으로 반환합니다.
             relationship은 OPENED(내가 열었어요), RECEIVED(내가 받았어요), PARTICIPATED(내가 참여했어요) 중 하나입니다.
             years는 마감일 연도 기준 내림차순이며, 각 연도 안의 카드는 마감일 최신순입니다.
-            representativeMessage는 취소되지 않은 롤링페이퍼 중 가장 최근 참여의 메시지 1건이며, 메시지가 없으면 null입니다.
+            롤링페이퍼 공개 전에는 rollingPaperCount와 representativeMessage가 모두 null입니다.
+            공개된 펀딩의 representativeMessage는 취소되지 않은 롤링페이퍼 중 가장 최근 참여의 메시지 1건이며, 메시지가 없으면 null입니다.
         """,
     )
     @ApiResponses(
@@ -50,14 +51,14 @@ interface MyFundingControllerDocs {
               "success": true,
               "data": {
                 "tabCounts": {
-                  "all": 5,
-                  "received": 1,
-                  "participated": 2
+                  "all": 1,
+                  "received": 0,
+                  "participated": 0
                 },
                 "years": [
                   {
                     "year": 2026,
-                    "fundingCount": 2,
+                    "fundingCount": 1,
                     "fundings": [
                       {
                         "fundingId": 12,

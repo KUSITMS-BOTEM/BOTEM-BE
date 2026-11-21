@@ -16,6 +16,7 @@ import com.botem.domain.user.repository.UserRepository
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
@@ -40,7 +41,7 @@ class FundingArchiveServiceTest {
 
     @Test
     fun `전체 아카이브를 역할별 개수와 마감일 연도별 카드로 반환한다`() {
-        val opened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59))
+        val opened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59)).also { it.openResult(NOW) }
         val received = funding(
             id = 2L,
             ownerId = OPENER_ID,
@@ -49,11 +50,11 @@ class FundingArchiveServiceTest {
             deadline = LocalDateTime.of(2026, 9, 13, 23, 59),
             revealAt = LocalDateTime.of(2026, 9, 14, 0, 0),
         )
-        val participated = funding(id = 3L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2025, 12, 31, 23, 59))
+        val participated = funding(id = 3L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2025, 12, 31, 23, 59)).also { it.openResult(NOW) }
         given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(opened, received, participated))
         given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L, 3L), ME_ID)).willReturn(listOf(3L))
         val archiveSummary = summary(fundingId = 3L)
-        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(listOf(1L, 2L, 3L)))
+        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(1L, 3L)))
             .willReturn(listOf(archiveSummary))
         given(userRepository.findAllById(listOf(ME_ID, OPENER_ID))).willReturn(
             listOf(user(ME_ID, "지유"), user(OPENER_ID, "서준", "https://image.example.com/seojun.jpg")),
@@ -81,11 +82,11 @@ class FundingArchiveServiceTest {
 
     @Test
     fun `선택한 탭의 카드만 반환하고 메시지가 없으면 대표 메시지는 null이다`() {
-        val opened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59))
-        val participated = funding(id = 2L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2026, 9, 13, 23, 59))
+        val opened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59)).also { it.openResult(NOW) }
+        val participated = funding(id = 2L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2026, 9, 13, 23, 59)).also { it.openResult(NOW) }
         given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(opened, participated))
         given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L), ME_ID)).willReturn(listOf(2L))
-        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(listOf(1L, 2L))).willReturn(emptyList())
+        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(1L, 2L))).willReturn(emptyList())
         given(userRepository.findAllById(listOf(ME_ID, OPENER_ID))).willReturn(listOf(user(ME_ID, "지유"), user(OPENER_ID, "서준")))
 
         val response = service.getArchive(ME_ID, FundingArchiveTab.PARTICIPATED)
@@ -120,7 +121,6 @@ class FundingArchiveServiceTest {
         )
         given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(received))
         given(contributionRepository.findParticipatedFundingIds(listOf(1L), ME_ID)).willReturn(emptyList())
-        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(listOf(1L))).willReturn(emptyList())
         given(userRepository.findAllById(listOf(OPENER_ID, ME_ID))).willReturn(
             listOf(User(kakaoId = OPENER_ID, nickname = "서준 닉네임", profileImageUrl = null, name = null).also { setField(it, "id", OPENER_ID) }),
         )
@@ -129,6 +129,25 @@ class FundingArchiveServiceTest {
 
         assertEquals("서준 닉네임", card.opener.name)
         assertEquals("", card.celebrantName)
+    }
+
+    @Test
+    fun `공개 전 펀딩은 롤링페이퍼 장수와 대표 메시지를 노출하지 않는다`() {
+        val unopened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59))
+        val opened = funding(id = 2L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 9, 13, 23, 59)).also { it.openResult(NOW) }
+        val archiveSummary = summary(fundingId = 2L)
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(unopened, opened))
+        given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L), ME_ID)).willReturn(emptyList())
+        given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(2L))).willReturn(listOf(archiveSummary))
+        given(userRepository.findAllById(listOf(ME_ID))).willReturn(listOf(user(ME_ID, "지유")))
+
+        val cards = service.getArchive(ME_ID, FundingArchiveTab.ALL).years.single().fundings
+
+        assertEquals(null, cards[0].rollingPaperCount)
+        assertNull(cards[0].representativeMessage)
+        assertEquals(2L, cards[1].rollingPaperCount)
+        assertEquals("축하해!", cards[1].representativeMessage?.content)
+        verify(rollingPaperMessageRepository).findArchiveSummariesByFundingIds(setOf(2L))
     }
 
     private fun summary(fundingId: Long): ArchiveRollingPaperSummaryProjection =

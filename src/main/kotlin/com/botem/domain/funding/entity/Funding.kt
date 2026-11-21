@@ -322,6 +322,12 @@ class Funding(
     fun isSurpriseGiftPrepared(): Boolean =
         type == FundingType.SURPRISE && status in SURPRISE_REVEAL_VIEWABLE_STATUSES
 
+    fun isRollingPaperViewable(now: LocalDateTime): Boolean =
+        when (type) {
+            FundingType.BIRTHDAY -> resultOpenedAt != null
+            FundingType.SURPRISE -> revealAt?.isAfter(now) == false && isSurpriseGiftPrepared()
+        }
+
     fun validateSurpriseRevealAccess(userId: Long, now: LocalDateTime) {
         if (type != FundingType.SURPRISE) {
             throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_REQUIRED)

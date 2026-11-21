@@ -62,18 +62,12 @@ class RollingPaperService(
     }
 
     private fun Funding.validateRollingPaperOpened(now: LocalDateTime) {
+        if (isRollingPaperViewable(now)) {
+            return
+        }
         when (type) {
-            FundingType.BIRTHDAY -> {
-                if (resultOpenedAt == null) {
-                    throw BusinessException(FundingErrorCode.ROLLING_PAPER_NOT_OPENED)
-                }
-            }
-
-            FundingType.SURPRISE -> {
-                if (revealAt?.isAfter(now) != false || !isSurpriseGiftPrepared()) {
-                    throw BusinessException(FundingErrorCode.SURPRISE_NOT_REVEALED)
-                }
-            }
+            FundingType.BIRTHDAY -> throw BusinessException(FundingErrorCode.ROLLING_PAPER_NOT_OPENED)
+            FundingType.SURPRISE -> throw BusinessException(FundingErrorCode.SURPRISE_NOT_REVEALED)
         }
     }
 }

@@ -29,7 +29,7 @@ data class FundingArchiveCardResponse(
     val deadline: LocalDateTime,
     val productName: String,
     val productImageUrl: String,
-    val rollingPaperCount: Long,
+    val rollingPaperCount: Long?,
     val representativeMessage: FundingArchiveRepresentativeMessageResponse?,
 )
 
