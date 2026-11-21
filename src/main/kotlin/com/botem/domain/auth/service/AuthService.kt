@@ -8,19 +8,22 @@ import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserService
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionTemplate
 import java.security.MessageDigest
 import java.util.HexFormat
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 
 @Service
 class AuthService(
     private val kakaoOAuthClient: KakaoOAuthClient,
     private val userRepository: UserRepository,
+    private val userService: UserService,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val payoutAccountService: PayoutAccountService,
     private val jwtProvider: JwtProvider,
@@ -44,7 +47,7 @@ class AuthService(
                 throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
             }
             val user = existingUser
-                ?: userRepository.save(
+                ?: userService.createUser(
                     User(
                         kakaoId = userInfo.id,
                         nickname = nickname,
@@ -98,6 +101,12 @@ class AuthService(
         if (savedRefreshToken.tokenHash == hash(refreshToken)) {
             refreshTokenRepository.delete(savedRefreshToken)
         }
+    }
+
+    // 회원 탈퇴 트랜잭션 안에서 회원 상태 변경과 함께 삭제한다
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun deleteRefreshTokenOf(userId: Long) {
+        refreshTokenRepository.deleteByUserId(userId)
     }
 
     private fun issueTokens(userId: Long): IssuedTokens {
