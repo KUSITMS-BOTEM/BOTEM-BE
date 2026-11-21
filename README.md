@@ -2,6 +2,9 @@
 
 BOTEM 백엔드 서버입니다.
 
+- 📐 [아키텍처와 기술 선택 이유](docs/architecture.md): 시스템·배포 구조, 주요 기술을 고른 이유와 해결한 문제, 확장 계획
+- 📈 [부하 테스트 결과](loadtest/README.md): 핵심 API 처리량, 동시 보태기 정합성, 쿼리 실행계획
+
 # 🛠️ Tech Stack
 
 ### 💻 Language & Framework
@@ -42,14 +45,16 @@ BOTEM 백엔드 서버입니다.
 
 ### 🧪 Testing & Code Quality
 
-- **Testing** `JUnit 5` · `Spring Test`
+- **Testing** `JUnit 5` · `Spring Test` · `Testcontainers (MySQL)`
+- **Load Testing** `k6`
 - **Code Coverage** `Kover`
 - **Automated Code Review** `CodeRabbit`
 
 ### 📊 Monitoring
 
-- **Metrics Collection** `Prometheus`
-- **Monitoring & Visualization** `Grafana`
+- **Error Tracking** `Sentry`
+- **Metrics Collection** `Prometheus` (도입 예정, #205)
+- **Monitoring & Visualization** `Grafana` (도입 예정, #205)
 
 # 🗂️ ERD
 
