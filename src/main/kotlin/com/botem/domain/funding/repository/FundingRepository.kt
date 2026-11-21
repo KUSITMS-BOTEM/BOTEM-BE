@@ -183,6 +183,12 @@ interface FundingRepository : JpaRepository<Funding, Long> {
             (
               funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
               AND funding.revealAt <= :now
+              AND funding.status IN (
+                com.botem.domain.funding.entity.FundingStatus.WAITING_REVEAL,
+                com.botem.domain.funding.entity.FundingStatus.REVEALED,
+                com.botem.domain.funding.entity.FundingStatus.WAITING_GIFT_VERIFICATION,
+                com.botem.domain.funding.entity.FundingStatus.COMPLETED
+              )
             )
           )
         ORDER BY funding.deadline DESC, funding.id DESC

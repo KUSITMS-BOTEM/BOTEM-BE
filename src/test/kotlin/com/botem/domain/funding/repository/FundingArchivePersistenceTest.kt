@@ -45,6 +45,7 @@ class FundingArchivePersistenceTest {
             type = FundingType.SURPRISE,
             deadline = NOW.minusDays(3),
             revealAt = NOW.minusHours(1),
+            status = FundingStatus.WAITING_REVEAL,
         )
         val participated = saveFunding(ownerId = other.id, deadline = NOW.minusDays(2))
         saveContribution(participated.id, me.id, ContributionStatus.MESSAGE_ONLY)
@@ -93,9 +94,9 @@ class FundingArchivePersistenceTest {
         recipientId: Long? = null,
         type: FundingType = FundingType.BIRTHDAY,
         revealAt: LocalDateTime? = null,
-    ): Funding =
-        fundingRepository.saveAndFlush(
-            Funding(
+        status: FundingStatus = FundingStatus.FUNDING,
+    ): Funding {
+        val funding = Funding(
                 ownerId = ownerId,
                 recipientId = recipientId,
                 type = type,
@@ -118,8 +119,10 @@ class FundingArchivePersistenceTest {
                     encryptedAccountNumber = "encrypted-account-number",
                     accountHolder = null,
                 ),
-            ),
-        )
+            )
+        setField(funding, "status", status)
+        return fundingRepository.saveAndFlush(funding)
+    }
 
     private fun saveContribution(
         fundingId: Long,
