@@ -15,7 +15,6 @@ import com.botem.global.jwt.JwtProvider
 import java.security.MessageDigest
 import java.util.HexFormat
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 
@@ -101,12 +100,6 @@ class AuthService(
         if (savedRefreshToken.tokenHash == hash(refreshToken)) {
             refreshTokenRepository.delete(savedRefreshToken)
         }
-    }
-
-    // 회원 탈퇴 트랜잭션 안에서 회원 상태 변경과 함께 삭제한다
-    @Transactional(propagation = Propagation.MANDATORY)
-    fun deleteRefreshTokenOf(userId: Long) {
-        refreshTokenRepository.deleteByUserId(userId)
     }
 
     private fun issueTokens(userId: Long): IssuedTokens {

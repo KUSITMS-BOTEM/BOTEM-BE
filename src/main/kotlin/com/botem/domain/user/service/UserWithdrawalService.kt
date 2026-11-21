@@ -1,7 +1,7 @@
 package com.botem.domain.user.service
 
 import com.botem.domain.account.service.PayoutAccountService
-import com.botem.domain.auth.service.AuthService
+import com.botem.domain.auth.service.RefreshTokenService
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class UserWithdrawalService(
     private val userRepository: UserRepository,
-    private val authService: AuthService,
+    private val refreshTokenService: RefreshTokenService,
     private val payoutAccountService: PayoutAccountService,
     private val activeFundingChecker: ActiveFundingChecker,
     private val eventPublisher: ApplicationEventPublisher,
@@ -33,7 +33,7 @@ class UserWithdrawalService(
             throw BusinessException(UserErrorCode.ACTIVE_FUNDING_EXISTS)
         }
 
-        authService.deleteRefreshTokenOf(userId)
+        refreshTokenService.deleteAllOf(userId)
         payoutAccountService.deleteAllOf(userId)
         user.withdraw(LocalDateTime.now())
         eventPublisher.publishEvent(UserWithdrawnEvent(userId))
