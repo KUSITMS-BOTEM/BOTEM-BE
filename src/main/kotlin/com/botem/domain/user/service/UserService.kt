@@ -96,6 +96,12 @@ class UserService(
     fun createUser(user: User): User =
         userRepository.save(user)
 
+    // 조회한 회원 엔티티의 이메일을 바꾼다. 변경은 호출한 쪽 트랜잭션이 커밋될 때 반영된다
+    @Transactional(propagation = Propagation.MANDATORY)
+    fun updateEmail(user: User, email: String?) {
+        user.updateEmail(email)
+    }
+
     private fun findActiveUserForUpdate(userId: Long): User {
         val user = userRepository.findByIdForUpdate(userId)
             ?: throw BusinessException(UserErrorCode.USER_NOT_FOUND)
