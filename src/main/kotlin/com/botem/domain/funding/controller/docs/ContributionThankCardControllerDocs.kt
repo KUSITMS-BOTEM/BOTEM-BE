@@ -131,6 +131,11 @@ interface ContributionThankCardControllerDocs {
             description = "조회 성공",
             content = [Content(examples = [ExampleObject(value = SURPRISE_FRIENDS_RESPONSE_EXAMPLE)])],
         ),
+        SwaggerApiResponse(
+            responseCode = "400",
+            description = "서프라이즈 펀딩이 아님",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_FUNDING_REQUIRED_EXAMPLE)])],
+        ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(responseCode = "403", description = "서프라이즈 수신자가 아님"),
         SwaggerApiResponse(responseCode = "404", description = "펀딩 없음 또는 공개 전 서프라이즈"),
@@ -200,6 +205,17 @@ interface ContributionThankCardControllerDocs {
                 ]
               },
               "error": null
+            }
+        """
+        private const val SURPRISE_FUNDING_REQUIRED_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_014",
+                "message": "서프라이즈 펀딩에서만 사용할 수 있습니다.",
+                "detail": null
+              }
             }
         """
         private const val INVALID_MESSAGE_EXAMPLE = """

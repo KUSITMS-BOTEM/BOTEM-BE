@@ -105,7 +105,11 @@ class ContributionThankCardServiceTest {
     fun `수신자는 취소된 보탬을 제외한 고마운 친구 목록을 조회한다`() {
         val funding = surpriseFunding()
         val organizerContribution = contribution(participantUserId = OWNER_ID).withId(CONTRIBUTION_ID)
-        setBaseField(organizerContribution, "createdAt", LocalDateTime.of(2026, 11, 19, 14, 0))
+        setBaseField(
+            organizerContribution,
+            "createdAt",
+            LocalDateTime.ofInstant(Instant.parse("2026-11-19T05:00:00Z"), ZoneId.systemDefault()),
+        )
         val cancelled = contribution().withId(CONTRIBUTION_ID + 1).also { it.cancel() }
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
         given(contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(FUNDING_ID))
