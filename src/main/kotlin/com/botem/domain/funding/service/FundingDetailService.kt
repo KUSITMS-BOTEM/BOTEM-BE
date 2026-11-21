@@ -68,6 +68,7 @@ class FundingDetailService(
             story = funding.story,
             promise = funding.promise,
             deadline = funding.deadline,
+            revealAt = funding.revealAt,
             extended = funding.extensionCount > 0,
             remainingDays = if (beforeDeadline) {
                 ChronoUnit.DAYS.between(now.toLocalDate(), funding.deadline.toLocalDate())

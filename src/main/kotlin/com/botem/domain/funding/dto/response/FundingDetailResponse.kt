@@ -22,6 +22,8 @@ data class FundingDetailResponse(
     val story: String?,
     val promise: String?,
     val deadline: LocalDateTime,
+    // 서프라이즈 펀딩의 공개 시각. 생일 펀딩은 null
+    val revealAt: LocalDateTime?,
     val extended: Boolean,
     val remainingDays: Long?,
     val confirmedPercentage: Int,
