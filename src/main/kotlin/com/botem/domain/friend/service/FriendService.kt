@@ -9,21 +9,23 @@ import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserService
 import com.botem.domain.user.service.UserWithdrawnEvent
 import com.botem.global.exception.BusinessException
-import org.springframework.context.event.EventListener
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Isolation
-import org.springframework.transaction.annotation.Transactional
 import java.text.Collator
 import java.time.Clock
 import java.time.LocalDateTime
 import java.util.Locale
+import org.springframework.context.event.EventListener
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Isolation
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class FriendService(
     private val friendshipRepository: FriendshipRepository,
     private val userRepository: UserRepository,
+    private val userService: UserService,
     private val fundingRepository: FundingRepository,
     private val clock: Clock,
 ) {
@@ -42,7 +44,7 @@ class FriendService(
         }
 
         // 두 회원 행을 id 순서로 잠가 같은 쌍의 동시 요청을 직렬화하고 교착을 피한다
-        listOf(userId, friend.id).sorted().forEach { userRepository.findByIdForUpdate(it) }
+        listOf(userId, friend.id).sorted().forEach { userService.lockUser(it) }
 
         // 영속성 컨텍스트의 friend는 갱신되지 않으므로 상태 값을 DB에서 다시 읽어 잠금 대기 중 탈퇴를 막는다
         if (userRepository.findStatusById(friend.id) != UserStatus.ACTIVE) {
