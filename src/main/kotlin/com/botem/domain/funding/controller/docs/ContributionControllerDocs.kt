@@ -109,6 +109,11 @@ interface ContributionControllerDocs {
                 ),
             ],
         ),
+        SwaggerApiResponse(
+            responseCode = "429",
+            description = "요청 횟수 초과 (금액 보태기·메시지로 보태기를 합쳐 IP당 1분에 10회). Retry-After 헤더의 초만큼 기다린 뒤 다시 요청",
+            content = [Content(examples = [ExampleObject(value = TOO_MANY_REQUESTS_EXAMPLE)])],
+        ),
     )
     fun contribute(
         @Parameter(hidden = true) userId: Long?,
@@ -180,6 +185,11 @@ interface ContributionControllerDocs {
                     ],
                 ),
             ],
+        ),
+        SwaggerApiResponse(
+            responseCode = "429",
+            description = "요청 횟수 초과 (금액 보태기·메시지로 보태기를 합쳐 IP당 1분에 10회). Retry-After 헤더의 초만큼 기다린 뒤 다시 요청",
+            content = [Content(examples = [ExampleObject(value = TOO_MANY_REQUESTS_EXAMPLE)])],
         ),
     )
     fun leaveMessage(
@@ -275,6 +285,17 @@ interface ContributionControllerDocs {
     ): ApiResponse<TransferSentResponse>
 
     companion object {
+        private const val TOO_MANY_REQUESTS_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_429",
+                "message": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+                "detail": null
+              }
+            }
+        """
         private const val SURPRISE_NOT_REVEALED_EXAMPLE = """
             {
               "success": false,

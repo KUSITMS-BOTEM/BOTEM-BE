@@ -50,8 +50,15 @@ interface GuestContributionControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "429",
-            description = "비밀번호 연속 실패로 잠김",
-            content = [Content(examples = [ExampleObject(value = PASSWORD_LOCKED_EXAMPLE)])],
+            description = "비밀번호 연속 실패로 잠김, 또는 요청 횟수 초과(IP당 1분에 10회, Retry-After 헤더의 초만큼 기다린 뒤 다시 요청)",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_029", summary = "비밀번호 잠금", value = PASSWORD_LOCKED_EXAMPLE),
+                        ExampleObject(name = "COMMON_429", summary = "요청 횟수 초과", value = TOO_MANY_REQUESTS_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
     )
     fun access(
@@ -164,6 +171,17 @@ interface GuestContributionControllerDocs {
     ): ApiResponse<Nothing>
 
     companion object {
+        private const val TOO_MANY_REQUESTS_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_429",
+                "message": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+                "detail": null
+              }
+            }
+        """
         private const val SUCCESS_EXAMPLE = """{ "success": true, "data": null, "error": null }"""
         private const val ACCESS_REQUEST_EXAMPLE = """
             { "participantName": "지유 친구 민지", "guestPassword": "1234" }

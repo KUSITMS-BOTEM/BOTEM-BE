@@ -1,5 +1,6 @@
 package com.botem.global.logging
 
+import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -26,6 +27,11 @@ class RequestIdIntegrationTest {
         )
             .andExpect(status().isUnauthorized)
             .andExpect(header().string(RequestIdFilter.HEADER_NAME, "front-1234"))
-            .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, RequestIdFilter.HEADER_NAME))
+            .andExpect(
+                header().string(
+                    HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                    containsString(RequestIdFilter.HEADER_NAME),
+                ),
+            )
     }
 }
