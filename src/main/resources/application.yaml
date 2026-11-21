@@ -39,7 +39,10 @@ guest-contribution-token:
 
 payout-account:
   encryption:
-    key: ${PAYOUT_ACCOUNT_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+    current-key-id: ${PAYOUT_ACCOUNT_ENCRYPTION_CURRENT_KEY_ID:v1}
+    legacy-key-id: ${PAYOUT_ACCOUNT_ENCRYPTION_LEGACY_KEY_ID:v1}
+    keys:
+      v1: ${PAYOUT_ACCOUNT_ENCRYPTION_KEYS_V1:${PAYOUT_ACCOUNT_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}}
 
 # 로컬·테스트용 기본값. 운영은 application-prod.yaml에서 환경변수로만 받음
 s3:
