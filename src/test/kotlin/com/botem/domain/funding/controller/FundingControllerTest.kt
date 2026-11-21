@@ -114,6 +114,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.ownerPreview").value(true))
             .andExpect(jsonPath("$.data.celebrantName").value("지유"))
             .andExpect(jsonPath("$.data.targetAmount").value(100_000))
+            .andExpect(jsonPath("$.data.revealAt").isEmpty)
             .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
             .andExpect(jsonPath("$.data.participants[0].contributedDate").value("2026-11-12"))
     }
@@ -586,6 +587,7 @@ class FundingControllerTest {
             story = "새 헤드폰이 필요해요",
             promise = null,
             deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
+            revealAt = null,
             extended = false,
             remainingDays = 3L,
             confirmedPercentage = 40,
