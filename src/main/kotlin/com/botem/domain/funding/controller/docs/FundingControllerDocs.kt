@@ -247,7 +247,10 @@ interface FundingControllerDocs {
         summary = "개설자용 펀딩 관리 상세 조회",
         description = """
             펀딩 개설자가 진행률, 확인 대기 건수, 참여자와 메시지 현황을 확인합니다. 개설자 본인만 조회할 수 있습니다.
-            title은 제목 입력이 없어진 뒤 개설된 펀딩과 서프라이즈 펀딩에서는 null입니다.
+            title은 서버가 조합한 제목이 아니라 예전에 개설자가 입력한 선택 제목이며, 제목 입력이 없어진 뒤 개설된 펀딩과 서프라이즈 펀딩에서는 null입니다.
+            화면 제목('{이름}의 펀딩', '{이름}의 서프라이즈')은 celebrantName으로 조합합니다.
+            celebrantName은 참여자용 펀딩 상세와 같은 값으로, 서프라이즈는 받는 사람, 생일 펀딩은 개설자의 실명(없으면 닉네임)입니다.
+            받는 사람이 탈퇴했으면 '탈퇴한 사용자'입니다.
             확정·대기 달성률은 홈 펀딩 카드와 같은 기준(소수점 버림)이며, 참여자별 금액은 반환하지 않습니다.
             participants는 입금 대조를 위해 취소를 제외한 참여 기록마다 한 줄씩 참여 시각 순으로 반환합니다.
             각 참여의 thankCardSent와 thankCardSentAt으로 감사카드 발송 여부와 최초 발송 시각을 확인합니다.
@@ -1028,7 +1031,8 @@ interface FundingControllerDocs {
                 "fundingId": 12,
                 "shareKey": "0123456789abcdef0123456789abcdef",
                 "type": "BIRTHDAY",
-                "title": "지유의 생일",
+                "title": null,
+                "celebrantName": "지유",
                 "story": "올해 생일에는 오래 사용한 헤드폰을 바꾸고 싶어요.",
                 "promise": null,
                 "product": {
