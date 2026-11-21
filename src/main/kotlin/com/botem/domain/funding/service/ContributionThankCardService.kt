@@ -3,14 +3,21 @@ package com.botem.domain.funding.service
 import com.botem.domain.funding.dto.request.SendContributionThankCardRequest
 import com.botem.domain.funding.dto.response.ContributionThankCardDetailResponse
 import com.botem.domain.funding.dto.response.ContributionThankCardResponse
+import com.botem.domain.funding.dto.response.RollingPaperMessageType
+import com.botem.domain.funding.dto.response.SurpriseThankCardFriendResponse
+import com.botem.domain.funding.dto.response.SurpriseThankCardFriendsResponse
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.ContributionThankCard
+import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
@@ -20,12 +27,14 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 @Service
 class ContributionThankCardService(
     private val fundingRepository: FundingRepository,
     private val contributionRepository: ContributionRepository,
     private val contributionThankCardRepository: ContributionThankCardRepository,
+    private val rollingPaperMessageRepository: RollingPaperMessageRepository,
     private val userRepository: UserRepository,
     private val contributionThankCardProperties: ContributionThankCardProperties,
     private val clock: Clock,
@@ -41,9 +50,7 @@ class ContributionThankCardService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        if (funding.ownerId != userId) {
-            throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
-        }
+        validateSender(funding, userId)
 
         val contribution = contributionRepository.findByIdAndFundingIdForUpdate(contributionId, fundingId)
             ?: throw BusinessException(FundingErrorCode.CONTRIBUTION_NOT_FOUND)
@@ -69,6 +76,23 @@ class ContributionThankCardService(
         return toSendResponse(thankCard)
     }
 
+    private fun validateSender(funding: Funding, userId: Long) {
+        when (funding.type) {
+            FundingType.BIRTHDAY -> {
+                if (funding.ownerId != userId) {
+                    throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
+                }
+            }
+
+            FundingType.SURPRISE -> {
+                funding.validateSurpriseRevealAccess(userId, LocalDateTime.now(clock))
+                if (funding.surpriseOpenedAt == null) {
+                    throw BusinessException(FundingErrorCode.SURPRISE_NOT_OPENED)
+                }
+            }
+        }
+    }
+
     @Transactional(readOnly = true)
     fun getForParticipant(userId: Long, contributionId: Long): ContributionThankCardDetailResponse {
         val contribution = contributionRepository.findByIdAndParticipantUserId(contributionId, userId)
@@ -87,6 +111,46 @@ class ContributionThankCardService(
             .orElseThrow { BusinessException(FundingErrorCode.CONTRIBUTION_THANK_CARD_NOT_FOUND) }
 
         return toDetailResponse(thankCard, contribution)
+    }
+
+    @Transactional(readOnly = true)
+    fun getSurpriseThankCardFriends(userId: Long, fundingId: Long): SurpriseThankCardFriendsResponse {
+        val funding = fundingRepository.findById(fundingId)
+            .orElse(null)
+            ?.takeIf { it.status != FundingStatus.CANCELLED }
+            ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
+        funding.validateSurpriseRevealAccess(userId, LocalDateTime.now(clock))
+        if (funding.surpriseOpenedAt == null) {
+            throw BusinessException(FundingErrorCode.SURPRISE_NOT_OPENED)
+        }
+
+        val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(fundingId)
+            .filter { it.status != ContributionStatus.CANCELLED }
+        if (contributions.isEmpty()) {
+            return SurpriseThankCardFriendsResponse(fundingId, emptyList())
+        }
+        val contributionIds = contributions.map(Contribution::id)
+        val messagesByContributionId = rollingPaperMessageRepository.findAllByContributionIdIn(contributionIds)
+            .associateBy { it.contributionId }
+        val thankCardContributionIds = contributionThankCardRepository.findAllByContributionIdIn(contributionIds)
+            .mapTo(mutableSetOf()) { it.contributionId }
+
+        return SurpriseThankCardFriendsResponse(
+            fundingId = fundingId,
+            friends = contributions.map { contribution ->
+                SurpriseThankCardFriendResponse(
+                    contributionId = contribution.id,
+                    name = contribution.participantName,
+                    organizer = contribution.participantUserId == funding.ownerId,
+                    messageTypes = messageTypesOf(messagesByContributionId[contribution.id]),
+                    contributedDate = contribution.createdAt
+                        .atZone(ZoneId.systemDefault())
+                        .withZoneSameInstant(KOREA_ZONE)
+                        .toLocalDate(),
+                    thankCardSent = contribution.id in thankCardContributionIds,
+                )
+            },
+        )
     }
 
     private fun toDetailResponse(
@@ -110,6 +174,14 @@ class ContributionThankCardService(
     private fun toSendResponse(thankCard: ContributionThankCard): ContributionThankCardResponse =
         ContributionThankCardResponse.from(thankCard, createShareUrl(thankCard.shareKey))
 
+    private fun messageTypesOf(message: RollingPaperMessage?): List<RollingPaperMessageType> =
+        buildList {
+            if (!message?.content.isNullOrBlank()) add(RollingPaperMessageType.TEXT)
+            if (message?.photoUrl != null) add(RollingPaperMessageType.PHOTO)
+            if (message?.voiceUrl != null) add(RollingPaperMessageType.VOICE)
+            if (message?.decorationCode != null) add(RollingPaperMessageType.STICKER)
+        }
+
     private fun createShareUrl(shareKey: String): String =
         "${contributionThankCardProperties.baseUrl.trimEnd('/')}/$shareKey"
 
@@ -122,5 +194,9 @@ class ContributionThankCardService(
             )
         }
         return normalized
+    }
+
+    companion object {
+        private val KOREA_ZONE = ZoneId.of("Asia/Seoul")
     }
 }

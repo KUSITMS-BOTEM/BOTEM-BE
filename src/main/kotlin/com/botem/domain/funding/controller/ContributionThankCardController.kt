@@ -4,6 +4,7 @@ import com.botem.domain.funding.controller.docs.ContributionThankCardControllerD
 import com.botem.domain.funding.dto.request.SendContributionThankCardRequest
 import com.botem.domain.funding.dto.response.ContributionThankCardDetailResponse
 import com.botem.domain.funding.dto.response.ContributionThankCardResponse
+import com.botem.domain.funding.dto.response.SurpriseThankCardFriendsResponse
 import com.botem.domain.funding.service.ContributionThankCardService
 import com.botem.global.response.ApiResponse
 import jakarta.validation.Valid
@@ -42,4 +43,11 @@ class ContributionThankCardController(
         @PathVariable shareKey: String,
     ): ApiResponse<ContributionThankCardDetailResponse> =
         ApiResponse.success(contributionThankCardService.getByShareKey(shareKey))
+
+    @GetMapping("/fundings/{fundingId}/surprise/thank-card-friends")
+    override fun getSurpriseThankCardFriends(
+        @AuthenticationPrincipal userId: Long,
+        @PathVariable fundingId: Long,
+    ): ApiResponse<SurpriseThankCardFriendsResponse> =
+        ApiResponse.success(contributionThankCardService.getSurpriseThankCardFriends(userId, fundingId))
 }

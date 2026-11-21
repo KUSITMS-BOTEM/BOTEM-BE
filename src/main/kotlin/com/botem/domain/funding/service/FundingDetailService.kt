@@ -4,19 +4,16 @@ import com.botem.domain.funding.dto.response.FundingDetailGiftVerificationRespon
 import com.botem.domain.funding.dto.response.FundingDetailParticipantResponse
 import com.botem.domain.funding.dto.response.FundingDetailProductResponse
 import com.botem.domain.funding.dto.response.FundingDetailResponse
-import com.botem.domain.funding.dto.response.FundingDetailThankCardResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
-import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerificationStatus
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.GiftVerificationRepository
-import com.botem.domain.funding.repository.SurpriseThankCardRepository
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
@@ -32,7 +29,6 @@ class FundingDetailService(
     private val contributionRepository: ContributionRepository,
     private val userRepository: UserRepository,
     private val giftVerificationRepository: GiftVerificationRepository,
-    private val surpriseThankCardRepository: SurpriseThankCardRepository,
     private val clock: Clock,
 ) {
 
@@ -88,7 +84,6 @@ class FundingDetailService(
             canParticipate = participationOpen,
             ownerPreview = viewerId != null && viewerId == funding.ownerId,
             giftVerification = findCompletedGiftVerification(funding),
-            thankCard = findThankCard(funding),
         )
     }
 
@@ -101,15 +96,6 @@ class FundingDetailService(
         return giftVerificationRepository.findByFundingId(funding.id)
             ?.takeIf { it.status == GiftVerificationStatus.COMPLETED }
             ?.let(FundingDetailGiftVerificationResponse::from)
-    }
-
-    private fun findThankCard(funding: Funding): FundingDetailThankCardResponse? {
-        if (funding.type != FundingType.SURPRISE) {
-            return null
-        }
-
-        return surpriseThankCardRepository.findByFundingId(funding.id)
-            ?.let(FundingDetailThankCardResponse::from)
     }
 
     // 로그인 참여자는 사용자 기준으로 첫 참여만 남기고, 비로그인 참여는 각각 한 명으로 센다
