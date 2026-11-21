@@ -243,4 +243,9 @@ enum class FundingErrorCode(
         "FUNDING_059",
         "펀딩 결과를 연 뒤 구매 전까지만 선물을 고를 수 있습니다.",
     ),
+    ROLLING_PAPER_VIEWER_ONLY(
+        HttpStatus.FORBIDDEN,
+        "FUNDING_060",
+        "펀딩 개설자, 받는 사람 또는 참여자만 롤링페이퍼를 볼 수 있습니다.",
+    ),
 }

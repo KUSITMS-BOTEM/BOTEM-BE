@@ -1,6 +1,7 @@
 package com.botem.domain.funding.repository
 
 import com.botem.domain.funding.entity.RollingPaperMessage
+import com.botem.domain.funding.repository.projection.ArchiveRollingPaperSummaryProjection
 import com.botem.domain.funding.repository.projection.RollingPaperMessageProjection
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -46,4 +47,44 @@ interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Lon
         """,
     )
     fun countByFundingId(@Param("fundingId") fundingId: Long): Long
+
+    // 카드에는 최신 유효 메시지 하나만 보이지만, 메시지 수는 같은 조회에서 함께 계산한다.
+    // MySQL 8과 H2 모두 지원하는 윈도 함수로 펀딩별 대표 메시지를 고른다.
+    @Query(
+        value = """
+            WITH ranked_messages AS (
+                SELECT
+                    contribution.funding_id AS funding_id,
+                    COUNT(message.id) OVER (PARTITION BY contribution.funding_id) AS message_count,
+                    contribution.participant_name AS writer_name,
+                    participant.profile_image_url AS writer_profile_image_url,
+                    message.content AS content,
+                    message.paper_template_code AS paper_template_code,
+                    CASE WHEN message.voice_url IS NULL THEN FALSE ELSE TRUE END AS has_voice,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY contribution.funding_id
+                        ORDER BY contribution.created_at DESC, contribution.id DESC
+                    ) AS message_rank
+                FROM rolling_paper_messages message
+                JOIN contributions contribution ON contribution.id = message.contribution_id
+                LEFT JOIN users participant ON participant.id = contribution.participant_user_id
+                WHERE contribution.funding_id IN (:fundingIds)
+                  AND contribution.status <> 'CANCELLED'
+            )
+            SELECT
+                funding_id AS fundingId,
+                message_count AS messageCount,
+                writer_name AS writerName,
+                writer_profile_image_url AS writerProfileImageUrl,
+                content AS content,
+                paper_template_code AS paperTemplateCode,
+                has_voice AS hasVoice
+            FROM ranked_messages
+            WHERE message_rank = 1
+            """,
+        nativeQuery = true,
+    )
+    fun findArchiveSummariesByFundingIds(
+        @Param("fundingIds") fundingIds: Collection<Long>,
+    ): List<ArchiveRollingPaperSummaryProjection>
 }

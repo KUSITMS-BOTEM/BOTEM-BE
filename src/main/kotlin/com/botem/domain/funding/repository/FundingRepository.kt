@@ -183,6 +183,12 @@ interface FundingRepository : JpaRepository<Funding, Long> {
             (
               funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
               AND funding.revealAt <= :now
+              AND funding.status IN (
+                com.botem.domain.funding.entity.FundingStatus.WAITING_REVEAL,
+                com.botem.domain.funding.entity.FundingStatus.REVEALED,
+                com.botem.domain.funding.entity.FundingStatus.WAITING_GIFT_VERIFICATION,
+                com.botem.domain.funding.entity.FundingStatus.COMPLETED
+              )
             )
           )
         ORDER BY funding.deadline DESC, funding.id DESC
@@ -190,6 +196,43 @@ interface FundingRepository : JpaRepository<Funding, Long> {
     )
     fun findClosedFundingsByOwnerId(
         @Param("ownerId") ownerId: Long,
+        @Param("now") now: LocalDateTime,
+    ): List<Funding>
+
+    // 지난 펀딩 아카이브는 개설·수신·유효 참여 이력이 있는 펀딩을 중복 없이 모은다.
+    // 마감 기준은 기존 '마감된 펀딩' 목록과 동일하게 유지한다.
+    @Query(
+        """
+        SELECT funding
+        FROM Funding funding
+        WHERE funding.status <> com.botem.domain.funding.entity.FundingStatus.CANCELLED
+          AND (
+            (
+              funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+              AND (funding.deadline <= :now OR funding.earlyClosedAt IS NOT NULL OR funding.resultOpenedAt IS NOT NULL)
+            )
+            OR
+            (
+              funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE
+              AND funding.revealAt <= :now
+            )
+          )
+          AND (
+            funding.ownerId = :userId
+            OR funding.recipientId = :userId
+            OR EXISTS (
+              SELECT contribution.id
+              FROM Contribution contribution
+              WHERE contribution.fundingId = funding.id
+                AND contribution.participantUserId = :userId
+                AND contribution.status <> com.botem.domain.funding.entity.ContributionStatus.CANCELLED
+            )
+          )
+        ORDER BY funding.deadline DESC, funding.id DESC
+        """,
+    )
+    fun findArchivedFundingsByUserId(
+        @Param("userId") userId: Long,
         @Param("now") now: LocalDateTime,
     ): List<Funding>
 

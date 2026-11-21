@@ -162,6 +162,20 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
     ): List<FundingContributionSummary>
 
     @Query(
+        """
+        SELECT DISTINCT contribution.fundingId
+        FROM Contribution contribution
+        WHERE contribution.fundingId IN :fundingIds
+          AND contribution.participantUserId = :userId
+          AND contribution.status <> com.botem.domain.funding.entity.ContributionStatus.CANCELLED
+        """,
+    )
+    fun findParticipatedFundingIds(
+        @Param("fundingIds") fundingIds: Collection<Long>,
+        @Param("userId") userId: Long,
+    ): List<Long>
+
+    @Query(
         value = """
             WITH deduplicated_participants AS (
                 SELECT
