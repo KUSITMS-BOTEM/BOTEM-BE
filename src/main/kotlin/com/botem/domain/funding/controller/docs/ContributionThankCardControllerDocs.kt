@@ -14,13 +14,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 
-@Tag(name = "Contribution Thank Card", description = "개설자 → 참여자 감사카드 API")
+@Tag(name = "Contribution Thank Card", description = "개설자 또는 서프라이즈 수신자 → 참여자 감사카드 API")
 interface ContributionThankCardControllerDocs {
 
     @Operation(
         summary = "참여자 감사카드 보내기",
         description = """
-            펀딩 개설자가 입금 확인이 완료된 보탬에 감사카드를 보냅니다.
+            일반 펀딩은 개설자가, 공개 후 연 서프라이즈는 수신자가 입금 확인이 완료된 보탬에 감사카드를 보냅니다.
             메시지는 공백 제거 후 Unicode 코드 포인트 기준 1~50자이며, 보탬 한 건에 한 번만 전송할 수 있습니다.
             paperColor는 편지지 색상으로 ORANGE·LIME·PINK·BLUE 중 하나이며, 생략하면 LIME입니다.
             같은 보탬에 다시 요청하면 최초 감사카드를 반환하고 메시지·색상·전송 시각은 변경하지 않습니다.
@@ -45,7 +45,7 @@ interface ContributionThankCardControllerDocs {
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
             responseCode = "403",
-            description = "펀딩 개설자가 아님",
+            description = "감사카드 발송 권한이 없음",
             content = [Content(examples = [ExampleObject(value = OWNER_ONLY_EXAMPLE)])],
         ),
         SwaggerApiResponse(
@@ -126,7 +126,11 @@ interface ContributionThankCardControllerDocs {
         """,
     )
     @ApiResponses(
-        SwaggerApiResponse(responseCode = "200", description = "조회 성공"),
+        SwaggerApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = [Content(examples = [ExampleObject(value = SURPRISE_FRIENDS_RESPONSE_EXAMPLE)])],
+        ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(responseCode = "403", description = "서프라이즈 수신자가 아님"),
         SwaggerApiResponse(responseCode = "404", description = "펀딩 없음 또는 공개 전 서프라이즈"),
@@ -166,6 +170,8 @@ interface ContributionThankCardControllerDocs {
                 "fundingId": 12,
                 "contributionId": 31,
                 "senderName": "지유",
+                "senderRole": "SURPRISE_RECIPIENT",
+                "fundingType": "SURPRISE",
                 "recipientName": "하린",
                 "productName": "소니 WH-1000XM5",
                 "productImageUrl": "https://image.example.com/product.jpg",
@@ -173,6 +179,25 @@ interface ContributionThankCardControllerDocs {
                 "paperColor": "PINK",
                 "sentAt": "2026-11-19T20:00:00",
                 "shareUrl": "https://botem.me/thank-cards/550e8400e29b41d4a716446655440000"
+              },
+              "error": null
+            }
+        """
+        private const val SURPRISE_FRIENDS_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "friends": [
+                  {
+                    "contributionId": 31,
+                    "name": "민지",
+                    "organizer": true,
+                    "messageTypes": ["TEXT", "PHOTO"],
+                    "contributedDate": "2026-11-19",
+                    "thankCardSent": false
+                  }
+                ]
               },
               "error": null
             }

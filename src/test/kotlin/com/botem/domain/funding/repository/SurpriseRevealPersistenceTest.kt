@@ -9,7 +9,6 @@ import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.RollingPaperMessage
-import com.botem.domain.funding.entity.SurpriseThankCard
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
@@ -37,9 +36,6 @@ class SurpriseRevealPersistenceTest {
 
     @Autowired
     private lateinit var rollingPaperMessageRepository: RollingPaperMessageRepository
-
-    @Autowired
-    private lateinit var surpriseThankCardRepository: SurpriseThankCardRepository
 
     @Autowired
     private lateinit var entityManager: EntityManager
@@ -91,28 +87,6 @@ class SurpriseRevealPersistenceTest {
         assertEquals("https://image.example.com/profile.jpg", messages.first().participantProfileImageUrl)
         assertNull(messages.last().participantProfileImageUrl)
         assertEquals(12, messages.last().voiceDurationSeconds)
-    }
-
-    @Test
-    fun `감사 카드를 전송한 서프라이즈는 홈 공개 카드에서 제외한다`() {
-        val owner = saveUser("민지")
-        val recipient = saveUser("지유")
-        val funding = saveFunding(owner.id, recipient.id)
-
-        val before = fundingRepository.findRevealedSurpriseCards(recipient.id, NOW)
-        assertEquals(listOf(funding.id), before.map { it.fundingId })
-
-        surpriseThankCardRepository.saveAndFlush(
-            SurpriseThankCard(
-                fundingId = funding.id,
-                senderUserId = recipient.id,
-                message = "정말 고마워!",
-                sentAt = NOW,
-            ),
-        )
-        entityManager.clear()
-
-        assertEquals(emptyList(), fundingRepository.findRevealedSurpriseCards(recipient.id, NOW))
     }
 
     private fun saveUser(name: String, profileImageUrl: String? = null): User =

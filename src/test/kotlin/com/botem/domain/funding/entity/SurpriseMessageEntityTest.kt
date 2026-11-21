@@ -1,9 +1,6 @@
 package com.botem.domain.funding.entity
 
-import jakarta.persistence.Column
 import org.junit.jupiter.api.Test
-import org.hibernate.Length
-import java.time.LocalDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -139,24 +136,4 @@ class SurpriseMessageEntityTest {
         assertEquals(RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH, message.voiceTranscript?.length)
     }
 
-    @Test
-    fun `감사 카드는 빈 메시지로 생성할 수 없다`() {
-        val sentAt = LocalDateTime.of(2026, 11, 15, 9, 42)
-        val thankCard = SurpriseThankCard(1L, 2L, "정말 고마워!", sentAt)
-
-        assertEquals("정말 고마워!", thankCard.message)
-        assertFailsWith<IllegalArgumentException> {
-            SurpriseThankCard(1L, 2L, " ", sentAt)
-        }
-    }
-
-    @Test
-    fun `감사 메시지는 LONGTEXT에 대응하는 장문 길이로 매핑한다`() {
-        val column = SurpriseThankCard::class.java
-            .getDeclaredField("message")
-            .getAnnotation(Column::class.java)
-
-        assertEquals(Length.LONG32, column.length)
-        assertEquals(false, column.nullable)
-    }
 }

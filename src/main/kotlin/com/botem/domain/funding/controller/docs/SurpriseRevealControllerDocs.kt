@@ -132,7 +132,6 @@ interface SurpriseRevealControllerDocs {
                 "messageCount": 2,
                 "revealAt": "2026-11-15T00:00:00",
                 "openedAt": null,
-                "thankCardSent": false,
                 "messages": [
                   {
                     "messageId": 101,
@@ -177,25 +176,7 @@ interface SurpriseRevealControllerDocs {
                 "messageCount": 0,
                 "revealAt": "2026-11-15T00:00:00",
                 "openedAt": "2026-11-15T09:41:00",
-                "thankCardSent": false,
                 "messages": []
-              },
-              "error": null
-            }
-        """
-        private const val THANK_CARD_REQUEST_EXAMPLE = """
-            {
-              "message": "다들 언제 이렇게 준비했어 ㅠㅠ 정말 고마워!"
-            }
-        """
-        private const val THANK_CARD_RESPONSE_EXAMPLE = """
-            {
-              "success": true,
-              "data": {
-                "thankCardId": 7,
-                "fundingId": 31,
-                "message": "다들 언제 이렇게 준비했어 ㅠㅠ 정말 고마워!",
-                "sentAt": "2026-11-15T09:45:00"
               },
               "error": null
             }
@@ -214,12 +195,6 @@ interface SurpriseRevealControllerDocs {
         """
         private const val REVEAL_NOT_OPENABLE_EXAMPLE = """
             {"success":false,"data":null,"error":{"code":"FUNDING_017","message":"현재 상태에서는 서프라이즈를 열 수 없습니다.","detail":null}}
-        """
-        private const val NOT_OPENED_EXAMPLE = """
-            {"success":false,"data":null,"error":{"code":"FUNDING_018","message":"서프라이즈를 연 후 감사 카드를 보낼 수 있습니다.","detail":null}}
-        """
-        private const val INVALID_INPUT_EXAMPLE = """
-            {"success":false,"data":null,"error":{"code":"COMMON_001","message":"입력값이 올바르지 않습니다.","detail":null}}
         """
     }
 }

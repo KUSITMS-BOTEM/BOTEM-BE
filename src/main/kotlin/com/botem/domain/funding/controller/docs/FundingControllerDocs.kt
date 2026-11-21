@@ -209,7 +209,6 @@ interface FundingControllerDocs {
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
             ownerPreview는 로그인한 개설자 본인이 조회한 경우 true입니다. 취소된 펀딩은 404를 반환합니다.
             giftVerification은 선물 인증을 마친 경우(COMPLETED)에만 사진, 감사 메시지, 완료 시각을 반환하고 그 외에는 null입니다.
-            thankCard는 서프라이즈 펀딩에서 받는 사람이 감사 카드를 보낸 경우에만 반환하고 그 외에는 null입니다.
             Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
             title은 제목 입력이 없어진 뒤 개설된 펀딩과 서프라이즈 펀딩에서는 null입니다.
             서프라이즈를 받는 사람이 로그인 상태로 공개 시각 전에 조회하면 403(FUNDING_046)을 반환합니다.
@@ -1006,8 +1005,7 @@ interface FundingControllerDocs {
                 "canContributeAmount": true,
                 "canParticipate": true,
                 "ownerPreview": false,
-                "giftVerification": null,
-                "thankCard": null
+                "giftVerification": null
               },
               "error": null
             }

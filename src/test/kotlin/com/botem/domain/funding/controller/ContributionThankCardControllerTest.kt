@@ -3,6 +3,11 @@ package com.botem.domain.funding.controller
 import com.botem.domain.funding.dto.request.SendContributionThankCardRequest
 import com.botem.domain.funding.dto.response.ContributionThankCardDetailResponse
 import com.botem.domain.funding.dto.response.ContributionThankCardResponse
+import com.botem.domain.funding.dto.response.ContributionThankCardSenderRole
+import com.botem.domain.funding.dto.response.RollingPaperMessageType
+import com.botem.domain.funding.dto.response.SurpriseThankCardFriendResponse
+import com.botem.domain.funding.dto.response.SurpriseThankCardFriendsResponse
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.ThankCardColor
 import com.botem.domain.funding.service.ContributionThankCardService
 import org.junit.jupiter.api.Test
@@ -20,6 +25,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @WebMvcTest(controllers = [ContributionThankCardController::class])
@@ -94,6 +100,37 @@ class ContributionThankCardControllerTest {
     }
 
     @Test
+    fun `서프라이즈 수신자가 고마운 친구 목록을 조회한다`() {
+        given(contributionThankCardService.getSurpriseThankCardFriends(USER_ID, FUNDING_ID)).willReturn(
+            SurpriseThankCardFriendsResponse(
+                FUNDING_ID,
+                listOf(
+                    SurpriseThankCardFriendResponse(
+                        contributionId = CONTRIBUTION_ID,
+                        name = "민지",
+                        organizer = true,
+                        messageTypes = listOf(RollingPaperMessageType.TEXT, RollingPaperMessageType.PHOTO),
+                        contributedDate = LocalDate.of(2026, 11, 19),
+                        thankCardSent = false,
+                    ),
+                ),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/api/fundings/{fundingId}/surprise/thank-card-friends", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.friends[0].name").value("민지"))
+            .andExpect(jsonPath("$.data.friends[0].organizer").value(true))
+            .andExpect(jsonPath("$.data.friends[0].messageTypes[1]").value("PHOTO"))
+            .andExpect(jsonPath("$.data.friends[0].contributedDate").value("2026-11-19"))
+
+        verify(contributionThankCardService).getSurpriseThankCardFriends(USER_ID, FUNDING_ID)
+    }
+
+    @Test
     fun `로그인하지 않고 공유 키로 감사카드를 조회한다`() {
         given(contributionThankCardService.getByShareKey(SHARE_KEY)).willReturn(detailResponse())
 
@@ -113,6 +150,8 @@ class ContributionThankCardControllerTest {
             fundingId = FUNDING_ID,
             contributionId = CONTRIBUTION_ID,
             senderName = "지유",
+            senderRole = ContributionThankCardSenderRole.FUNDING_OWNER,
+            fundingType = FundingType.BIRTHDAY,
             recipientName = "하린",
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",

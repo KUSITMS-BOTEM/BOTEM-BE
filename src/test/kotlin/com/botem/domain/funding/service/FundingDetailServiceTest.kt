@@ -2,7 +2,6 @@ package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.response.FundingDetailGiftVerificationResponse
-import com.botem.domain.funding.dto.response.FundingDetailThankCardResponse
 import com.botem.domain.funding.dto.response.FundingDisplayStatus
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
@@ -12,12 +11,10 @@ import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerification
-import com.botem.domain.funding.entity.SurpriseThankCard
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.GiftVerificationRepository
-import com.botem.domain.funding.repository.SurpriseThankCardRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
@@ -25,7 +22,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyIterable
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
@@ -47,13 +43,11 @@ class FundingDetailServiceTest {
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val giftVerificationRepository = mock(GiftVerificationRepository::class.java)
-    private val surpriseThankCardRepository = mock(SurpriseThankCardRepository::class.java)
     private val service = FundingDetailService(
         fundingRepository = fundingRepository,
         contributionRepository = contributionRepository,
         userRepository = userRepository,
         giftVerificationRepository = giftVerificationRepository,
-        surpriseThankCardRepository = surpriseThankCardRepository,
         clock = Clock.fixed(Instant.parse("2026-11-14T15:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
 
@@ -274,24 +268,6 @@ class FundingDetailServiceTest {
 
         assertNull(result.giftVerification)
         verifyNoInteractions(giftVerificationRepository)
-    }
-
-    @Test
-    fun `서프라이즈 받는 사람이 보낸 감사 카드를 반환하고 생일 펀딩은 조회하지 않는다`() {
-        givenContributions()
-        given(surpriseThankCardRepository.findByFundingId(FUNDING_ID)).willReturn(
-            SurpriseThankCard(fundingId = FUNDING_ID, senderUserId = PARTICIPANT_ID, message = "다들 고마워", sentAt = NOW),
-        )
-
-        givenFunding(funding(type = FundingType.SURPRISE, deadline = NOW.minusDays(1), status = FundingStatus.REVEALED))
-        assertEquals(
-            FundingDetailThankCardResponse(message = "다들 고마워", sentAt = NOW),
-            service.getDetail(null, FUNDING_ID).thankCard,
-        )
-
-        givenFunding(funding())
-        assertNull(service.getDetail(null, FUNDING_ID).thankCard)
-        verify(surpriseThankCardRepository, times(1)).findByFundingId(FUNDING_ID)
     }
 
     private fun givenFunding(funding: Funding) {
