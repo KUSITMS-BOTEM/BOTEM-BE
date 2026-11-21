@@ -1,6 +1,7 @@
 package com.botem.domain.account.service
 
 import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.dto.response.PayoutAccountEncryptionRotationResponse
 import com.botem.domain.user.repository.UserRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
@@ -15,7 +16,7 @@ class PayoutAccountEncryptionRotationService(
 
     // 소유자 잠금은 계좌 수정·대표계좌 변경·탈퇴와 같은 순서로 잡아, 재암호화가 최신 계좌 상태를 덮어쓰지 않게 한다.
     @Transactional
-    fun rotate(afterAccountId: Long?, batchSize: Int): PayoutAccountEncryptionRotationResult {
+    fun rotate(afterAccountId: Long?, batchSize: Int): PayoutAccountEncryptionRotationResponse {
         require(batchSize in MIN_BATCH_SIZE..MAX_BATCH_SIZE) { "batchSize는 $MIN_BATCH_SIZE~$MAX_BATCH_SIZE 사이여야 합니다." }
 
         val accountIds = payoutAccountRepository.findIdsAfter(
@@ -25,7 +26,7 @@ class PayoutAccountEncryptionRotationService(
         val hasNext = accountIds.size > batchSize
         val targetAccountIds = accountIds.take(batchSize)
         if (targetAccountIds.isEmpty()) {
-            return PayoutAccountEncryptionRotationResult(processedCount = 0, rotatedCount = 0, nextAfterAccountId = null)
+            return PayoutAccountEncryptionRotationResponse(processedCount = 0, rotatedCount = 0, nextAfterAccountId = null)
         }
 
         payoutAccountRepository.findAllByIdInOrderByIdAsc(targetAccountIds)
@@ -43,7 +44,7 @@ class PayoutAccountEncryptionRotationService(
             }
         }
 
-        return PayoutAccountEncryptionRotationResult(
+        return PayoutAccountEncryptionRotationResponse(
             processedCount = accounts.size,
             rotatedCount = rotatedCount,
             nextAfterAccountId = if (hasNext) targetAccountIds.last() else null,
@@ -56,9 +57,3 @@ class PayoutAccountEncryptionRotationService(
         private const val MAX_BATCH_SIZE = 500
     }
 }
-
-data class PayoutAccountEncryptionRotationResult(
-    val processedCount: Int,
-    val rotatedCount: Int,
-    val nextAfterAccountId: Long?,
-)
