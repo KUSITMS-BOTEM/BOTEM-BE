@@ -1,6 +1,9 @@
 package com.botem.domain.funding.service
 
+import com.botem.domain.account.repository.PayoutAccountRepository
+import com.botem.domain.account.service.AccountNumberCipher
 import com.botem.domain.funding.dto.response.SurpriseGiftPreparationResponse
+import com.botem.domain.funding.dto.response.SurpriseRecipientPayoutAccountResponse
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
@@ -25,6 +28,8 @@ class SurpriseGiftPreparationService(
     private val contributionRepository: ContributionRepository,
     private val rollingPaperMessageRepository: RollingPaperMessageRepository,
     private val userRepository: UserRepository,
+    private val payoutAccountRepository: PayoutAccountRepository,
+    private val accountNumberCipher: AccountNumberCipher,
     private val fundingContributionCloser: FundingContributionCloser,
     private val clock: Clock,
 ) {
@@ -84,9 +89,27 @@ class SurpriseGiftPreparationService(
             funding = funding,
             recipientName = recipient?.let { it.name ?: it.nickname },
             recipientWithdrawn = recipient?.status == UserStatus.WITHDRAWN,
+            recipientPayoutAccount = recipientPayoutAccountOf(funding, recipient?.status, summary.confirmedAmount),
             summary = summary,
             achievementPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messageCount = rollingPaperMessageRepository.countByFundingId(funding.id),
+        )
+    }
+
+    private fun recipientPayoutAccountOf(
+        funding: Funding,
+        recipientStatus: UserStatus?,
+        confirmedAmount: Long,
+    ): SurpriseRecipientPayoutAccountResponse? {
+        if (confirmedAmount >= funding.targetAmount || recipientStatus != UserStatus.ACTIVE) {
+            return null
+        }
+        val account = payoutAccountRepository.findFirstByUserIdAndIsDefaultTrue(requireNotNull(funding.recipientId))
+            ?: return null
+
+        return SurpriseRecipientPayoutAccountResponse.from(
+            account = account,
+            accountNumber = accountNumberCipher.decrypt(account.encryptedAccountNumber),
         )
     }
 
