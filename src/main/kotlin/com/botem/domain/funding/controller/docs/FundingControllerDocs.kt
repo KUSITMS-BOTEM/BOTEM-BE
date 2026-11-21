@@ -207,6 +207,7 @@ interface FundingControllerDocs {
             조기 마감된 일반 펀딩은 canContributeAmount가 false지만 기존 마감일까지 canParticipate는 true입니다.
             productChanged는 상품 변경 이력 존재 여부이며 productChangedAt은 마지막 상품 변경 시각입니다.
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
+            revealAt은 서프라이즈 펀딩의 공개 시각이며 생일 펀딩은 null입니다.
             ownerPreview는 로그인한 개설자 본인이 조회한 경우 true입니다. 취소된 펀딩은 404를 반환합니다.
             giftVerification은 선물 인증을 마친 경우(COMPLETED)에만 사진, 감사 메시지, 완료 시각을 반환하고 그 외에는 null입니다.
             Authorization 헤더 없이 호출하면 비로그인으로 조회하고, 헤더의 토큰이 만료되었거나 유효하지 않으면 401을 반환합니다.
@@ -999,6 +1000,7 @@ interface FundingControllerDocs {
                 "story": "올해 생일에는 오래 사용한 이어폰을 바꾸고 싶어요.",
                 "promise": "선물을 받으면 인증 사진을 올릴게요.",
                 "deadline": "2026-11-30T23:59:59",
+                "revealAt": null,
                 "extended": false,
                 "remainingDays": 12,
                 "confirmedPercentage": 40,
