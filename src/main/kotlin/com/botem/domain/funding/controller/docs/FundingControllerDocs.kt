@@ -99,14 +99,14 @@ interface FundingControllerDocs {
             상품은 받는 사람의 위시를 스냅샷으로 저장합니다.
             받을 계좌는 일반 펀딩과 같이 bank(지원 은행 코드)와 accountNumber로 받으며, 대표계좌를 사용하는 경우에도 같은 방식으로 보냅니다.
             계좌번호는 숫자, 공백, 하이픈만 허용하고 숫자 8~20자리여야 합니다. 입력한 계좌는 내 계좌 목록에 등록되지 않습니다.
-            마감일과 공개 시각은 받는 사람의 다음 생일을 기준으로 서버가 자동 계산합니다.
-            마감일은 생일 전날의 마지막 시각, 공개 시각은 생일 당일 00:00으로 저장됩니다.
-            받는 사람의 생일이 오늘 또는 내일이면 충분한 모금 기간을 확보할 수 없어 개설할 수 없습니다.
+            deadline과 revealAt은 사용자가 선택한 날짜를 yyyy-MM-dd 형식으로 보냅니다.
+            deadline은 해당 날짜의 마지막 시각, revealAt은 해당 날짜 00:00으로 저장됩니다.
+            공개일은 반드시 마감일 다음 날짜 이후여야 하며, 서버에서도 이를 검증합니다.
             showOnRecipientProfile(위시 프로필에 몰래 알리기)과 notifyRecipientFriends(보탬 친구에게도 알리기)는 생략하면 true이며,
             받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
             받는 사람 한 명당 공개 전 서프라이즈는 하나만 열 수 있고(공개 시각이 지나면 새로 열 수 있음), 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
             서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크이고, shareKey는 참여자용 API 경로에 쓰는 공유 키입니다.
-            응답의 deadline·revealAt은 서버가 받는 사람 생일로 계산한 마감 시각과 공개 시각으로, 개설 완료 화면에 그대로 보여줍니다.
+            응답의 deadline·revealAt은 요청 날짜를 저장 시각으로 정규화한 값이며, 개설 완료 화면에 그대로 보여줍니다.
         """,
     )
     @RequestBody(
@@ -121,20 +121,11 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "400",
-            description = "목표 금액·계좌번호 입력 오류, 받는 사람 생일 정보 오류 또는 자기 자신을 받는 사람으로 지정",
+            description = "목표 금액·계좌번호·일정 입력 오류 또는 자기 자신을 받는 사람으로 지정",
             content = [
                 Content(
                     examples = [
-                        ExampleObject(
-                            name = "FUNDING_053",
-                            summary = "받는 사람 생일 미등록",
-                            value = SURPRISE_RECIPIENT_BIRTHDAY_REQUIRED_EXAMPLE,
-                        ),
-                        ExampleObject(
-                            name = "FUNDING_054",
-                            summary = "받는 사람 생일 임박",
-                            value = SURPRISE_RECIPIENT_BIRTHDAY_TOO_SOON_EXAMPLE,
-                        ),
+                        ExampleObject(name = "COMMON_001", summary = "공개일 입력 오류", value = INVALID_INPUT_EXAMPLE),
                         ExampleObject(
                             name = "PAYOUT_ACCOUNT_004",
                             summary = "계좌번호 형식 오류",
@@ -800,6 +791,8 @@ interface FundingControllerDocs {
               "bank": "TOSS_BANK",
               "accountNumber": "1001-5901-4821",
               "targetAmount": 39000,
+              "deadline": "2026-12-12",
+              "revealAt": "2026-12-15",
               "showOnRecipientProfile": true,
               "notifyRecipientFriends": true
             }
@@ -814,31 +807,9 @@ interface FundingControllerDocs {
                 "status": "FUNDING",
                 "shareUrl": "https://botem.me/share/0123456789abcdef0123456789abcdef",
                 "deadline": "2026-12-12T23:59:59.999999",
-                "revealAt": "2026-12-13T00:00:00"
+                "revealAt": "2026-12-15T00:00:00"
               },
               "error": null
-            }
-        """
-        private const val SURPRISE_RECIPIENT_BIRTHDAY_REQUIRED_EXAMPLE = """
-            {
-              "success": false,
-              "data": null,
-              "error": {
-                "code": "FUNDING_053",
-                "message": "서프라이즈 펀딩을 열려면 받는 사람의 생일 정보가 필요합니다.",
-                "detail": null
-              }
-            }
-        """
-        private const val SURPRISE_RECIPIENT_BIRTHDAY_TOO_SOON_EXAMPLE = """
-            {
-              "success": false,
-              "data": null,
-              "error": {
-                "code": "FUNDING_054",
-                "message": "받는 사람의 생일이 임박해 서프라이즈 펀딩을 열 수 없습니다.",
-                "detail": null
-              }
             }
         """
         private const val SURPRISE_SELF_RECIPIENT_EXAMPLE = """
