@@ -222,16 +222,16 @@ class FundingControllerTest {
     @Test
     fun `서프라이즈 펀딩 개설 요청의 값이나 계좌가 올바르지 않으면 400을 반환한다`() {
         listOf(
-            """"recipientId": 0, "bank": "TOSS_BANK", "accountNumber": "100159014821", "targetAmount": 10000001, "deadline": "2026-12-12", "revealAt": "2026-12-15""",
-            """"recipientId": 5, "accountNumber": "100159014821", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15""",
-            """"recipientId": 5, "bank": "TOSS_BANK", "accountNumber": " ", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15""",
-        ).forEach { fields ->
+            """{ "recipientId": 0, "wishId": 2, "bank": "TOSS_BANK", "accountNumber": "100159014821", "targetAmount": 10000001, "deadline": "2026-12-12", "revealAt": "2026-12-15" }""",
+            """{ "recipientId": 5, "wishId": 2, "accountNumber": "100159014821", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15" }""",
+            """{ "recipientId": 5, "wishId": 2, "bank": "TOSS_BANK", "accountNumber": " ", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15" }""",
+        ).forEach { requestBody ->
             mockMvc.perform(
                 post("/api/fundings/surprise")
                     .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
                     .with(csrf())
                     .contentType("application/json")
-                    .content("""{ $fields, "wishId": 2 }"""),
+                    .content(requestBody),
             )
                 .andExpect(status().isBadRequest)
         }

@@ -125,7 +125,11 @@ interface FundingControllerDocs {
             content = [
                 Content(
                     examples = [
-                        ExampleObject(name = "COMMON_001", summary = "공개일 입력 오류", value = INVALID_INPUT_EXAMPLE),
+                        ExampleObject(
+                            name = "COMMON_001",
+                            summary = "공개일 입력 오류",
+                            value = INVALID_SURPRISE_REVEAL_AT_EXAMPLE,
+                        ),
                         ExampleObject(
                             name = "PAYOUT_ACCOUNT_004",
                             summary = "계좌번호 형식 오류",
@@ -923,6 +927,17 @@ interface FundingControllerDocs {
                 "code": "PAYOUT_ACCOUNT_004",
                 "message": "계좌번호 형식이 올바르지 않습니다.",
                 "detail": null
+              }
+            }
+        """
+        private const val INVALID_SURPRISE_REVEAL_AT_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "COMMON_001",
+                "message": "입력값이 올바르지 않습니다.",
+                "detail": "공개 시각은 마감 이후여야 합니다."
               }
             }
         """
