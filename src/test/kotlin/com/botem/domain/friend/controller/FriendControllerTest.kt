@@ -128,7 +128,16 @@ class FriendControllerTest {
             ),
         )
         given(friendProfileService.getFriendWish(USER_ID, FRIEND_ID, 11L)).willReturn(
-            FriendWishResponse(11L, "모자", "https://image.example.com/cap.jpg", 429_000L, "https://shop.example.com", null, 31L),
+            FriendWishResponse(
+                11L,
+                "모자",
+                "https://image.example.com/cap.jpg",
+                429_000L,
+                "https://shop.example.com",
+                null,
+                31L,
+                "abcdef0123456789abcdef0123456789",
+            ),
         )
 
         mockMvc.perform(get("/api/friends/$FRIEND_ID/profile").with(loggedIn()))
@@ -138,6 +147,7 @@ class FriendControllerTest {
         mockMvc.perform(get("/api/friends/$FRIEND_ID/wishes/11").with(loggedIn()))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.activeSurpriseFundingId").value(31))
+            .andExpect(jsonPath("$.data.activeSurpriseShareKey").value("abcdef0123456789abcdef0123456789"))
     }
 
     private fun loggedIn() = authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))
