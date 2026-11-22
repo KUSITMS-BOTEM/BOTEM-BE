@@ -36,6 +36,9 @@ class SurpriseRevealControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
             .andExpect(jsonPath("$.data.recipientName").value("지유"))
+            .andExpect(jsonPath("$.data.targetAmount").value(429_000))
+            .andExpect(jsonPath("$.data.confirmedPercentage").value(100))
+            .andExpect(jsonPath("$.data.deadline").value("2026-11-14T09:41:00"))
             .andExpect(jsonPath("$.data.messages[0].participantName").value("하은"))
 
         verify(surpriseRevealService).getDetail(USER_ID, FUNDING_ID)
@@ -70,6 +73,9 @@ class SurpriseRevealControllerTest {
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
             confirmedAmount = 429_000L,
+            targetAmount = 429_000L,
+            confirmedPercentage = 100,
+            deadline = OPENED_AT.minusDays(1),
             participantCount = 8L,
             messageCount = 1,
             revealAt = OPENED_AT.minusHours(1),
