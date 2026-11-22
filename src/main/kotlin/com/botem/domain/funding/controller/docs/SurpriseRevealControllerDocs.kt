@@ -19,6 +19,8 @@ interface SurpriseRevealControllerDocs {
             공개 시각이 지난 서프라이즈의 선물 정보와 롤링페이퍼를 조회합니다.
             서프라이즈를 받는 로그인 사용자만 조회할 수 있으며, 공개 전에는 존재 여부를 노출하지 않습니다.
             비로그인 참여자의 participantProfileImageUrl은 null로 반환되므로 기본 이미지는 프론트엔드에서 표시합니다.
+            targetAmount는 목표 금액, confirmedPercentage는 확정 금액 기준 달성률(홈 카드·펀딩 상세와 같은 기준, 소수점 버림, 초과 달성 시 100 초과 가능),
+            deadline은 보태기 마감 시각입니다.
             이 API는 열람 상태를 변경하지 않습니다.
         """,
     )
@@ -128,6 +130,9 @@ interface SurpriseRevealControllerDocs {
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "confirmedAmount": 429000,
+                "targetAmount": 429000,
+                "confirmedPercentage": 100,
+                "deadline": "2026-11-14T23:59:59.999999",
                 "participantCount": 8,
                 "messageCount": 2,
                 "revealAt": "2026-11-15T00:00:00",
@@ -172,6 +177,9 @@ interface SurpriseRevealControllerDocs {
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "confirmedAmount": 429000,
+                "targetAmount": 429000,
+                "confirmedPercentage": 100,
+                "deadline": "2026-11-14T23:59:59.999999",
                 "participantCount": 8,
                 "messageCount": 0,
                 "revealAt": "2026-11-15T00:00:00",

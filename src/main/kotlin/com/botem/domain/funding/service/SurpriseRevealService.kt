@@ -60,6 +60,7 @@ class SurpriseRevealService(
             recipientName = recipient.name ?: recipient.nickname,
             organizerName = organizer.name ?: organizer.nickname,
             summary = summary,
+            confirmedPercentage = progressPercentage(summary.confirmedAmount, funding.targetAmount),
             messages = messages,
         )
     }
