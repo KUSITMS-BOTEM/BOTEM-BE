@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
+import java.time.LocalDate
 
 data class CreateSurpriseFundingRequest(
     @field:Positive
@@ -23,6 +24,10 @@ data class CreateSurpriseFundingRequest(
     @field:Positive
     @field:Max(10_000_000)
     val targetAmount: Long,
+
+    val deadline: LocalDate,
+
+    val revealAt: LocalDate,
 
     val showOnRecipientProfile: Boolean = true,
 
