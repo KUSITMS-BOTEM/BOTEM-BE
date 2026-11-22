@@ -161,6 +161,26 @@ class FundingCreationServiceTest {
     }
 
     @Test
+    fun `개설하는 사람이 없거나 탈퇴했으면 서프라이즈 개설을 거부한다`() {
+        given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(user())
+
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(null)
+        val notFound = assertFailsWith<BusinessException> {
+            service.createSurpriseFunding(USER_ID, surpriseRequest())
+        }
+        assertEquals(UserErrorCode.USER_NOT_FOUND, notFound.errorCode)
+
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user(UserStatus.WITHDRAWN))
+        val withdrawn = assertFailsWith<BusinessException> {
+            service.createSurpriseFunding(USER_ID, surpriseRequest())
+        }
+        assertEquals(AuthErrorCode.WITHDRAWN_USER, withdrawn.errorCode)
+
+        verify(resourceResolver, never()).resolveWish(RECIPIENT_ID, WISH_ID)
+        verify(fundingRepository, never()).save(any(Funding::class.java))
+    }
+
+    @Test
     fun `받는 사람이 탈퇴했으면 서프라이즈 개설을 거부한다`() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user())
         given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(user(UserStatus.WITHDRAWN))

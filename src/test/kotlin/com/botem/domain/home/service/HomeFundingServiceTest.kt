@@ -126,8 +126,16 @@ class HomeFundingServiceTest {
             revealAt = revealAt,
         )
         val birthday = funding(id = 4L, type = FundingType.BIRTHDAY, deadline = LocalDateTime.of(2026, 11, 11, 23, 59))
+        // 마감 전이어도 조기 마감했으면 선물 준비 단계다
+        val earlyClosed = funding(
+            id = 5L,
+            type = FundingType.SURPRISE,
+            status = FundingStatus.CLOSED,
+            deadline = LocalDateTime.of(2026, 11, 9, 23, 59),
+            revealAt = revealAt,
+        ).also { setField(it, "earlyClosedAt", LocalDateTime.of(2026, 11, 8, 9, 0)) }
         given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
-            .willReturn(listOf(inProgress, preparing, prepared, birthday))
+            .willReturn(listOf(inProgress, preparing, prepared, birthday, earlyClosed))
 
         val stages = service.getHomeFundings(USER_ID).fundingCards.associate { it.fundingId to it.surpriseStage }
 
@@ -137,6 +145,7 @@ class HomeFundingServiceTest {
                 2L to SurpriseStage.GIFT_PREPARING,
                 3L to SurpriseStage.GIFT_PREPARED,
                 4L to null,
+                5L to SurpriseStage.GIFT_PREPARING,
             ),
             stages,
         )

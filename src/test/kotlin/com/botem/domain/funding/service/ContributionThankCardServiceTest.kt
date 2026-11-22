@@ -2,18 +2,19 @@ package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.funding.dto.request.SendContributionThankCardRequest
+import com.botem.domain.funding.dto.response.ContributionThankCardSenderRole
+import com.botem.domain.funding.dto.response.RollingPaperMessageType
 import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.ContributionThankCard
-import com.botem.domain.funding.entity.ThankCardColor
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.RollingPaperMessage
+import com.botem.domain.funding.entity.ThankCardColor
 import com.botem.domain.funding.exception.FundingErrorCode
-import com.botem.domain.funding.dto.response.ContributionThankCardSenderRole
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.ContributionThankCardRepository
 import com.botem.domain.funding.repository.FundingRepository
@@ -24,13 +25,6 @@ import com.botem.global.entity.BaseEntity
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.ContributionThankCardProperties
-import org.junit.jupiter.api.Test
-import org.mockito.ArgumentCaptor
-import org.mockito.ArgumentMatchers.any
-import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -41,6 +35,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers.any
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 
 class ContributionThankCardServiceTest {
 
@@ -124,7 +126,70 @@ class ContributionThankCardServiceTest {
         assertEquals(listOf(CONTRIBUTION_ID), response.friends.map { it.contributionId })
         assertTrue(response.friends.single().organizer)
         assertEquals(LocalDate.of(2026, 11, 19), response.friends.single().contributedDate)
-        assertEquals(listOf(com.botem.domain.funding.dto.response.RollingPaperMessageType.TEXT, com.botem.domain.funding.dto.response.RollingPaperMessageType.PHOTO), response.friends.single().messageTypes)
+        assertEquals(listOf(RollingPaperMessageType.TEXT, RollingPaperMessageType.PHOTO), response.friends.single().messageTypes)
+    }
+
+    @Test
+    fun `메시지 종류는 내용 유무로 분류하고 감사카드를 보낸 친구를 표시한다`() {
+        val voiceAndSticker = contribution().withId(CONTRIBUTION_ID)
+        val withoutMessage = contribution().withId(CONTRIBUTION_ID + 1)
+        listOf(voiceAndSticker, withoutMessage).forEach { setBaseField(it, "createdAt", NOW) }
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(surpriseFunding()))
+        given(contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(FUNDING_ID))
+            .willReturn(listOf(voiceAndSticker, withoutMessage))
+        given(rollingPaperMessageRepository.findAllByContributionIdIn(listOf(CONTRIBUTION_ID, CONTRIBUTION_ID + 1))).willReturn(
+            listOf(
+                RollingPaperMessage(
+                    contributionId = CONTRIBUTION_ID,
+                    content = " ",
+                    paperTemplateCode = "LIME",
+                    decorationCode = "HEART",
+                    voiceUrl = "https://voice.example.com/voice.m4a",
+                    voiceDurationSeconds = 5,
+                ),
+            ),
+        )
+        given(thankCardRepository.findAllByContributionIdIn(listOf(CONTRIBUTION_ID, CONTRIBUTION_ID + 1)))
+            .willReturn(listOf(thankCard(senderUserId = RECIPIENT_ID)))
+
+        val friends = service.getSurpriseThankCardFriends(RECIPIENT_ID, FUNDING_ID).friends
+
+        // 공백 내용은 텍스트로 보지 않는다
+        assertEquals(listOf(RollingPaperMessageType.VOICE, RollingPaperMessageType.STICKER), friends[0].messageTypes)
+        assertTrue(friends[0].thankCardSent)
+        assertFalse(friends[0].organizer)
+        assertEquals(emptyList(), friends[1].messageTypes)
+        assertFalse(friends[1].thankCardSent)
+    }
+
+    @Test
+    fun `참여가 모두 취소됐으면 메시지와 감사카드를 조회하지 않고 빈 목록을 반환한다`() {
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(surpriseFunding()))
+        given(contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(FUNDING_ID))
+            .willReturn(listOf(contribution().withId(CONTRIBUTION_ID).also { it.cancel() }))
+
+        val response = service.getSurpriseThankCardFriends(RECIPIENT_ID, FUNDING_ID)
+
+        assertEquals(FUNDING_ID, response.fundingId)
+        assertTrue(response.friends.isEmpty())
+        verifyNoInteractions(rollingPaperMessageRepository, thankCardRepository)
+    }
+
+    @Test
+    fun `없거나 취소된 펀딩, 받는 사람이 아니거나 공개 전이면 고마운 친구 목록을 조회할 수 없다`() {
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.empty())
+        assertFriendsError(FundingErrorCode.FUNDING_NOT_FOUND, RECIPIENT_ID)
+
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(surpriseFunding(status = FundingStatus.CANCELLED)))
+        assertFriendsError(FundingErrorCode.FUNDING_NOT_FOUND, RECIPIENT_ID)
+
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(surpriseFunding()))
+        assertFriendsError(FundingErrorCode.SURPRISE_RECIPIENT_ONLY, OWNER_ID)
+
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(surpriseFunding(opened = false)))
+        assertFriendsError(FundingErrorCode.SURPRISE_NOT_OPENED, RECIPIENT_ID)
+
+        verifyNoInteractions(contributionRepository)
     }
 
     @Test
@@ -310,6 +375,13 @@ class ContributionThankCardServiceTest {
         assertEquals(FundingErrorCode.CONTRIBUTION_THANK_CARD_NOT_FOUND, exception.errorCode)
     }
 
+    private fun assertFriendsError(errorCode: FundingErrorCode, userId: Long) {
+        val exception = assertFailsWith<BusinessException> {
+            service.getSurpriseThankCardFriends(userId, FUNDING_ID)
+        }
+        assertEquals(errorCode, exception.errorCode)
+    }
+
     private fun givenSendableFundingAndContribution() {
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding())
         given(contributionRepository.findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID))
@@ -346,7 +418,10 @@ class ContributionThankCardServiceTest {
             }
         }
 
-    private fun surpriseFunding(): Funding =
+    private fun surpriseFunding(
+        status: FundingStatus = FundingStatus.REVEALED,
+        opened: Boolean = true,
+    ): Funding =
         Funding(
             ownerId = OWNER_ID,
             recipientId = RECIPIENT_ID,
@@ -366,8 +441,10 @@ class ContributionThankCardServiceTest {
             ),
             payoutAccount = FundingPayoutAccountSnapshot(null, Bank.TOSS_BANK, "encrypted", "지유"),
         ).withId(FUNDING_ID).also { funding ->
-            setField(funding, Funding::class.java, "status", FundingStatus.REVEALED)
-            setField(funding, Funding::class.java, "surpriseOpenedAt", NOW.minusMinutes(1))
+            setField(funding, Funding::class.java, "status", status)
+            if (opened) {
+                setField(funding, Funding::class.java, "surpriseOpenedAt", NOW.minusMinutes(1))
+            }
         }
 
     private fun contribution(
