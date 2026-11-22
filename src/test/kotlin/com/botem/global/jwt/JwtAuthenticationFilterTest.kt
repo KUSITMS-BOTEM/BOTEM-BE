@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 import org.springframework.http.HttpHeaders
 import org.springframework.mock.web.MockHttpServletRequest
@@ -59,6 +60,41 @@ class JwtAuthenticationFilterTest {
             request.getAttribute(JwtAuthenticationFilter.ERROR_CODE_ATTRIBUTE),
         )
         verify(filterChain).doFilter(request, response)
+    }
+
+    @Test
+    fun `서명이 유효해도 DB에 없는 회원의 토큰이면 인증하지 않고 INVALID_TOKEN을 남긴다`() {
+        val request = request(method = "GET", uri = "/api/users/me/profile")
+        val response = MockHttpServletResponse()
+        `when`(jwtProvider.getUserIdFromAccessToken(ACCESS_TOKEN)).thenReturn(USER_ID)
+        `when`(userRepository.findStatusById(USER_ID)).thenReturn(null)
+
+        filter.doFilter(request, response, filterChain)
+
+        assertNull(SecurityContextHolder.getContext().authentication)
+        assertEquals(AuthErrorCode.INVALID_TOKEN, request.getAttribute(JwtAuthenticationFilter.ERROR_CODE_ATTRIBUTE))
+        verify(filterChain).doFilter(request, response)
+    }
+
+    @Test
+    fun `Bearer 형식이 아니거나 헤더가 없으면 토큰을 검사하지 않고 비로그인으로 넘긴다`() {
+        val requests = listOf(
+            MockHttpServletRequest("GET", "/api/home/fundings").apply {
+                addHeader(HttpHeaders.AUTHORIZATION, "Basic $ACCESS_TOKEN")
+            },
+            MockHttpServletRequest("GET", "/api/home/fundings"),
+        )
+
+        requests.forEach { request ->
+            val response = MockHttpServletResponse()
+
+            filter.doFilter(request, response, filterChain)
+
+            assertNull(SecurityContextHolder.getContext().authentication)
+            assertNull(request.getAttribute(JwtAuthenticationFilter.ERROR_CODE_ATTRIBUTE))
+            verify(filterChain).doFilter(request, response)
+        }
+        verifyNoInteractions(jwtProvider, userRepository)
     }
 
     private fun request(method: String, uri: String): MockHttpServletRequest =
