@@ -395,6 +395,28 @@ class ContributionServiceTest {
     }
 
     @Test
+    fun `없거나 취소된 펀딩에는 금액도 메시지도 보탤 수 없다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
+        assertErrorCode(FundingErrorCode.FUNDING_NOT_FOUND) {
+            service.contribute(null, FUNDING_ID, request())
+        }
+
+        givenFunding(confirmedAmount = 0L)
+        val cancelled = checkNotNull(fundingRepository.findByIdForUpdate(FUNDING_ID))
+        cancelled.javaClass.getDeclaredField("status").apply {
+            isAccessible = true
+            set(cancelled, com.botem.domain.funding.entity.FundingStatus.CANCELLED)
+        }
+        assertErrorCode(FundingErrorCode.FUNDING_NOT_FOUND) {
+            service.contribute(null, FUNDING_ID, request())
+        }
+        assertErrorCode(FundingErrorCode.FUNDING_NOT_FOUND) {
+            service.leaveMessage(null, FUNDING_ID, messageRequest())
+        }
+        verify(contributionRepository, never()).save(any(Contribution::class.java))
+    }
+
+    @Test
     fun `마감된 펀딩에는 보탤 수 없다`() {
         givenFunding(confirmedAmount = 0L, deadline = NOW)
 

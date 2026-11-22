@@ -378,6 +378,24 @@ class GuestContributionServiceTest {
     }
 
     @Test
+    fun `존재하지 않거나 취소된 펀딩의 비회원 보탬은 수정하거나 삭제할 수 없다`() {
+        given(accessTokenProvider.parse(ACCESS_TOKEN))
+            .willReturn(GuestContributionAccessPrincipal(FUNDING_ID, CONTRIBUTION_ID))
+
+        listOf(null, funding(status = FundingStatus.CANCELLED)).forEach { funding ->
+            given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+
+            assertError(FundingErrorCode.FUNDING_NOT_FOUND) {
+                service.update(FUNDING_ID, ACCESS_TOKEN, UpdateGuestContributionRequest("민지", "메시지", "BLUE_DOT_GRID"))
+            }
+            assertError(FundingErrorCode.FUNDING_NOT_FOUND) {
+                service.cancel(FUNDING_ID, ACCESS_TOKEN)
+            }
+        }
+        verify(contributionRepository, never()).findByIdAndFundingIdForUpdate(CONTRIBUTION_ID, FUNDING_ID)
+    }
+
+    @Test
     fun `접근 토큰의 보탬이 없으면 수정할 수 없다`() {
         givenFunding()
         given(accessTokenProvider.parse(ACCESS_TOKEN))
