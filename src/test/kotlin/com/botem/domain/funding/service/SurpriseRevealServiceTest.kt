@@ -58,12 +58,15 @@ class SurpriseRevealServiceTest {
     }
 
     @Test
-    fun `존재하지 않는 서프라이즈는 조회할 수 없다`() {
+    fun `존재하지 않는 서프라이즈는 조회하거나 열 수 없다`() {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.empty())
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
 
-        val exception = assertFailsWith<BusinessException> { service.getDetail(RECIPIENT_ID, FUNDING_ID) }
+        val detail = assertFailsWith<BusinessException> { service.getDetail(RECIPIENT_ID, FUNDING_ID) }
+        val open = assertFailsWith<BusinessException> { service.open(RECIPIENT_ID, FUNDING_ID) }
 
-        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, detail.errorCode)
+        assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, open.errorCode)
     }
 
     @Test
