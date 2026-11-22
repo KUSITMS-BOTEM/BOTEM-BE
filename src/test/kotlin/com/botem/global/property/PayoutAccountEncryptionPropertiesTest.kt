@@ -36,16 +36,20 @@ class PayoutAccountEncryptionPropertiesTest {
 
     @Test
     fun `현재 키와 레거시 키가 Key Ring에 없으면 거부한다`() {
-        val properties = PayoutAccountEncryptionProperties(
-            currentKeyId = "v2",
-            legacyKeyId = "v1",
-            keys = mapOf("v1" to VALID_KEY),
+        val invalidKeyRings = listOf(
+            // 현재 키 누락
+            PayoutAccountEncryptionProperties(currentKeyId = "v2", legacyKeyId = "v1", keys = mapOf("v1" to VALID_KEY)),
+            // 레거시 키 누락: 버전 없는 기존 암호문을 복호화할 수 없다
+            PayoutAccountEncryptionProperties(currentKeyId = "v2", legacyKeyId = "v1", keys = mapOf("v2" to VALID_KEY)),
+            PayoutAccountEncryptionProperties(currentKeyId = "v1", legacyKeyId = "v1", keys = emptyMap()),
         )
 
-        val violations = validator.validate(properties)
+        invalidKeyRings.forEach { properties ->
+            val violations = validator.validate(properties)
 
-        assertEquals(1, violations.size)
-        assertEquals("keyRingValid", violations.single().propertyPath.toString())
+            assertEquals(1, violations.size, properties.keys.keys.toString())
+            assertEquals("keyRingValid", violations.single().propertyPath.toString())
+        }
     }
 
     @Test

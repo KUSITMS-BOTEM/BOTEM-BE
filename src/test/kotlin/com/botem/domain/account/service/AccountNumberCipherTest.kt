@@ -1,5 +1,7 @@
 package com.botem.domain.account.service
 
+import com.botem.domain.account.exception.PayoutAccountErrorCode
+import com.botem.global.exception.BusinessException
 import com.botem.global.property.PayoutAccountEncryptionProperties
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -66,15 +68,36 @@ class AccountNumberCipherTest {
     @Test
     fun `등록되지 않은 키 버전이나 잘못된 암호문은 복호화하지 않는다`() {
         val keyRingCipher = keyRingCipher()
+        // 형식이 올바른 암호문이어야 Base64 해석이 아니라 키 조회 단계에서 거부되는지 확인할 수 있다
+        val encryptedWithUnknownKey = AccountNumberCipher(
+            PayoutAccountEncryptionProperties(
+                currentKeyId = "v3",
+                legacyKeyId = "v3",
+                keys = mapOf("v3" to "YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODk="),
+            ),
+        ).encrypt("100012345678")
 
         assertFailsWith<IllegalArgumentException> {
-            keyRingCipher.decrypt("v3:encrypted-payload")
+            keyRingCipher.decrypt(encryptedWithUnknownKey)
         }
         assertFailsWith<IllegalArgumentException> {
             keyRingCipher.decrypt("v1:not-base64")
         }
         assertFailsWith<IllegalArgumentException> {
             keyRingCipher.decrypt("v1:MTIz")
+        }
+    }
+
+    @Test
+    fun `숫자만 남긴 계좌번호가 8자리 이상 20자리 이하일 때만 암호화한다`() {
+        assertEquals("12345678", cipher.decrypt(cipher.normalizeAndEncrypt("1234-5678")))
+        assertEquals("1".repeat(20), cipher.decrypt(cipher.normalizeAndEncrypt("1".repeat(20))))
+
+        listOf("1234567", "123-45 67", "1".repeat(21)).forEach { accountNumber ->
+            val exception = assertFailsWith<BusinessException>(accountNumber) {
+                cipher.normalizeAndEncrypt(accountNumber)
+            }
+            assertEquals(PayoutAccountErrorCode.INVALID_ACCOUNT_NUMBER, exception.errorCode)
         }
     }
 
