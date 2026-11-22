@@ -63,16 +63,4 @@ class Wish(
     @Column(nullable = false, length = 2048)
     var productUrl: String = productUrl
         protected set
-
-    fun update(
-        productName: String,
-        productImageUrl: String,
-        price: Long,
-        productUrl: String,
-    ) {
-        this.productName = productName
-        this.productImageUrl = productImageUrl
-        this.price = price
-        this.productUrl = productUrl
-    }
 }
