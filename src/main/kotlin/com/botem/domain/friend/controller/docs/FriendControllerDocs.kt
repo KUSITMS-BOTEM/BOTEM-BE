@@ -107,6 +107,7 @@ interface FriendControllerDocs {
         description = """
             친구 프로필에서 위시를 눌렀을 때의 상세(FRND-PG-006)를 조회합니다. 서로 친구인 회원만 조회할 수 있습니다.
             activeSurpriseFundingId는 이 친구가 받는 사람인 진행 중(공개 전) 서프라이즈의 ID입니다.
+            activeSurpriseShareKey는 동일한 진행 중 서프라이즈의 공유 키이며, 값이 있으면 /share/{shareKey}로 이동할 수 있습니다.
             값이 있으면 '같이 보태기', null이면 '친구 몰래 서프라이즈 열기'를 보여줍니다. 친구당 진행 중 서프라이즈는 1개입니다.
         """,
     )
@@ -253,7 +254,8 @@ interface FriendControllerDocs {
                 "price": 429000,
                 "productUrl": "https://link.coupang.com/a/example",
                 "sellerName": "쿠팡",
-                "activeSurpriseFundingId": null
+                "activeSurpriseFundingId": null,
+                "activeSurpriseShareKey": null
               },
               "error": null
             }
