@@ -77,6 +77,7 @@ class FriendProfileService(
             productUrl = wish.productUrl,
             sellerName = wish.sellerName,
             activeSurpriseFundingId = activeSurprise?.id,
+            activeSurpriseShareKey = activeSurprise?.shareKey,
         )
     }
 

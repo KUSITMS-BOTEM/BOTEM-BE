@@ -151,9 +151,12 @@ class FriendProfileServiceTest {
                 NOW,
                 ENDED_STATUSES,
             ),
-        ).willReturn(funding(id = 31L))
+        ).willReturn(funding(id = 31L, shareKey = ACTIVE_SURPRISE_SHARE_KEY))
 
-        assertEquals(31L, service.getFriendWish(VIEWER_ID, TARGET_ID, 11L).activeSurpriseFundingId)
+        service.getFriendWish(VIEWER_ID, TARGET_ID, 11L).also { response ->
+            assertEquals(31L, response.activeSurpriseFundingId)
+            assertEquals(ACTIVE_SURPRISE_SHARE_KEY, response.activeSurpriseShareKey)
+        }
 
         given(
             fundingRepository.findFirstByRecipientIdAndTypeAndRevealAtAfterAndStatusNotIn(
@@ -164,7 +167,10 @@ class FriendProfileServiceTest {
             ),
         ).willReturn(null)
 
-        assertNull(service.getFriendWish(VIEWER_ID, TARGET_ID, 11L).activeSurpriseFundingId)
+        service.getFriendWish(VIEWER_ID, TARGET_ID, 11L).also { response ->
+            assertNull(response.activeSurpriseFundingId)
+            assertNull(response.activeSurpriseShareKey)
+        }
     }
 
     @Test
@@ -230,6 +236,7 @@ class FriendProfileServiceTest {
         id: Long,
         deadline: LocalDateTime = NOW.plusDays(2),
         sourceWishId: Long? = null,
+        shareKey: String = "0123456789abcdef0123456789abcdef",
     ): Funding =
         Funding(
             ownerId = 99L,
@@ -254,6 +261,7 @@ class FriendProfileServiceTest {
                 encryptedAccountNumber = "encrypted",
                 accountHolder = null,
             ),
+            shareKey = shareKey,
         ).also { setField(it, "id", id) }
 
     private fun preview(fundingId: Long, name: String): FundingParticipantPreviewProjection =
@@ -276,6 +284,7 @@ class FriendProfileServiceTest {
         private const val TARGET_ID = 2L
         private const val OTHER_USERS_WISH_ID = 99L
         private const val WISH_PROFILE_KEY = "8f0c6d779fae47f3a979302f2782d20f"
+        private const val ACTIVE_SURPRISE_SHARE_KEY = "abcdef0123456789abcdef0123456789"
         private val NOW = LocalDateTime.of(2026, 10, 21, 9, 41)
         private val ENDED_STATUSES = setOf(FundingStatus.COMPLETED, FundingStatus.CANCELLED)
     }

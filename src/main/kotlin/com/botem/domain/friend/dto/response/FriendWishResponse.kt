@@ -9,4 +9,6 @@ data class FriendWishResponse(
     val sellerName: String?,
     // 이 친구에게 이미 진행 중인 서프라이즈가 있으면 그 펀딩 ID ("같이 보태기"), 없으면 null ("친구 몰래 서프라이즈 열기")
     val activeSurpriseFundingId: Long?,
+    // 진행 중인 서프라이즈가 있으면 공유 페이지로 이동할 수 있는 키, 없으면 null
+    val activeSurpriseShareKey: String?,
 )
