@@ -9,6 +9,7 @@ import com.botem.domain.friend.dto.response.FriendWishResponse
 import com.botem.domain.friend.service.FriendProfileService
 import com.botem.domain.friend.service.FriendService
 import com.botem.global.exception.BusinessException
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.BDDMockito.willThrow
@@ -128,7 +129,16 @@ class FriendControllerTest {
             ),
         )
         given(friendProfileService.getFriendWish(USER_ID, FRIEND_ID, 11L)).willReturn(
-            FriendWishResponse(11L, "모자", "https://image.example.com/cap.jpg", 429_000L, "https://shop.example.com", null, 31L),
+            FriendWishResponse(
+                11L,
+                "모자",
+                "https://image.example.com/cap.jpg",
+                429_000L,
+                "https://shop.example.com",
+                null,
+                31L,
+                "abcdef0123456789abcdef0123456789",
+            ),
         )
 
         mockMvc.perform(get("/api/friends/$FRIEND_ID/profile").with(loggedIn()))
@@ -138,6 +148,28 @@ class FriendControllerTest {
         mockMvc.perform(get("/api/friends/$FRIEND_ID/wishes/11").with(loggedIn()))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.activeSurpriseFundingId").value(31))
+            .andExpect(jsonPath("$.data.activeSurpriseShareKey").value("abcdef0123456789abcdef0123456789"))
+    }
+
+    @Test
+    fun `진행 중인 서프라이즈가 없으면 친구 위시 상세의 서프라이즈 정보는 null이다`() {
+        given(friendProfileService.getFriendWish(USER_ID, FRIEND_ID, 11L)).willReturn(
+            FriendWishResponse(
+                11L,
+                "모자",
+                "https://image.example.com/cap.jpg",
+                429_000L,
+                "https://shop.example.com",
+                null,
+                null,
+                null,
+            ),
+        )
+
+        mockMvc.perform(get("/api/friends/$FRIEND_ID/wishes/11").with(loggedIn()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.activeSurpriseFundingId").value(nullValue()))
+            .andExpect(jsonPath("$.data.activeSurpriseShareKey").value(nullValue()))
     }
 
     private fun loggedIn() = authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList()))

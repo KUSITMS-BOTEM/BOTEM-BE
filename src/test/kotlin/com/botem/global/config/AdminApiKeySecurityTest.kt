@@ -1,6 +1,7 @@
 package com.botem.global.config
 
 import org.junit.jupiter.api.Test
+import org.hamcrest.Matchers.nullValue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -53,6 +54,28 @@ class AdminApiKeySecurityTest {
             .andExpect(status().isBadRequest)
     }
 
+    @Test
+    fun `운영자 키 없이 계좌번호 재암호화 배치를 실행하면 401로 응답한다`() {
+        mockMvc.perform(createRotationRequest())
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("AUTH_001"))
+    }
+
+    @Test
+    fun `운영자 키로 계좌번호 재암호화 배치를 실행한다`() {
+        mockMvc.perform(createRotationRequest().header(HEADER, ADMIN_KEY))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.processedCount").value(0))
+            .andExpect(jsonPath("$.data.rotatedCount").value(0))
+            .andExpect(jsonPath("$.data.nextAfterAccountId").value(nullValue()))
+    }
+
+    @Test
+    fun `계좌번호 재암호화 배치 크기가 범위를 벗어나면 400으로 응답한다`() {
+        mockMvc.perform(createRotationRequest(batchSize = 0).header(HEADER, ADMIN_KEY))
+            .andExpect(status().isBadRequest)
+    }
+
     private fun createRequest(price: Long = 429_000): MockHttpServletRequestBuilder =
         post("/api/admin/recommended-products")
             .contentType(MediaType.APPLICATION_JSON)
@@ -68,6 +91,11 @@ class AdminApiKeySecurityTest {
                 }
                 """,
             )
+
+    private fun createRotationRequest(batchSize: Int = 100): MockHttpServletRequestBuilder =
+        post("/api/admin/payout-account-encryption/rotate")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{ "afterAccountId": 0, "batchSize": $batchSize }""")
 
     companion object {
         private const val HEADER = "X-Admin-Key"

@@ -134,7 +134,7 @@ class Funding(
     // 보태기 마감(마감일 경과 또는 확정 금액 목표 도달). 메시지는 마감일 전까지 계속 받는다
     fun closeContributions() {
         if (status == FundingStatus.FUNDING) {
-            status = FundingStatus.CLOSED
+            transitionTo(FundingStatus.CLOSED, FundingStateTransition.CONTRIBUTION_CLOSE)
         }
     }
 
@@ -142,16 +142,19 @@ class Funding(
         if (earlyClosedAt != null) {
             return
         }
-        if (!deadline.isAfter(closedAt) || status !in EARLY_CLOSEABLE_STATUSES) {
+        if (!deadline.isAfter(closedAt)) {
             throw BusinessException(FundingErrorCode.FUNDING_EARLY_CLOSE_NOT_AVAILABLE)
         }
 
-        earlyClosedAt = closedAt
         // 서프라이즈는 메시지 참여도 함께 닫고, 주최자가 선물 준비를 완료해야 공개 대기로 넘어간다
-        status = when (type) {
-            FundingType.BIRTHDAY -> FundingStatus.CLOSED
-            FundingType.SURPRISE -> FundingStatus.GIFT_PREPARING
-        }
+        transitionTo(
+            nextStatus = when (type) {
+                FundingType.BIRTHDAY -> FundingStatus.CLOSED
+                FundingType.SURPRISE -> FundingStatus.GIFT_PREPARING
+            },
+            transition = FundingStateTransition.EARLY_CLOSE,
+        )
+        earlyClosedAt = closedAt
     }
 
     // 목표 미달이어도 실패 없이 확정 금액만큼 준비한다. 이미 준비를 완료했으면 그대로 둔다
@@ -165,12 +168,8 @@ class Funding(
         if (!isContributionClosed(preparedAt)) {
             throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
         }
-        if (status !in SURPRISE_GIFT_PREPARABLE_STATUSES) {
-            throw BusinessException(FundingErrorCode.SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE)
-        }
-
+        transitionTo(FundingStatus.WAITING_REVEAL, FundingStateTransition.SURPRISE_GIFT_PREPARATION)
         giftPreparedAt = preparedAt
-        status = FundingStatus.WAITING_REVEAL
     }
 
     fun isContributionClosed(now: LocalDateTime): Boolean =
@@ -234,7 +233,7 @@ class Funding(
         this.extendedAt = extendedAt
         // 기존 롤링페이퍼는 삭제하지 않고, 연장 기간에 들어온 보탬을 다시 확인할 수 있도록 결과 확정 상태만 되돌린다
         resultOpenedAt = null
-        status = FundingStatus.FUNDING
+        transitionTo(FundingStatus.FUNDING, FundingStateTransition.DEADLINE_EXTENSION)
     }
 
     // 마감 전이라도 목표를 달성하고 확인 대기가 없으면 개설자가 바로 열 수 있다 (홈 '지금 펑! 열까요?')
@@ -248,12 +247,8 @@ class Funding(
         if (deadline.isAfter(openedAt) && !earlyOpenable) {
             throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
         }
-        if (status !in RESULT_OPENABLE_STATUSES) {
-            throw BusinessException(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE)
-        }
-
+        transitionTo(FundingStatus.GIFT_PREPARING, FundingStateTransition.RESULT_OPEN)
         resultOpenedAt = openedAt
-        status = FundingStatus.GIFT_PREPARING
     }
 
     // 연장 API와 같은 조건이라 결과·관리 화면의 '기간 연장' 노출이 실제 요청 결과와 어긋나지 않는다
@@ -283,8 +278,7 @@ class Funding(
         if (!isGiftChoosable()) {
             throw BusinessException(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE)
         }
-
-        status = FundingStatus.WAITING_GIFT_VERIFICATION
+        transitionTo(FundingStatus.WAITING_GIFT_VERIFICATION, FundingStateTransition.GIFT_CHOICE)
     }
 
     fun isGiftRecipient(userId: Long): Boolean =
@@ -299,7 +293,7 @@ class Funding(
         }
         validateGiftVerificationCompletable()
 
-        status = FundingStatus.COMPLETED
+        transitionTo(FundingStatus.COMPLETED, FundingStateTransition.GIFT_VERIFICATION_COMPLETION)
         this.completedAt = completedAt
     }
 
@@ -307,9 +301,7 @@ class Funding(
         if (completedAt != null) {
             return
         }
-        if (status != FundingStatus.WAITING_GIFT_VERIFICATION) {
-            throw BusinessException(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE)
-        }
+        FundingStateTransition.GIFT_VERIFICATION_COMPLETION.validate(status)
     }
 
     // 공개 시각이 지나도 주최자가 선물 준비를 완료하기 전까지는 받는 사람에게 숨긴다
@@ -348,23 +340,61 @@ class Funding(
         if (surpriseOpenedAt != null) {
             return
         }
-        if (status != FundingStatus.WAITING_REVEAL) {
-            throw BusinessException(FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE)
-        }
-
+        transitionTo(FundingStatus.REVEALED, FundingStateTransition.SURPRISE_REVEAL)
         surpriseOpenedAt = openedAt
-        status = FundingStatus.REVEALED
     }
 
     fun beginGiftVerification() {
         if (status == FundingStatus.WAITING_GIFT_VERIFICATION) {
             return
         }
-        if (type != FundingType.SURPRISE || status != FundingStatus.REVEALED) {
+        if (type != FundingType.SURPRISE) {
             throw BusinessException(FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE)
         }
 
-        status = FundingStatus.WAITING_GIFT_VERIFICATION
+        transitionTo(FundingStatus.WAITING_GIFT_VERIFICATION, FundingStateTransition.SURPRISE_GIFT_VERIFICATION_START)
+    }
+
+    private fun transitionTo(
+        nextStatus: FundingStatus,
+        transition: FundingStateTransition,
+    ) {
+        transition.validate(status)
+        status = nextStatus
+    }
+
+    private enum class FundingStateTransition(
+        private val allowedFrom: Set<FundingStatus>,
+        private val errorCode: FundingErrorCode,
+    ) {
+        CONTRIBUTION_CLOSE(setOf(FundingStatus.FUNDING), FundingErrorCode.FUNDING_CLOSED),
+        EARLY_CLOSE(setOf(FundingStatus.FUNDING, FundingStatus.CLOSED), FundingErrorCode.FUNDING_EARLY_CLOSE_NOT_AVAILABLE),
+        SURPRISE_GIFT_PREPARATION(
+            setOf(FundingStatus.FUNDING, FundingStatus.CLOSED, FundingStatus.GIFT_PREPARING),
+            FundingErrorCode.SURPRISE_GIFT_PREPARATION_NOT_AVAILABLE,
+        ),
+        DEADLINE_EXTENSION(
+            setOf(FundingStatus.FUNDING, FundingStatus.CLOSED, FundingStatus.GIFT_PREPARING),
+            FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE,
+        ),
+        RESULT_OPEN(setOf(FundingStatus.FUNDING, FundingStatus.CLOSED), FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE),
+        GIFT_CHOICE(setOf(FundingStatus.GIFT_PREPARING), FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE),
+        GIFT_VERIFICATION_COMPLETION(
+            setOf(FundingStatus.WAITING_GIFT_VERIFICATION),
+            FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE,
+        ),
+        SURPRISE_REVEAL(setOf(FundingStatus.WAITING_REVEAL), FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE),
+        SURPRISE_GIFT_VERIFICATION_START(
+            setOf(FundingStatus.REVEALED),
+            FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE,
+        ),
+        ;
+
+        fun validate(status: FundingStatus) {
+            if (status !in allowedFrom) {
+                throw BusinessException(errorCode)
+            }
+        }
     }
 
     companion object {
@@ -427,11 +457,10 @@ class Funding(
         ): Funding {
             validateTargetAmount(targetAmount)
             validateDeadline(deadline, now)
-            // 마감(생일 전날) 다음 날 안에서만 공개한다
-            if (!revealAt.isAfter(deadline) || revealAt.toLocalDate().isAfter(deadline.toLocalDate().plusDays(1))) {
+            if (!revealAt.isAfter(deadline)) {
                 throw BusinessException(
                     CommonErrorCode.INVALID_INPUT_VALUE,
-                    "공개 시각은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다.",
+                    "공개 시각은 마감 이후여야 합니다.",
                 )
             }
 
@@ -491,27 +520,14 @@ class Funding(
             }
         }
 
-        private val RESULT_OPENABLE_STATUSES = setOf(
-            FundingStatus.FUNDING,
-            FundingStatus.CLOSED,
-        )
         private val EXTENDABLE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
             FundingStatus.GIFT_PREPARING,
         )
-        private val EARLY_CLOSEABLE_STATUSES = setOf(
-            FundingStatus.FUNDING,
-            FundingStatus.CLOSED,
-        )
         private val PRODUCT_CHANGEABLE_STATUSES = setOf(
             FundingStatus.FUNDING,
             FundingStatus.CLOSED,
-        )
-        private val SURPRISE_GIFT_PREPARABLE_STATUSES = setOf(
-            FundingStatus.FUNDING,
-            FundingStatus.CLOSED,
-            FundingStatus.GIFT_PREPARING,
         )
         private val SURPRISE_REVEAL_VIEWABLE_STATUSES = setOf(
             FundingStatus.WAITING_REVEAL,

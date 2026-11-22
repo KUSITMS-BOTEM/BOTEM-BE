@@ -639,6 +639,14 @@ class FundingTest {
             assertFailsWith<BusinessException> { notOpened.changeProduct(newProduct(), OPENED_AT) }.errorCode,
         )
 
+        val resultOpenedAtMissing = funding(deadline = OPENED_AT.minusDays(1))
+        setField(resultOpenedAtMissing, "status", FundingStatus.GIFT_PREPARING)
+        assertEquals(
+            FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE,
+            assertFailsWith<BusinessException> { resultOpenedAtMissing.chooseGift() }.errorCode,
+        )
+        assertEquals(FundingStatus.GIFT_PREPARING, resultOpenedAtMissing.status)
+
         val completed = funding(deadline = OPENED_AT.minusDays(1))
         setField(completed, "status", FundingStatus.COMPLETED)
         assertEquals(

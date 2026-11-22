@@ -24,7 +24,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.MonthDay
 import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -120,7 +119,7 @@ class FundingCreationServiceTest {
     }
 
     @Test
-    fun `받는 사람 생일을 기준으로 일정을 계산해 서프라이즈 펀딩을 개설한다`() {
+    fun `사용자가 입력한 일정으로 서프라이즈 펀딩을 개설한다`() {
         givenSurpriseCreatable()
         given(fundingRepository.save(any(Funding::class.java))).willAnswer { invocation ->
             (invocation.arguments[0] as Funding).also { setField(it, "id", FUNDING_ID) }
@@ -141,9 +140,8 @@ class FundingCreationServiceTest {
         assertNull(saved.value.story)
         assertEquals(WISH_ID, saved.value.product.sourceWishId)
         assertEquals(SURPRISE_PAYOUT_ACCOUNT, saved.value.payoutAccount)
-        assertEquals(LocalDateTime.of(2026, 11, 30, 23, 59, 59, 999_999_000), saved.value.deadline)
-        assertEquals(LocalDateTime.of(2026, 12, 1, 0, 0), saved.value.revealAt)
-        // 서버가 계산한 마감일·공개일을 개설 응답에도 내려준다
+        assertEquals(LocalDateTime.of(2026, 12, 12, 23, 59, 59, 999_999_000), saved.value.deadline)
+        assertEquals(LocalDateTime.of(2026, 12, 15, 0, 0), saved.value.revealAt)
         assertEquals(saved.value.deadline, response.deadline)
         assertEquals(saved.value.revealAt, response.revealAt)
         assertFalse(saved.value.showOnRecipientProfile)
@@ -206,47 +204,35 @@ class FundingCreationServiceTest {
     }
 
     @Test
-    fun `받는 사람 생일이 지난 경우 다음 해 일정으로 서프라이즈 펀딩을 개설한다`() {
-        givenSurpriseCreatable(recipientBirthday = MonthDay.of(11, 1))
+    fun `받는 사람 생일 정보가 없어도 입력한 일정으로 서프라이즈 펀딩을 개설한다`() {
+        givenSurpriseCreatable(recipientBirthday = null)
         given(fundingRepository.save(any(Funding::class.java))).willAnswer { it.arguments[0] as Funding }
 
         service.createSurpriseFunding(USER_ID, surpriseRequest())
 
         val saved = org.mockito.ArgumentCaptor.forClass(Funding::class.java)
         verify(fundingRepository).save(saved.capture())
-        assertEquals(LocalDateTime.of(2027, 10, 31, 23, 59, 59, 999_999_000), saved.value.deadline)
-        assertEquals(LocalDateTime.of(2027, 11, 1, 0, 0), saved.value.revealAt)
+        assertEquals(LocalDateTime.of(2026, 12, 12, 23, 59, 59, 999_999_000), saved.value.deadline)
+        assertEquals(LocalDateTime.of(2026, 12, 15, 0, 0), saved.value.revealAt)
     }
 
     @Test
-    fun `받는 사람의 생일 정보가 없으면 서프라이즈 개설을 거부한다`() {
-        givenSurpriseCreatable(recipientBirthday = null)
-
-        val exception = assertFailsWith<BusinessException> {
-            service.createSurpriseFunding(USER_ID, surpriseRequest())
-        }
-
-        assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_BIRTHDAY_REQUIRED, exception.errorCode)
-        verify(resourceResolver, never()).resolveWish(RECIPIENT_ID, WISH_ID)
-    }
-
-    @Test
-    fun `받는 사람의 생일이 오늘 또는 내일이면 서프라이즈 개설을 거부한다`() {
-        listOf(MonthDay.of(11, 17), MonthDay.of(11, 18)).forEach { birthday ->
-            givenSurpriseCreatable(recipientBirthday = birthday)
+    fun `공개일이 마감일과 같거나 이전이면 서프라이즈 개설을 거부한다`() {
+        listOf(LocalDate.of(2026, 12, 12), LocalDate.of(2026, 12, 11)).forEach { revealAt ->
+            givenSurpriseCreatable()
 
             val exception = assertFailsWith<BusinessException> {
-                service.createSurpriseFunding(USER_ID, surpriseRequest())
+                service.createSurpriseFunding(USER_ID, surpriseRequest(revealAt = revealAt))
             }
 
-            assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_BIRTHDAY_TOO_SOON, exception.errorCode)
+            assertEquals(com.botem.global.exception.CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
         }
-        verify(resourceResolver, never()).resolveWish(RECIPIENT_ID, WISH_ID)
+        verify(fundingRepository, never()).save(any(Funding::class.java))
     }
 
     private fun givenSurpriseCreatable(
         surpriseExists: Boolean = false,
-        recipientBirthday: MonthDay? = MonthDay.of(12, 1),
+        recipientBirthday: java.time.MonthDay? = java.time.MonthDay.of(12, 1),
     ) {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(user())
         given(userRepository.findByIdForUpdate(RECIPIENT_ID)).willReturn(user(birthday = recipientBirthday))
@@ -264,13 +250,19 @@ class FundingCreationServiceTest {
             .willReturn(SURPRISE_PAYOUT_ACCOUNT)
     }
 
-    private fun surpriseRequest(recipientId: Long = RECIPIENT_ID): CreateSurpriseFundingRequest =
+    private fun surpriseRequest(
+        recipientId: Long = RECIPIENT_ID,
+        deadline: LocalDate = LocalDate.of(2026, 12, 12),
+        revealAt: LocalDate = LocalDate.of(2026, 12, 15),
+    ): CreateSurpriseFundingRequest =
         CreateSurpriseFundingRequest(
             recipientId = recipientId,
             wishId = WISH_ID,
             bank = Bank.TOSS_BANK,
             accountNumber = ACCOUNT_NUMBER,
             targetAmount = 100_000L,
+            deadline = deadline,
+            revealAt = revealAt,
             showOnRecipientProfile = false,
         )
 
@@ -287,7 +279,7 @@ class FundingCreationServiceTest {
 
     private fun user(
         status: UserStatus = UserStatus.ACTIVE,
-        birthday: MonthDay? = null,
+        birthday: java.time.MonthDay? = null,
     ): User =
         User(
             kakaoId = 1234L,

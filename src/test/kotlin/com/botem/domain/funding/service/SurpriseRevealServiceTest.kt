@@ -101,9 +101,23 @@ class SurpriseRevealServiceTest {
         assertEquals("수신자 닉네임", result.recipientName)
         assertEquals("주최자 닉네임", result.organizerName)
         assertEquals(0L, result.confirmedAmount)
+        assertEquals(0, result.confirmedPercentage)
         assertEquals(0L, result.participantCount)
         assertEquals(0, result.messageCount)
         assertNull(result.openedAt)
+    }
+
+    @Test
+    fun `목표 금액과 마감일, 확정 금액 기준 달성률을 반환한다`() {
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding()))
+        givenDetailData()
+
+        val result = service.getDetail(RECIPIENT_ID, FUNDING_ID)
+
+        assertEquals(100_000L, result.targetAmount)
+        assertEquals(NOW.minusDays(1), result.deadline)
+        // 목표를 넘겨 모은 금액도 그대로 반영하고 소수점은 버린다 (429,000 / 100,000)
+        assertEquals(429, result.confirmedPercentage)
     }
 
     @Test
