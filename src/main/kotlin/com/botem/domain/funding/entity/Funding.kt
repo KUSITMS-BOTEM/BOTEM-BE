@@ -457,11 +457,10 @@ class Funding(
         ): Funding {
             validateTargetAmount(targetAmount)
             validateDeadline(deadline, now)
-            // 마감(생일 전날) 다음 날 안에서만 공개한다
-            if (!revealAt.isAfter(deadline) || revealAt.toLocalDate().isAfter(deadline.toLocalDate().plusDays(1))) {
+            if (!revealAt.isAfter(deadline)) {
                 throw BusinessException(
                     CommonErrorCode.INVALID_INPUT_VALUE,
-                    "공개 시각은 마감 이후부터 마감일 다음 날까지 선택할 수 있습니다.",
+                    "공개 시각은 마감 이후여야 합니다.",
                 )
             }
 
