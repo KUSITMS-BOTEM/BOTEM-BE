@@ -27,13 +27,18 @@ class Wish(
     @Column(nullable = false, updatable = false)
     val userId: Long,
 
-    productName: String,
+    // 담은 시점의 상품 정보를 그대로 보관한다 (수정 기능 없음)
+    @Column(nullable = false, length = 100)
+    val productName: String,
 
-    productImageUrl: String,
+    @Column(nullable = false, length = 2048)
+    val productImageUrl: String,
 
-    price: Long,
+    @Column(nullable = false)
+    val price: Long,
 
-    productUrl: String,
+    @Column(nullable = false, length = 2048)
+    val productUrl: String,
 
     // 추천 상품이 아닌 기존 위시는 판매처를 알 수 없어 null
     @Column(length = 100, updatable = false)
@@ -47,20 +52,4 @@ class Wish(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
-
-    @Column(nullable = false, length = 100)
-    var productName: String = productName
-        protected set
-
-    @Column(nullable = false, length = 2048)
-    var productImageUrl: String = productImageUrl
-        protected set
-
-    @Column(nullable = false)
-    var price: Long = price
-        protected set
-
-    @Column(nullable = false, length = 2048)
-    var productUrl: String = productUrl
-        protected set
 }
