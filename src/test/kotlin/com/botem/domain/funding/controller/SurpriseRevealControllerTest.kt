@@ -72,6 +72,9 @@ class SurpriseRevealControllerTest {
             organizerName = "민지",
             productName = "무선 헤드폰",
             productImageUrl = "https://image.example.com/product.jpg",
+            productUrl = "https://shop.example.com/product",
+            productPrice = 429_000L,
+            productChanged = false,
             confirmedAmount = 429_000L,
             targetAmount = 429_000L,
             confirmedPercentage = 100,
@@ -80,6 +83,7 @@ class SurpriseRevealControllerTest {
             messageCount = 1,
             revealAt = OPENED_AT.minusHours(1),
             openedAt = openedAt,
+            giftChosen = false,
             messages = listOf(
                 RollingPaperMessageResponse(1L, "하은", "https://image.example.com/profile.jpg", "생일 축하해!", "BLUE_DOT_GRID", null, null, null, null, null),
             ),
