@@ -123,6 +123,7 @@ interface ContributionThankCardControllerDocs {
             공개된 서프라이즈를 연 수신자가 참여자별 감사카드 발송 대상을 조회합니다.
             취소된 보탬은 제외하며, 참여 순서대로 보탬 ID·이름·메시지 구성·보탠 날짜·감사카드 발송 여부를 반환합니다.
             organizer가 true인 항목은 서프라이즈를 연 주최자의 보탬입니다.
+            profileImageUrl은 회원 참여자의 프로필 이미지이며, 비로그인 참여자는 null입니다.
         """,
     )
     @ApiResponses(
@@ -197,9 +198,19 @@ interface ContributionThankCardControllerDocs {
                   {
                     "contributionId": 31,
                     "name": "민지",
+                    "profileImageUrl": "https://image.example.com/profile.jpg",
                     "organizer": true,
                     "messageTypes": ["TEXT", "PHOTO"],
                     "contributedDate": "2026-11-19",
+                    "thankCardSent": false
+                  },
+                  {
+                    "contributionId": 32,
+                    "name": "익명의 친구",
+                    "profileImageUrl": null,
+                    "organizer": false,
+                    "messageTypes": ["TEXT"],
+                    "contributedDate": "2026-11-20",
                     "thankCardSent": false
                   }
                 ]
