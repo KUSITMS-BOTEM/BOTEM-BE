@@ -177,6 +177,13 @@ class FriendServiceTest {
         friendService.deleteFriend(me.id, removedByMe.id)
         friendService.deleteFriend(removedMe.id, me.id)
 
+        // 삭제 기록은 삭제한 사람 → 삭제된 사람 방향으로 남는다
+        assertEquals(
+            setOf(me.id to removedByMe.id, removedMe.id to me.id),
+            friendRemovalRepository.findAll().map { it.userId to it.friendId }.toSet(),
+        )
+        assertTrue(friendRemovalRepository.findAll().all { it.id > 0 })
+
         friendService.connectKakaoFriends(me.id, listOf(2L, 3L))
 
         assertEquals(0, friendshipRepository.count())
