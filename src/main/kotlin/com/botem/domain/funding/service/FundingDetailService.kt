@@ -77,6 +77,7 @@ class FundingDetailService(
             },
             confirmedPercentage = progressPercentage(confirmedAmount, funding.targetAmount),
             pendingPercentage = progressPercentage(pendingAmount, funding.targetAmount),
+            remainingAmount = (funding.targetAmount - confirmedAmount).coerceAtLeast(0L),
             participantCount = participants.size,
             participants = participants,
             displayStatus = displayStatus,
