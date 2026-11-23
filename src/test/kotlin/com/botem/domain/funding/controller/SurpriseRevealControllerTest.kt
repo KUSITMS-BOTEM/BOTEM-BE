@@ -38,6 +38,10 @@ class SurpriseRevealControllerTest {
             .andExpect(jsonPath("$.data.recipientName").value("지유"))
             .andExpect(jsonPath("$.data.targetAmount").value(429_000))
             .andExpect(jsonPath("$.data.confirmedPercentage").value(100))
+            .andExpect(jsonPath("$.data.productUrl").value("https://shop.example.com/product"))
+            .andExpect(jsonPath("$.data.productPrice").value(429_000))
+            .andExpect(jsonPath("$.data.productChanged").value(false))
+            .andExpect(jsonPath("$.data.giftChosen").value(false))
             .andExpect(jsonPath("$.data.deadline").value("2026-11-14T09:41:00"))
             .andExpect(jsonPath("$.data.messages[0].participantName").value("하은"))
 
@@ -51,6 +55,10 @@ class SurpriseRevealControllerTest {
         mockMvc.perform(post("/api/fundings/{fundingId}/surprise/open", FUNDING_ID).with(authentication()).with(csrf()))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.openedAt").value("2026-11-15T09:41:00"))
+            .andExpect(jsonPath("$.data.productUrl").value("https://shop.example.com/product"))
+            .andExpect(jsonPath("$.data.productPrice").value(429_000))
+            .andExpect(jsonPath("$.data.productChanged").value(false))
+            .andExpect(jsonPath("$.data.giftChosen").value(false))
 
         verify(surpriseRevealService).open(USER_ID, FUNDING_ID)
     }
