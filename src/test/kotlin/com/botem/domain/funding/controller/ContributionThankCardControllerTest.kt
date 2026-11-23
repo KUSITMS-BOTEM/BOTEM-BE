@@ -108,6 +108,7 @@ class ContributionThankCardControllerTest {
                     SurpriseThankCardFriendResponse(
                         contributionId = CONTRIBUTION_ID,
                         name = "민지",
+                        profileImageUrl = "https://image.example.com/profile.jpg",
                         organizer = true,
                         messageTypes = listOf(RollingPaperMessageType.TEXT, RollingPaperMessageType.PHOTO),
                         contributedDate = LocalDate.of(2026, 11, 19),
