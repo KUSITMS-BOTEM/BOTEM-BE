@@ -204,6 +204,39 @@ class HomeFundingServiceTest {
     }
 
     @Test
+    fun `조기 마감한 생일 펀딩은 원래 마감일 전이어도 결과를 열기 전까지 미열람 카드로 반환한다`() {
+        // 기준 시각 2026-11-08 12:00. 두 펀딩 모두 원래 마감일은 아직 남았다
+        val targetNotReached = funding(
+            id = 1L,
+            type = FundingType.BIRTHDAY,
+            status = FundingStatus.CLOSED,
+            deadline = LocalDateTime.of(2026, 11, 12, 23, 59),
+        ).also { setField(it, "earlyClosedAt", LocalDateTime.of(2026, 11, 8, 9, 0)) }
+        val targetReached = funding(
+            id = 2L,
+            type = FundingType.BIRTHDAY,
+            status = FundingStatus.CLOSED,
+            deadline = LocalDateTime.of(2026, 11, 12, 23, 59),
+        ).also { setField(it, "earlyClosedAt", LocalDateTime.of(2026, 11, 8, 9, 0)) }
+        given(fundingRepository.findAllByOwnerIdAndStatusIn(USER_ID, CANDIDATE_STATUSES))
+            .willReturn(listOf(targetNotReached, targetReached))
+        given(contributionRepository.summarizeByFundingIds(listOf(1L, 2L)))
+            .willReturn(
+                listOf(
+                    summary(fundingId = 1L, confirmedAmount = 30_000L),
+                    summary(fundingId = 2L, confirmedAmount = 100_000L),
+                ),
+            )
+
+        val response = service.getHomeFundings(USER_ID)
+
+        assertEquals(setOf(1L, 2L), response.fundingCards.map { it.fundingId }.toSet())
+        assertTrue(response.fundingCards.all { it.cardType == HomeFundingCardType.CLOSED_UNOPENED })
+        assertTrue(response.fundingCards.none { it.earlyOpenable })
+        assertEquals(0, response.activeFundingCount)
+    }
+
+    @Test
     fun `목표 금액과 참여자 집계 및 달성률을 반환하고 진행 중 펀딩이 다섯 개면 개설을 제한한다`() {
         val fundings = (1L..5L).map { id ->
             funding(

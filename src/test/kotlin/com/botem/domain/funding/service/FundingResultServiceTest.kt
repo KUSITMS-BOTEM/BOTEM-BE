@@ -362,6 +362,31 @@ class FundingResultServiceTest {
         assertEquals(null, funding.resultOpenedAt)
     }
 
+    @Test
+    fun `조기 마감한 펀딩은 원래 마감일 전이고 목표에 못 미쳐도 결과를 조회하고 열 수 있다`() {
+        val funding = funding(deadline = NOW.plusDays(3), status = FundingStatus.FUNDING)
+            .also { it.closeEarly(NOW.minusHours(1)) }
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.summarizeByFundingIds(listOf(FUNDING_ID)))
+            .willReturn(listOf(summary(confirmedAmount = 30_000L, participantCount = 2L, pendingCount = 1L)))
+
+        assertEquals(null, service.getResult(USER_ID, FUNDING_ID).resultOpenedAt)
+        // 마감된 펀딩과 같이 확인 대기는 처리하거나 결과에서 제외해야 연다
+        assertEquals(
+            FundingErrorCode.PENDING_CONTRIBUTION_EXISTS,
+            assertFailsWith<BusinessException> {
+                service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
+            }.errorCode,
+        )
+
+        val opened = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = true)
+
+        assertEquals(NOW, opened.resultOpenedAt)
+        assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
+        // 결과를 열면 롤링페이퍼를 볼 수 있다
+        assertTrue(funding.isRollingPaperViewable(NOW))
+    }
+
     private fun contribution(id: Long, userId: Long?, name: String, status: ContributionStatus): Contribution =
         Contribution(
             fundingId = FUNDING_ID,
