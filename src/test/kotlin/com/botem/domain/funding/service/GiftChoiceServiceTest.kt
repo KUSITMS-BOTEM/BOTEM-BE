@@ -86,6 +86,19 @@ class GiftChoiceServiceTest {
     }
 
     @Test
+    fun `완료된 서프라이즈는 수령자도 선물을 다시 정할 수 없다`() {
+        val funding = revealedSurpriseFunding().also {
+            setField(it, Funding::class.java, "status", FundingStatus.COMPLETED)
+        }
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+
+        val exception = assertFailsWith<BusinessException> { service.choose(RECIPIENT_ID, FUNDING_ID) }
+
+        assertEquals(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE, exception.errorCode)
+        verify(giftVerificationRepository, never()).save(any())
+    }
+
+    @Test
     fun `펀딩이 없거나 취소됐거나 개설자가 아니면 선물을 정할 수 없다`() {
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(null)
         assertEquals(

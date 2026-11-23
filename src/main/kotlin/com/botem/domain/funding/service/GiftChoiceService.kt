@@ -36,6 +36,9 @@ class GiftChoiceService(
                 if (funding.recipientId != userId) {
                     throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
                 }
+                if (funding.status != FundingStatus.REVEALED && funding.status != FundingStatus.WAITING_GIFT_VERIFICATION) {
+                    throw BusinessException(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE)
+                }
                 funding.beginGiftVerification()
             }
         }
