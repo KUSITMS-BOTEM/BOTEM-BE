@@ -7,5 +7,5 @@ interface ArchiveRollingPaperSummaryProjection {
     val writerProfileImageUrl: String?
     val content: String?
     val paperTemplateCode: String
-    val hasVoice: Boolean
+    val voiceUrl: String?
 }
