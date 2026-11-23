@@ -3,6 +3,7 @@ package com.botem.domain.funding.service
 import com.botem.domain.funding.dto.response.FundingProductChangeResponse
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingProductChangeHistoryRepository
 import com.botem.domain.funding.repository.FundingRepository
@@ -32,8 +33,18 @@ class FundingProductChangeService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        if (funding.ownerId != userId) {
-            throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
+        when (funding.type) {
+            FundingType.BIRTHDAY -> {
+                if (funding.ownerId != userId) {
+                    throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
+                }
+            }
+
+            FundingType.SURPRISE -> {
+                if (funding.recipientId != userId) {
+                    throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
+                }
+            }
         }
 
         val changedAt = LocalDateTime.now(clock)

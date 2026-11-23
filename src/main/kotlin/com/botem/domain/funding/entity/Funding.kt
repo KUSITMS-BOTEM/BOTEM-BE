@@ -265,7 +265,10 @@ class Funding(
         status in EXTENDABLE_STATUSES && (status == FundingStatus.GIFT_PREPARING) == (resultOpenedAt != null)
 
     private fun isGiftChoosable(): Boolean =
-        type == FundingType.BIRTHDAY && status == FundingStatus.GIFT_PREPARING && resultOpenedAt != null
+        when (type) {
+            FundingType.BIRTHDAY -> status == FundingStatus.GIFT_PREPARING && resultOpenedAt != null
+            FundingType.SURPRISE -> status == FundingStatus.REVEALED
+        }
 
     // 결과를 연 생일 펀딩에서 구매(쿠팡 이동)를 누르면 지금 상품으로 선물을 정하고 인증 대기로 넘긴다.
     // 인증 대기와 진행 중이 겹치지 않도록 이후에는 기간 연장과 상품 변경이 막힌다
