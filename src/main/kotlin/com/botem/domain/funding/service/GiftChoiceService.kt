@@ -2,6 +2,7 @@ package com.botem.domain.funding.service
 
 import com.botem.domain.funding.dto.response.GiftChoiceResponse
 import com.botem.domain.funding.entity.FundingStatus
+import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.GiftVerification
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.FundingRepository
@@ -23,11 +24,21 @@ class GiftChoiceService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        if (funding.ownerId != userId) {
-            throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
-        }
+        when (funding.type) {
+            FundingType.BIRTHDAY -> {
+                if (funding.ownerId != userId) {
+                    throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
+                }
+                funding.chooseGift()
+            }
 
-        funding.chooseGift()
+            FundingType.SURPRISE -> {
+                if (funding.recipientId != userId) {
+                    throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
+                }
+                funding.beginGiftVerification()
+            }
+        }
         val verification = giftVerificationRepository.findByFundingId(fundingId)
             ?: giftVerificationRepository.save(GiftVerification(fundingId))
 
