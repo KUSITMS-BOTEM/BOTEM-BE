@@ -50,13 +50,21 @@ class FundingArchivePersistenceTest {
         )
         val participated = saveFunding(ownerId = other.id, deadline = NOW.minusDays(2))
         saveContribution(participated.id, me.id, ContributionStatus.MESSAGE_ONLY)
+        val unrevealedPreparation = saveFunding(
+            ownerId = me.id,
+            recipientId = other.id,
+            type = FundingType.SURPRISE,
+            deadline = NOW.minusHours(12),
+            revealAt = NOW.minusHours(1),
+            status = FundingStatus.FUNDING,
+        )
         val cancelledParticipation = saveFunding(ownerId = other.id, deadline = NOW.minusDays(4))
         saveContribution(cancelledParticipation.id, me.id, ContributionStatus.AWAITING_TRANSFER, cancelled = true)
         saveFunding(ownerId = other.id, deadline = NOW.plusDays(1))
 
         val archived = fundingRepository.findArchivedFundingsByUserId(me.id, NOW)
 
-        assertEquals(listOf(opened.id, participated.id, received.id), archived.map(Funding::id))
+        assertEquals(listOf(unrevealedPreparation.id, opened.id, participated.id, received.id), archived.map(Funding::id))
         assertEquals(setOf(participated.id), contributionRepository.findParticipatedFundingIds(archived.map(Funding::id), me.id).toSet())
     }
 

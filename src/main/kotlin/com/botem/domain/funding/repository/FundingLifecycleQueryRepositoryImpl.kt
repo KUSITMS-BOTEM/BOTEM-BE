@@ -6,11 +6,10 @@ import com.botem.domain.funding.entity.Contribution
 import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.repository.projection.ProfileFundingTypeProjection
 import jakarta.persistence.EntityManager
-import jakarta.persistence.PersistenceContext
 import java.time.LocalDateTime
 
 class FundingLifecycleQueryRepositoryImpl(
-    @PersistenceContext private val entityManager: EntityManager,
+    private val entityManager: EntityManager,
 ) : FundingLifecycleQueryRepository {
 
     override fun countActiveFundings(ownerId: Long, now: LocalDateTime): Long {
