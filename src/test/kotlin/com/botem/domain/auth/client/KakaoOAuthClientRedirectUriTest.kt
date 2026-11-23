@@ -32,6 +32,12 @@ class KakaoOAuthClientRedirectUriTest {
     }
 
     @Test
+    fun `필수 동의 항목과 친구 목록 제공 동의를 함께 요청한다`() {
+        assertThat(client.getLoginUri(null))
+            .contains("scope=profile_nickname,profile_image,account_email,friends")
+    }
+
+    @Test
     fun `허용 목록에 없는 redirect URI는 거부한다`() {
         assertThatThrownBy { client.getLoginUri("https://botem.me/auth/callback/evil") }
             .isInstanceOf(BusinessException::class.java)
@@ -41,7 +47,7 @@ class KakaoOAuthClientRedirectUriTest {
 
     @Test
     fun `로그인 요청도 허용 목록에 없는 redirect URI는 카카오 호출 전에 거부한다`() {
-        assertThatThrownBy { client.getUserInfo("code", "https://evil.example/callback") }
+        assertThatThrownBy { client.login("code", "https://evil.example/callback") }
             .isInstanceOf(BusinessException::class.java)
             .extracting("errorCode")
             .isEqualTo(AuthErrorCode.INVALID_REDIRECT_URI)

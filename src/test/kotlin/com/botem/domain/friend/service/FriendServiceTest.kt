@@ -2,6 +2,7 @@ package com.botem.domain.friend.service
 
 import com.botem.domain.account.entity.Bank
 import com.botem.domain.friend.exception.FriendErrorCode
+import com.botem.domain.friend.repository.FriendRemovalRepository
 import com.botem.domain.friend.repository.FriendshipRepository
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
@@ -42,6 +43,9 @@ class FriendServiceTest {
 
     @Autowired
     private lateinit var friendshipRepository: FriendshipRepository
+
+    @Autowired
+    private lateinit var friendRemovalRepository: FriendRemovalRepository
 
     @Autowired
     private lateinit var userRepository: UserRepository
@@ -144,6 +148,48 @@ class FriendServiceTest {
     }
 
     @Test
+    fun `카카오 친구 중 활성 보탬 회원과 서로 친구가 되고 나 자신과 탈퇴 회원, 이미 친구인 회원은 건너뛴다`() {
+        val me = saveUser(kakaoId = 1L)
+        val kakaoFriend = saveUser(kakaoId = 2L)
+        val alreadyFriend = saveUser(kakaoId = 3L)
+        val withdrawn = saveUser(kakaoId = 4L).also { it.withdraw(LocalDateTime.now()) }
+        befriend(me, alreadyFriend)
+        userRepository.flush()
+
+        // 5는 보탬에 가입하지 않은 카카오 친구
+        friendService.connectKakaoFriends(me.id, listOf(1L, 2L, 3L, 4L, 5L))
+
+        val pairs = friendshipRepository.findAll().map { it.userId to it.friendId }.toSet()
+        assertEquals(
+            setOf(me.id to kakaoFriend.id, kakaoFriend.id to me.id, me.id to alreadyFriend.id, alreadyFriend.id to me.id),
+            pairs,
+        )
+        assertFalse(friendshipRepository.existsByUserIdAndFriendId(me.id, withdrawn.id))
+    }
+
+    @Test
+    fun `둘 중 누구라도 직접 삭제한 친구는 카카오 친구여도 다시 맺지 않고 초대 링크로는 다시 맺을 수 있다`() {
+        val me = saveUser(kakaoId = 1L)
+        val removedByMe = saveUser(kakaoId = 2L)
+        val removedMe = saveUser(kakaoId = 3L)
+        befriend(me, removedByMe)
+        befriend(me, removedMe)
+        friendService.deleteFriend(me.id, removedByMe.id)
+        friendService.deleteFriend(removedMe.id, me.id)
+
+        friendService.connectKakaoFriends(me.id, listOf(2L, 3L))
+
+        assertEquals(0, friendshipRepository.count())
+
+        // 초대 링크로 다시 친구가 되면 삭제 기록을 지워, 다시 삭제할 때 새로 남길 수 있다
+        befriend(me, removedByMe)
+        assertTrue(friendshipRepository.existsByUserIdAndFriendId(me.id, removedByMe.id))
+        assertFalse(friendRemovalRepository.existsByUserIdAndFriendId(me.id, removedByMe.id))
+        friendService.deleteFriend(me.id, removedByMe.id)
+        assertTrue(friendRemovalRepository.existsByUserIdAndFriendId(me.id, removedByMe.id))
+    }
+
+    @Test
     fun `탈퇴하면 탈퇴 회원의 친구 관계를 모두 삭제한다`() {
         val me = saveUser(kakaoId = 1L)
         val friend = saveUser(kakaoId = 2L)
@@ -156,6 +202,21 @@ class FriendServiceTest {
         assertFalse(friendshipRepository.existsByUserIdAndFriendId(friend.id, me.id))
         assertTrue(friendshipRepository.existsByUserIdAndFriendId(friend.id, other.id))
         assertEquals(2, friendshipRepository.count())
+    }
+
+    @Test
+    fun `탈퇴하면 탈퇴 회원이 남기거나 받은 친구 삭제 기록도 지운다`() {
+        val me = saveUser(kakaoId = 1L)
+        val friend = saveUser(kakaoId = 2L)
+        val other = saveUser(kakaoId = 3L)
+        befriend(me, friend)
+        befriend(other, me)
+        friendService.deleteFriend(me.id, friend.id)
+        friendService.deleteFriend(other.id, me.id)
+
+        friendService.deleteAllFriendships(UserWithdrawnEvent(me.id))
+
+        assertEquals(0, friendRemovalRepository.count())
     }
 
     @Test

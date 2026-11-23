@@ -73,9 +73,28 @@ class KakaoOAuthClientTest {
                 ),
             )
 
-        val userInfo = client.getUserInfo("auth-code", null)
+        // 친구 목록은 100명 단위로 다음 페이지가 없을 때까지 조회한다
+        kakaoServer.expect(requestTo(friendsUri(offset = 0)))
+            .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer kakao-token"))
+            .andRespond(
+                withSuccess(
+                    """{ "elements": [{ "id": 2, "uuid": "u2" }, { "id": 3, "uuid": "u3" }], "total_count": 3, "after_url": "next" }""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+        kakaoServer.expect(requestTo(friendsUri(offset = 100)))
+            .andRespond(
+                withSuccess(
+                    """{ "elements": [{ "id": 4, "uuid": "u4" }], "total_count": 3, "after_url": null }""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val profile = client.login("auth-code", null)
+        val userInfo = profile.userInfo
 
         kakaoServer.verify()
+        assertEquals(listOf(2L, 3L, 4L), profile.friendKakaoIds)
         assertEquals(12345L, userInfo.id)
         assertEquals("지유", userInfo.kakaoAccount?.profile?.nickname)
         assertEquals("https://k.kakaocdn.net/jiyu.jpg", userInfo.kakaoAccount?.profile?.profileImageUrl)
@@ -86,7 +105,7 @@ class KakaoOAuthClientTest {
     fun `토큰 발급에 실패하면 회원 정보를 조회하지 않고 카카오 로그인 실패로 응답한다`() {
         kakaoServer.expect(requestTo(TOKEN_URI)).andRespond(withStatus(HttpStatus.UNAUTHORIZED))
 
-        val exception = assertFailsWith<BusinessException> { client.getUserInfo("expired-code", null) }
+        val exception = assertFailsWith<BusinessException> { client.login("expired-code", null) }
 
         kakaoServer.verify()
         assertEquals(AuthErrorCode.KAKAO_LOGIN_FAILED, exception.errorCode)
@@ -98,11 +117,29 @@ class KakaoOAuthClientTest {
             .andRespond(withSuccess("""{ "access_token": "kakao-token" }""", MediaType.APPLICATION_JSON))
         kakaoServer.expect(requestTo(USER_INFO_URI)).andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR))
 
-        val exception = assertFailsWith<BusinessException> { client.getUserInfo("auth-code", null) }
+        val exception = assertFailsWith<BusinessException> { client.login("auth-code", null) }
 
         kakaoServer.verify()
         assertEquals(AuthErrorCode.KAKAO_LOGIN_FAILED, exception.errorCode)
     }
+
+    @Test
+    fun `친구 목록 조회에 실패하면 친구 없이 로그인을 계속한다`() {
+        kakaoServer.expect(requestTo(TOKEN_URI))
+            .andRespond(withSuccess("""{ "access_token": "kakao-token" }""", MediaType.APPLICATION_JSON))
+        kakaoServer.expect(requestTo(USER_INFO_URI))
+            .andRespond(withSuccess("""{ "id": 12345, "kakao_account": {} }""", MediaType.APPLICATION_JSON))
+        // 친구 목록 제공에 동의하지 않은 사용자 등
+        kakaoServer.expect(requestTo(friendsUri(offset = 0))).andRespond(withStatus(HttpStatus.FORBIDDEN))
+
+        val profile = client.login("auth-code", null)
+
+        kakaoServer.verify()
+        assertEquals(12345L, profile.userInfo.id)
+        assertEquals(emptyList(), profile.friendKakaoIds)
+    }
+
+    private fun friendsUri(offset: Int) = "https://kapi.kakao.com/v1/api/talk/friends?limit=100&offset=$offset"
 
     companion object {
         private const val REDIRECT_URI = "https://botem.me/auth/callback"

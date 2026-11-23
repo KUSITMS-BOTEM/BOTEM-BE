@@ -2,6 +2,7 @@ package com.botem.domain.auth.service
 
 import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.auth.client.KakaoOAuthClient
+import com.botem.domain.friend.service.FriendService
 import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
 import com.botem.domain.user.repository.UserRepository
@@ -30,6 +31,7 @@ class AuthServiceLogoutTest {
         refreshTokenRepository,
         mock(PayoutAccountService::class.java),
         jwtProvider,
+        mock(FriendService::class.java),
         mock(TransactionTemplate::class.java),
     )
 
