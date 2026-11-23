@@ -334,11 +334,12 @@ interface FundingControllerDocs {
     @Operation(
         summary = "펀딩 상품 변경",
         description = """
-            진행 중인 펀딩의 상품을 개설자 본인의 다른 위시 상품으로 변경합니다.
+            일반 생일 펀딩은 개설자, 서프라이즈 펀딩은 공개 후 수령자가 본인의 다른 위시 상품으로 변경합니다.
             목표 금액과 기존 참여 내역은 유지하고, 위시 원본은 수정하지 않으며 펀딩 상품 스냅샷만 교체합니다.
             변경 전·후 상품 정보는 이력으로 저장합니다. 같은 위시로 반복 요청하면 이력을 추가하지 않고 현재 결과를 반환합니다.
             다른 종료되지 않은 펀딩에서 사용 중인 위시는 선택할 수 없습니다.
             생일 펀딩은 결과를 연 뒤에도 구매(선물 선택 저장) 전까지 '다른 선물 고르기'로 상품을 바꿀 수 있습니다 (FUND-PG-012).
+            서프라이즈 펀딩은 수령자가 연 뒤 선물 선택 저장 전까지만 상품을 바꿀 수 있습니다.
         """,
     )
     @RequestBody(
@@ -359,8 +360,15 @@ interface FundingControllerDocs {
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
             responseCode = "403",
-            description = "펀딩 개설자가 아님",
-            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+            description = "일반 펀딩 개설자 또는 서프라이즈 수령자가 아님",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_003", summary = "일반 펀딩 개설자가 아님", value = FUNDING_OWNER_ONLY_EXAMPLE),
+                        ExampleObject(name = "FUNDING_015", summary = "서프라이즈 수령자가 아님", value = SURPRISE_RECIPIENT_ONLY_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(
             responseCode = "404",
@@ -636,12 +644,12 @@ interface FundingControllerDocs {
     ): ApiResponse<FundingResultResponse>
 
     @Operation(
-        summary = "생일 펀딩 선물 선택 저장",
+        summary = "펀딩 선물 선택 저장",
         description = """
-            결과를 연 생일 펀딩에서 개설자가 '차액으로 구매'·'구매하기'로 쿠팡에 이동하는 순간 호출합니다 (FUND-PG-011/012).
+            일반 생일 펀딩은 결과를 연 개설자가, 서프라이즈 펀딩은 공개 후 수령자가 '차액으로 구매'·'구매하기'로 쿠팡에 이동하는 순간 호출합니다 (FUND-PG-011/012).
             지금 펀딩 상품을 선물로 정하고 선물 인증 대기(WAITING_GIFT_VERIFICATION)로 바꿉니다.
             다른 선물로 사려면 먼저 펀딩 상품 변경 API로 상품을 바꾼 뒤 호출합니다.
-            선물을 정한 뒤에는 기간 연장과 상품 변경을 할 수 없고, 펀딩은 홈 카드 대신 '인증할 선물' 배너에 표시됩니다.
+            선물을 정한 뒤에는 상품 변경을 할 수 없고, 일반 펀딩은 기간 연장도 할 수 없습니다. 펀딩은 홈 카드 대신 '인증할 선물' 배너에 표시됩니다.
             응답의 productUrl로 쿠팡에 이동하고, giftVerificationId로 선물 인증을 완료합니다.
             이미 선물을 정한 펀딩에 다시 요청하면 상태를 바꾸지 않고 같은 결과를 반환합니다.
             '24시간 안에 구매 후 인증' 문구는 안내 문구이며 서버 기한은 없습니다.
@@ -653,16 +661,18 @@ interface FundingControllerDocs {
             description = "선물 선택 저장 성공 또는 이미 저장한 결과 반환",
             content = [Content(examples = [ExampleObject(value = GIFT_CHOICE_EXAMPLE)])],
         ),
-        SwaggerApiResponse(
-            responseCode = "400",
-            description = "생일 펀딩이 아님",
-            content = [Content(examples = [ExampleObject(value = BIRTHDAY_FUNDING_REQUIRED_EXAMPLE)])],
-        ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
             responseCode = "403",
-            description = "펀딩 개설자가 아님",
-            content = [Content(examples = [ExampleObject(value = FUNDING_OWNER_ONLY_EXAMPLE)])],
+            description = "일반 펀딩 개설자 또는 서프라이즈 수령자가 아님",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_003", summary = "일반 펀딩 개설자가 아님", value = FUNDING_OWNER_ONLY_EXAMPLE),
+                        ExampleObject(name = "FUNDING_015", summary = "서프라이즈 수령자가 아님", value = SURPRISE_RECIPIENT_ONLY_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(
             responseCode = "404",
@@ -671,7 +681,7 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "결과를 열기 전이거나 인증을 마친 펀딩",
+            description = "일반 펀딩 결과를 열기 전, 서프라이즈 공개 전 또는 인증을 마친 펀딩",
             content = [Content(examples = [ExampleObject(value = GIFT_CHOICE_NOT_AVAILABLE_EXAMPLE)])],
         ),
     )
@@ -1267,6 +1277,17 @@ interface FundingControllerDocs {
               "error": {
                 "code": "FUNDING_003",
                 "message": "펀딩 개설자만 접근할 수 있습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val SURPRISE_RECIPIENT_ONLY_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_015",
+                "message": "서프라이즈를 받는 사용자만 접근할 수 있습니다.",
                 "detail": null
               }
             }
