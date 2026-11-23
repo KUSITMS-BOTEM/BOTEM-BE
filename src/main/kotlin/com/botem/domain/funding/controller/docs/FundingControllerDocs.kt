@@ -191,7 +191,9 @@ interface FundingControllerDocs {
             펀딩은 공유 링크의 공유 키(32자리)로 찾으며, 순차 펀딩 ID로는 조회할 수 없습니다. 없거나 형식이 틀린 키는 FUNDING_002입니다.
             확정 달성률(입금 확인 완료)과 확인 대기 달성률, 목표 금액(targetAmount)을 반환합니다. 참여자별 금액은 반환하지 않습니다.
             remainingAmount는 지금 보탤 수 있는 최대 금액(목표 금액 - 확정 금액, 0 이상)으로, 보태기 시 CONTRIBUTION_AMOUNT_EXCEEDS_REMAINING 검증과 같은 기준입니다.
-            확인 대기 금액은 빼지 않으며, 다른 참여로 제출 시점에 줄었으면 보태기 오류의 detail에 최신 남은 금액이 담깁니다.
+            확인 대기 금액은 빼지 않습니다. 조회 후 다른 참여가 확정돼 남은 금액이 바뀌면 보태기 오류로 알 수 있습니다.
+            남은 금액이 줄었으면 CONTRIBUTION_AMOUNT_EXCEEDS_REMAINING의 detail에 최신 남은 금액이 담기고,
+            목표를 모두 채웠으면 FUNDING_TARGET_REACHED를 반환하며 이때는 남은 금액(0)을 detail에 담지 않습니다.
             celebrantName·celebrantProfileImageUrl은 '{이름}의 생일' 제목에 쓰는 주인공으로, 생일 펀딩은 개설자, 서프라이즈는 받는 사람입니다(이름이 없으면 닉네임).
             extended는 기간을 연장한 펀딩이면 true입니다('기간이 연장됐어요' 배지).
             참여자 목록은 취소된 참여를 제외하고 첫 참여 순서대로 반환합니다. 로그인 참여자는 한 번만,
