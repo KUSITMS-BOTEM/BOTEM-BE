@@ -28,6 +28,8 @@ data class FundingDetailResponse(
     val remainingDays: Long?,
     val confirmedPercentage: Int,
     val pendingPercentage: Int,
+    // 지금 보탤 수 있는 최대 금액(목표 금액 - 확정 금액, 0 이상). 보태기 검증과 같은 기준이다
+    val remainingAmount: Long,
     val participantCount: Int,
     val participants: List<FundingDetailParticipantResponse>,
     val displayStatus: FundingDisplayStatus,

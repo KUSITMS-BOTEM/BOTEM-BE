@@ -97,6 +97,22 @@ class FundingDetailServiceTest {
         assertTrue(result.canContributeAmount)
         assertTrue(result.canParticipate)
         assertEquals(3L, result.remainingDays)
+        // 확인 대기 금액은 빼지 않는다 (보태기 검증과 같은 기준)
+        assertEquals(100_000L, result.remainingAmount)
+    }
+
+    @Test
+    fun `남은 금액은 목표 금액에서 확정 금액을 뺀 값이고 초과 달성하면 0이다`() {
+        givenFunding(funding(deadline = NOW.plusDays(3)))
+
+        // 달성률은 정수라 5%로 보이지만 남은 금액은 원 단위로 정확하다
+        givenContributions(contribution(amount = 5_500L, confirmed = true))
+        val partial = service.getDetail(null, FUNDING_ID)
+        assertEquals(5, partial.confirmedPercentage)
+        assertEquals(94_500L, partial.remainingAmount)
+
+        givenContributions(contribution(amount = 130_000L, confirmed = true))
+        assertEquals(0L, service.getDetail(null, FUNDING_ID).remainingAmount)
     }
 
     @Test

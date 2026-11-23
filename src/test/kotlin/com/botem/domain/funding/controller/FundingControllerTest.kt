@@ -115,6 +115,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.celebrantName").value("지유"))
             .andExpect(jsonPath("$.data.targetAmount").value(100_000))
             .andExpect(jsonPath("$.data.revealAt").isEmpty)
+            .andExpect(jsonPath("$.data.remainingAmount").value(60_000))
             .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
             .andExpect(jsonPath("$.data.participants[0].contributedDate").value("2026-11-12"))
     }
@@ -596,6 +597,7 @@ class FundingControllerTest {
             remainingDays = 3L,
             confirmedPercentage = 40,
             pendingPercentage = 10,
+            remainingAmount = 60_000L,
             participantCount = 1,
             participants = listOf(
                 FundingDetailParticipantResponse(
