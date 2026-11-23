@@ -11,6 +11,9 @@ interface FriendshipRepository : JpaRepository<Friendship, Long> {
 
     fun existsByUserIdAndFriendId(userId: Long, friendId: Long): Boolean
 
+    @Query("SELECT friendship.friendId FROM Friendship friendship WHERE friendship.userId = :userId AND friendship.friendId IN :friendIds")
+    fun findFriendIds(@Param("userId") userId: Long, @Param("friendIds") friendIds: Collection<Long>): List<Long>
+
     @Query(
         """
         SELECT new com.botem.domain.friend.repository.projection.FriendProjection(

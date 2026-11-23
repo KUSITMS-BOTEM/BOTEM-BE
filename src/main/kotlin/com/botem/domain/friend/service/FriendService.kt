@@ -2,8 +2,10 @@ package com.botem.domain.friend.service
 
 import com.botem.domain.friend.dto.response.FriendListResponse
 import com.botem.domain.friend.dto.response.FriendResponse
+import com.botem.domain.friend.entity.FriendRemoval
 import com.botem.domain.friend.entity.Friendship
 import com.botem.domain.friend.exception.FriendErrorCode
+import com.botem.domain.friend.repository.FriendRemovalRepository
 import com.botem.domain.friend.repository.FriendshipRepository
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.repository.FundingRepository
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class FriendService(
     private val friendshipRepository: FriendshipRepository,
+    private val friendRemovalRepository: FriendRemovalRepository,
     private val userRepository: UserRepository,
     private val userService: UserService,
     private val fundingRepository: FundingRepository,
@@ -56,6 +59,31 @@ class FriendService(
         }
 
         friendshipRepository.saveAll(listOf(Friendship(userId, friend.id), Friendship(friend.id, userId)))
+        friendRemovalRepository.deleteBetween(userId, friend.id)
+    }
+
+    // 카카오톡 친구 중 활성 보탬 회원과 양방향 친구 관계를 맺는다 (#248). 둘 중 누구라도 직접 삭제한 친구는 다시 맺지 않는다.
+    // ponytail: 친구 쌍을 잠그지 않아 초대 링크 추가와 겹치면 유니크 제약으로 이번 동기화가 실패한다. 다음 로그인에서 다시 맺는다
+    @Transactional
+    fun connectKakaoFriends(userId: Long, friendKakaoIds: Collection<Long>) {
+        if (friendKakaoIds.isEmpty()) {
+            return
+        }
+
+        val candidateIds = userRepository.findAllByKakaoIdInAndStatus(friendKakaoIds, UserStatus.ACTIVE)
+            .map { it.id }
+            .filter { it != userId }
+        if (candidateIds.isEmpty()) {
+            return
+        }
+
+        val excludedIds = friendshipRepository.findFriendIds(userId, candidateIds).toSet() +
+            friendRemovalRepository.findRemovedCounterpartIds(userId, candidateIds)
+        val newFriendIds = candidateIds.filterNot { it in excludedIds }
+
+        friendshipRepository.saveAll(
+            newFriendIds.flatMap { friendId -> listOf(Friendship(userId, friendId), Friendship(friendId, userId)) },
+        )
     }
 
     // ponytail: 페이징 없이 전체 조회. 친구 수가 수백 명 단위로 늘면 전체 목록에 페이징 추가
@@ -99,6 +127,10 @@ class FriendService(
         if (friendshipRepository.deleteBetween(userId, friendId) == 0) {
             throw BusinessException(FriendErrorCode.FRIEND_NOT_FOUND)
         }
+        // 카카오 친구 자동 연결이 다음 로그인에서 다시 맺지 않도록 남긴다
+        if (!friendRemovalRepository.existsByUserIdAndFriendId(userId, friendId)) {
+            friendRemovalRepository.save(FriendRemoval(userId, friendId))
+        }
     }
 
     // 탈퇴 트랜잭션 안에서 실행해 탈퇴와 친구 관계 삭제가 함께 커밋·롤백되게 한다
@@ -106,6 +138,8 @@ class FriendService(
     fun deleteAllFriendships(event: UserWithdrawnEvent) {
         friendshipRepository.deleteAllByUserId(event.userId)
         friendshipRepository.deleteAllByFriendId(event.userId)
+        friendRemovalRepository.deleteAllByUserId(event.userId)
+        friendRemovalRepository.deleteAllByFriendId(event.userId)
     }
 
     companion object {
