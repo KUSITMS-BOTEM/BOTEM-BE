@@ -62,7 +62,7 @@ class FundingLifecycleQueryRepositoryImpl(
         val criteriaBuilder = entityManager.criteriaBuilder
         val query = criteriaBuilder.createQuery(ProfileFundingTypeProjection::class.java)
         val funding = query.from(Funding::class.java)
-        val profileUserId = criteriaBuilder.selectCase()
+        val profileUserId = criteriaBuilder.selectCase<Long>()
             .`when`(
                 criteriaBuilder.equal(funding.get<FundingType>("type"), FundingType.BIRTHDAY),
                 funding.get<Long>("ownerId"),
@@ -102,7 +102,10 @@ class FundingLifecycleQueryRepositoryImpl(
             .where(
                 criteriaBuilder.and(
                     criteriaBuilder.equal(funding.get<Long>("ownerId"), ownerId),
-                    criteriaBuilder.notEqual(funding.get("status"), com.botem.domain.funding.entity.FundingStatus.CANCELLED),
+                    criteriaBuilder.notEqual(
+                        funding.get<com.botem.domain.funding.entity.FundingStatus>("status"),
+                        com.botem.domain.funding.entity.FundingStatus.CANCELLED,
+                    ),
                     criteriaBuilder.or(
                         FundingLifecycleCriteria.closedBirthday(criteriaBuilder, funding, now),
                         FundingLifecycleCriteria.closedSurpriseForOwner(criteriaBuilder, funding, now),

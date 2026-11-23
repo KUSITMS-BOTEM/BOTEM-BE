@@ -44,6 +44,7 @@ class FriendProfileFundingPersistenceTest {
                 ProfileFundingTypeProjection(PROFILE_USER_ID, FundingType.BIRTHDAY),
                 ProfileFundingTypeProjection(PROFILE_USER_ID, FundingType.SURPRISE),
                 ProfileFundingTypeProjection(OTHER_USER_ID, FundingType.BIRTHDAY),
+                ProfileFundingTypeProjection(OTHER_USER_ID, FundingType.SURPRISE),
             ),
             fundingRepository.findProfileFundingTypes(listOf(PROFILE_USER_ID, OTHER_USER_ID), NOW).toSet(),
         )
