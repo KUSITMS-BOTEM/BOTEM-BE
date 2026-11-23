@@ -140,7 +140,7 @@ class HomeFundingService(
     ): Boolean =
         funding.type == FundingType.BIRTHDAY &&
             funding.status in BIRTHDAY_CLOSED_CANDIDATE_STATUSES &&
-            !funding.deadline.isAfter(now) &&
+            funding.isContributionClosed(now) &&
             funding.resultOpenedAt == null
 
     private fun isInProgress(

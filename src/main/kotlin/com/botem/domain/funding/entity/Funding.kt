@@ -236,7 +236,8 @@ class Funding(
         transitionTo(FundingStatus.FUNDING, FundingStateTransition.DEADLINE_EXTENSION)
     }
 
-    // 마감 전이라도 목표를 달성하고 확인 대기가 없으면 개설자가 바로 열 수 있다 (홈 '지금 펑! 열까요?')
+    // 마감 전이라도 목표를 달성하고 확인 대기가 없으면 개설자가 바로 열 수 있다 (홈 '지금 펑! 열까요?').
+    // 조기 마감한 펀딩은 마감된 펀딩으로 보고 원래 마감일을 기다리지 않는다 (#246)
     fun openResult(openedAt: LocalDateTime, earlyOpenable: Boolean = false) {
         if (resultOpenedAt != null) {
             return
@@ -244,7 +245,7 @@ class Funding(
         if (type != FundingType.BIRTHDAY) {
             throw BusinessException(FundingErrorCode.BIRTHDAY_FUNDING_REQUIRED)
         }
-        if (deadline.isAfter(openedAt) && !earlyOpenable) {
+        if (!isContributionClosed(openedAt) && !earlyOpenable) {
             throw BusinessException(FundingErrorCode.FUNDING_NOT_ENDED)
         }
         transitionTo(FundingStatus.GIFT_PREPARING, FundingStateTransition.RESULT_OPEN)
