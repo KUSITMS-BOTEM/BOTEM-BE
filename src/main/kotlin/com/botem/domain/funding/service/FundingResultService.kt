@@ -57,7 +57,7 @@ class FundingResultService(
                 throw BusinessException(FundingErrorCode.PENDING_CONTRIBUTION_EXISTS)
             }
             // 마감 전 열기 조건은 잠금 이후 접근 검증에서 이미 확인했다
-            funding.openResult(now, earlyOpenable = funding.deadline.isAfter(now))
+            funding.openResult(now, earlyOpenable = !funding.isContributionClosed(now))
         }
 
         return resultOf(funding, now)
@@ -145,7 +145,8 @@ class FundingResultService(
         if (funding.status !in RESULT_VIEWABLE_STATUSES) {
             throw BusinessException(FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE)
         }
-        if (funding.deadline.isAfter(now) && funding.resultOpenedAt == null) {
+        // 조기 마감한 펀딩은 마감일 전이어도 마감된 펀딩처럼 바로 볼 수 있다
+        if (!funding.isContributionClosed(now) && funding.resultOpenedAt == null) {
             validateEarlyAccess(funding, opening)
         }
     }
