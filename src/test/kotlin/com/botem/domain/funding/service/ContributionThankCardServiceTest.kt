@@ -34,6 +34,7 @@ import java.util.Optional
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
@@ -127,6 +128,28 @@ class ContributionThankCardServiceTest {
         assertTrue(response.friends.single().organizer)
         assertEquals(LocalDate.of(2026, 11, 19), response.friends.single().contributedDate)
         assertEquals(listOf(RollingPaperMessageType.TEXT, RollingPaperMessageType.PHOTO), response.friends.single().messageTypes)
+    }
+
+    @Test
+    fun `회원 참여자의 프로필 이미지를 반환하고 비로그인 참여자는 null로 반환한다`() {
+        val member = contribution(participantUserId = PARTICIPANT_ID).withId(CONTRIBUTION_ID)
+        val guest = contribution(participantUserId = null).withId(CONTRIBUTION_ID + 1)
+        listOf(member, guest).forEach { setBaseField(it, "createdAt", NOW) }
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(surpriseFunding()))
+        given(contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(FUNDING_ID)).willReturn(listOf(member, guest))
+        given(rollingPaperMessageRepository.findAllByContributionIdIn(listOf(CONTRIBUTION_ID, CONTRIBUTION_ID + 1)))
+            .willReturn(emptyList())
+        given(thankCardRepository.findAllByContributionIdIn(listOf(CONTRIBUTION_ID, CONTRIBUTION_ID + 1)))
+            .willReturn(emptyList())
+        given(userRepository.findAllById(listOf(PARTICIPANT_ID))).willReturn(
+            listOf(User(kakaoId = 2L, nickname = "하린", profileImageUrl = "https://image.example.com/profile.jpg").withId(PARTICIPANT_ID)),
+        )
+
+        val friends = service.getSurpriseThankCardFriends(RECIPIENT_ID, FUNDING_ID).friends
+
+        assertEquals("https://image.example.com/profile.jpg", friends[0].profileImageUrl)
+        assertNull(friends[1].profileImageUrl)
+        verify(userRepository).findAllById(listOf(PARTICIPANT_ID))
     }
 
     @Test

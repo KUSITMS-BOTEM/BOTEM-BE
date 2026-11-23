@@ -10,6 +10,7 @@ import com.botem.domain.funding.dto.response.SurpriseThankCardFriendsResponse
 import com.botem.domain.funding.entity.FundingType
 import com.botem.domain.funding.entity.ThankCardColor
 import com.botem.domain.funding.service.ContributionThankCardService
+import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.verify
@@ -108,9 +109,19 @@ class ContributionThankCardControllerTest {
                     SurpriseThankCardFriendResponse(
                         contributionId = CONTRIBUTION_ID,
                         name = "민지",
+                        profileImageUrl = "https://image.example.com/profile.jpg",
                         organizer = true,
                         messageTypes = listOf(RollingPaperMessageType.TEXT, RollingPaperMessageType.PHOTO),
                         contributedDate = LocalDate.of(2026, 11, 19),
+                        thankCardSent = false,
+                    ),
+                    SurpriseThankCardFriendResponse(
+                        contributionId = CONTRIBUTION_ID + 1,
+                        name = "익명의 친구",
+                        profileImageUrl = null,
+                        organizer = false,
+                        messageTypes = emptyList(),
+                        contributedDate = LocalDate.of(2026, 11, 20),
                         thankCardSent = false,
                     ),
                 ),
@@ -123,9 +134,11 @@ class ContributionThankCardControllerTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.friends[0].name").value("민지"))
+            .andExpect(jsonPath("$.data.friends[0].profileImageUrl").value("https://image.example.com/profile.jpg"))
             .andExpect(jsonPath("$.data.friends[0].organizer").value(true))
             .andExpect(jsonPath("$.data.friends[0].messageTypes[1]").value("PHOTO"))
             .andExpect(jsonPath("$.data.friends[0].contributedDate").value("2026-11-19"))
+            .andExpect(jsonPath("$.data.friends[1].profileImageUrl").value(nullValue()))
 
         verify(contributionThankCardService).getSurpriseThankCardFriends(USER_ID, FUNDING_ID)
     }

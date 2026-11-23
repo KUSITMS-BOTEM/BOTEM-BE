@@ -134,6 +134,9 @@ class ContributionThankCardService(
             .associateBy { it.contributionId }
         val thankCardContributionIds = contributionThankCardRepository.findAllByContributionIdIn(contributionIds)
             .mapTo(mutableSetOf()) { it.contributionId }
+        val profileImageUrlsByUserId = userRepository.findAllById(
+            contributions.mapNotNull(Contribution::participantUserId).distinct(),
+        ).associate { it.id to it.profileImageUrl }
 
         return SurpriseThankCardFriendsResponse(
             fundingId = fundingId,
@@ -141,6 +144,7 @@ class ContributionThankCardService(
                 SurpriseThankCardFriendResponse(
                     contributionId = contribution.id,
                     name = contribution.participantName,
+                    profileImageUrl = contribution.participantUserId?.let(profileImageUrlsByUserId::get),
                     organizer = contribution.participantUserId == funding.ownerId,
                     messageTypes = messageTypesOf(messagesByContributionId[contribution.id]),
                     contributedDate = contribution.createdAt

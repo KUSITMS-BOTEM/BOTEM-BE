@@ -10,6 +10,7 @@ data class SurpriseThankCardFriendsResponse(
 data class SurpriseThankCardFriendResponse(
     val contributionId: Long,
     val name: String,
+    val profileImageUrl: String?,
     val organizer: Boolean,
     val messageTypes: List<RollingPaperMessageType>,
     val contributedDate: LocalDate,
