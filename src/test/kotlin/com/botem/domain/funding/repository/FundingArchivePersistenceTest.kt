@@ -75,7 +75,7 @@ class FundingArchivePersistenceTest {
         assertEquals("하린", summary.writerName)
         assertEquals("https://image.example.com/harin.jpg", summary.writerProfileImageUrl)
         assertEquals("BLUE_DOT_GRID", summary.paperTemplateCode)
-        assertEquals(true, summary.hasVoice)
+        assertEquals("https://audio.example.com/voice.m4a", summary.voiceUrl)
     }
 
     private fun saveUser(name: String, profileImageUrl: String? = null): User =

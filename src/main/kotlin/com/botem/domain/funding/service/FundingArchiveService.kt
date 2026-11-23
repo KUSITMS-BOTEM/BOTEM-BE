@@ -125,7 +125,7 @@ class FundingArchiveService(
                     writerProfileImageUrl = it.writerProfileImageUrl,
                     content = it.content,
                     paperTemplateCode = it.paperTemplateCode,
-                    hasVoice = it.hasVoice,
+                    hasVoice = it.voiceUrl != null,
                 )
             },
         )

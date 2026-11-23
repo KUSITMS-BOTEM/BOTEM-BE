@@ -6,8 +6,10 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
+import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
+import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.config.JpaAuditingConfig
@@ -56,6 +58,9 @@ class MigrationSchemaTest {
     private lateinit var fundingRepository: FundingRepository
 
     @Autowired
+    private lateinit var rollingPaperMessageRepository: RollingPaperMessageRepository
+
+    @Autowired
     private lateinit var contributionRepository: ContributionRepository
 
     @Test
@@ -84,6 +89,23 @@ class MigrationSchemaTest {
         val previews = contributionRepository.findParticipantPreviewsByFundingIds(listOf(funding.id))
         assertEquals(listOf("서준", "민지"), previews.map { it.participantName })
         assertEquals(PROFILE_IMAGE_URL, previews.first().profileImageUrl)
+
+        // 롤링페이퍼 요약: MySQL은 불리언 식을 정수로 돌려주므로 Boolean 프로젝션 없이 동작해야 한다 (#244)
+        val contributions = contributionRepository.findAllByFundingIdOrderByCreatedAtAscIdAsc(funding.id)
+        rollingPaperMessageRepository.saveAndFlush(RollingPaperMessage(contributions[0].id, "생일 축하해", "LIME_DOT_GRID"))
+        rollingPaperMessageRepository.saveAndFlush(
+            RollingPaperMessage(
+                contributionId = contributions[2].id,
+                content = null,
+                paperTemplateCode = "BLUE_DOT_GRID",
+                voiceUrl = "https://audio.example.com/voice.m4a",
+                voiceDurationSeconds = 12,
+            ),
+        )
+        val summary = rollingPaperMessageRepository.findArchiveSummariesByFundingIds(listOf(funding.id)).single()
+        assertEquals(2L, summary.messageCount)
+        assertEquals("민지", summary.writerName)
+        assertEquals("https://audio.example.com/voice.m4a", summary.voiceUrl)
 
         assertEquals(1, userRepository.updateWishProfileKeyIfNull(friend.id, WISH_PROFILE_KEY))
         assertEquals(0, userRepository.updateWishProfileKeyIfNull(friend.id, "ffffffffffffffffffffffffffffffff"))

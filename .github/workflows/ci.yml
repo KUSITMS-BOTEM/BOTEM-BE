@@ -13,7 +13,7 @@ permissions:
   pull-requests: write
 
 env:
-  MIGRATION_PATHS: '^(src/main/resources/db/migration/|src/main/kotlin/.*/entity/|src/main/resources/application[^/]*\.ya?ml$|src/test/kotlin/com/botem/global/migration/|build\.gradle\.kts$|\.github/workflows/ci\.yml$)'
+  MIGRATION_PATHS: '^(src/main/resources/db/migration/|src/main/kotlin/.*/entity/|src/main/kotlin/.*/repository/|src/main/resources/application[^/]*\.ya?ml$|src/test/kotlin/com/botem/global/migration/|build\.gradle\.kts$|\.github/workflows/ci\.yml$)'
 
 jobs:
   test:

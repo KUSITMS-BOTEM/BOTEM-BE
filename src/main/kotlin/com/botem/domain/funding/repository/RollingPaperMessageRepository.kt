@@ -60,7 +60,8 @@ interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Lon
                     participant.profile_image_url AS writer_profile_image_url,
                     message.content AS content,
                     message.paper_template_code AS paper_template_code,
-                    CASE WHEN message.voice_url IS NULL THEN FALSE ELSE TRUE END AS has_voice,
+                    -- MySQL은 TRUE/FALSE 식을 정수로 돌려줘 Boolean 프로젝션으로 바꿀 수 없으므로 원본 값을 넘기고 서비스에서 판단한다
+                    message.voice_url AS voice_url,
                     ROW_NUMBER() OVER (
                         PARTITION BY contribution.funding_id
                         ORDER BY contribution.created_at DESC, contribution.id DESC
@@ -78,7 +79,7 @@ interface RollingPaperMessageRepository : JpaRepository<RollingPaperMessage, Lon
                 writer_profile_image_url AS writerProfileImageUrl,
                 content AS content,
                 paper_template_code AS paperTemplateCode,
-                has_voice AS hasVoice
+                voice_url AS voiceUrl
             FROM ranked_messages
             WHERE message_rank = 1
             """,

@@ -53,7 +53,7 @@ class FundingArchiveServiceTest {
         val participated = funding(id = 3L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2025, 12, 31, 23, 59)).also { it.openResult(NOW) }
         given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(opened, received, participated))
         given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L, 3L), ME_ID)).willReturn(listOf(3L))
-        val archiveSummary = summary(fundingId = 3L)
+        val archiveSummary = summary(fundingId = 3L, voiceUrl = "https://audio.example.com/voice.m4a")
         given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(1L, 3L)))
             .willReturn(listOf(archiveSummary))
         given(userRepository.findAllById(listOf(ME_ID, OPENER_ID))).willReturn(
@@ -74,6 +74,8 @@ class FundingArchiveServiceTest {
         assertEquals(FundingArchiveRelationship.PARTICIPATED, response.years[1].fundings.single().relationship)
         assertEquals(2L, response.years[1].fundings.single().rollingPaperCount)
         assertEquals("축하해!", response.years[1].fundings.single().representativeMessage?.content)
+        // 음성 URL이 있으면 음성 메시지로 표시한다
+        assertEquals(true, response.years[1].fundings.single().representativeMessage?.hasVoice)
 
         val receivedResponse = service.getArchive(ME_ID, FundingArchiveTab.RECEIVED)
 
@@ -147,10 +149,11 @@ class FundingArchiveServiceTest {
         assertNull(cards[0].representativeMessage)
         assertEquals(2L, cards[1].rollingPaperCount)
         assertEquals("축하해!", cards[1].representativeMessage?.content)
+        assertEquals(false, cards[1].representativeMessage?.hasVoice)
         verify(rollingPaperMessageRepository).findArchiveSummariesByFundingIds(setOf(2L))
     }
 
-    private fun summary(fundingId: Long): ArchiveRollingPaperSummaryProjection =
+    private fun summary(fundingId: Long, voiceUrl: String? = null): ArchiveRollingPaperSummaryProjection =
         mock(ArchiveRollingPaperSummaryProjection::class.java).also {
             given(it.fundingId).willReturn(fundingId)
             given(it.messageCount).willReturn(2L)
@@ -158,7 +161,7 @@ class FundingArchiveServiceTest {
             given(it.writerProfileImageUrl).willReturn(null)
             given(it.content).willReturn("축하해!")
             given(it.paperTemplateCode).willReturn("LIME_DOT_GRID")
-            given(it.hasVoice).willReturn(false)
+            given(it.voiceUrl).willReturn(voiceUrl)
         }
 
     private fun funding(
