@@ -6,6 +6,7 @@ import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.repository.projection.ProfileFundingTypeProjection
 import com.botem.global.config.JpaAuditingConfig
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -38,6 +39,25 @@ class FriendProfileFundingPersistenceTest {
 
         assertEquals(listOf(surprise.id, birthday.id, earlyClosedBirthday.id), withSurprise.map(Funding::id))
         assertEquals(listOf(birthday.id, earlyClosedBirthday.id), withoutSurprise.map(Funding::id))
+        assertEquals(
+            setOf(
+                ProfileFundingTypeProjection(PROFILE_USER_ID, FundingType.BIRTHDAY),
+                ProfileFundingTypeProjection(PROFILE_USER_ID, FundingType.SURPRISE),
+                ProfileFundingTypeProjection(OTHER_USER_ID, FundingType.BIRTHDAY),
+                ProfileFundingTypeProjection(OTHER_USER_ID, FundingType.SURPRISE),
+            ),
+            fundingRepository.findProfileFundingTypes(listOf(PROFILE_USER_ID, OTHER_USER_ID), NOW).toSet(),
+        )
+    }
+
+    @Test
+    fun `진행 중 펀딩 수는 일반 펀딩의 마감일과 서프라이즈의 공개 시각을 각각 기준으로 센다`() {
+        save(birthday(deadline = NOW.plusDays(1)))
+        save(birthday(deadline = NOW))
+        save(surprise(deadline = NOW.plusDays(1), showOnRecipientProfile = true, ownerId = PROFILE_USER_ID))
+        save(surprise(deadline = NOW.minusDays(1), showOnRecipientProfile = true, revealAt = NOW, ownerId = PROFILE_USER_ID))
+
+        assertEquals(2L, fundingRepository.countActiveFundings(PROFILE_USER_ID, NOW))
     }
 
     private fun save(funding: Funding): Funding = fundingRepository.saveAndFlush(funding)
