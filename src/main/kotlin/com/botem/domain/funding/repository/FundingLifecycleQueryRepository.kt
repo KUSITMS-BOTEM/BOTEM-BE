@@ -11,4 +11,8 @@ interface FundingLifecycleQueryRepository {
     fun findProfileFundings(userId: Long, now: LocalDateTime, includeSurprise: Boolean): List<Funding>
 
     fun findProfileFundingTypes(userIds: Collection<Long>, now: LocalDateTime): List<ProfileFundingTypeProjection>
+
+    fun findClosedFundingsByOwnerId(ownerId: Long, now: LocalDateTime): List<Funding>
+
+    fun findArchivedFundingsByUserId(userId: Long, now: LocalDateTime): List<Funding>
 }

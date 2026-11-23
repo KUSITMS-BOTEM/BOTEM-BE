@@ -2,6 +2,8 @@ package com.botem.domain.funding.repository
 
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingType
+import com.botem.domain.funding.entity.Contribution
+import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.repository.projection.ProfileFundingTypeProjection
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
@@ -88,6 +90,56 @@ class FundingLifecycleQueryRepositoryImpl(
                     ),
                 ),
             )
+
+        return entityManager.createQuery(query).resultList
+    }
+
+    override fun findClosedFundingsByOwnerId(ownerId: Long, now: LocalDateTime): List<Funding> {
+        val criteriaBuilder = entityManager.criteriaBuilder
+        val query = criteriaBuilder.createQuery(Funding::class.java)
+        val funding = query.from(Funding::class.java)
+
+        query.select(funding)
+            .where(
+                criteriaBuilder.and(
+                    criteriaBuilder.equal(funding.get<Long>("ownerId"), ownerId),
+                    criteriaBuilder.notEqual(funding.get("status"), com.botem.domain.funding.entity.FundingStatus.CANCELLED),
+                    criteriaBuilder.or(
+                        FundingLifecycleCriteria.closedBirthday(criteriaBuilder, funding, now),
+                        FundingLifecycleCriteria.closedSurpriseForOwner(criteriaBuilder, funding, now),
+                    ),
+                ),
+            )
+            .orderBy(criteriaBuilder.desc(funding.get<LocalDateTime>("deadline")), criteriaBuilder.desc(funding.get<Long>("id")))
+
+        return entityManager.createQuery(query).resultList
+    }
+
+    override fun findArchivedFundingsByUserId(userId: Long, now: LocalDateTime): List<Funding> {
+        val criteriaBuilder = entityManager.criteriaBuilder
+        val query = criteriaBuilder.createQuery(Funding::class.java)
+        val funding = query.from(Funding::class.java)
+        val participated = query.subquery(Long::class.java)
+        val contribution = participated.from(Contribution::class.java)
+        participated.select(contribution.get<Long>("id"))
+            .where(
+                criteriaBuilder.equal(contribution.get<Long>("fundingId"), funding.get<Long>("id")),
+                criteriaBuilder.equal(contribution.get<Long>("participantUserId"), userId),
+                criteriaBuilder.notEqual(contribution.get<ContributionStatus>("status"), ContributionStatus.CANCELLED),
+            )
+
+        query.select(funding)
+            .where(
+                criteriaBuilder.and(
+                    FundingLifecycleCriteria.archived(criteriaBuilder, funding, now),
+                    criteriaBuilder.or(
+                        criteriaBuilder.equal(funding.get<Long>("ownerId"), userId),
+                        criteriaBuilder.equal(funding.get<Long>("recipientId"), userId),
+                        criteriaBuilder.exists(participated),
+                    ),
+                ),
+            )
+            .orderBy(criteriaBuilder.desc(funding.get<LocalDateTime>("deadline")), criteriaBuilder.desc(funding.get<Long>("id")))
 
         return entityManager.createQuery(query).resultList
     }

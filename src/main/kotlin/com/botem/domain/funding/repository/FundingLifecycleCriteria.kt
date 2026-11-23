@@ -48,6 +48,47 @@ internal object FundingLifecycleCriteria {
             criteriaBuilder.greaterThan(funding.get<LocalDateTime>("revealAt"), now),
         )
 
+    fun closedBirthday(
+        criteriaBuilder: CriteriaBuilder,
+        funding: Root<Funding>,
+        now: LocalDateTime,
+    ): Predicate =
+        criteriaBuilder.and(
+            criteriaBuilder.equal(funding.get<FundingType>("type"), FundingType.BIRTHDAY),
+            criteriaBuilder.or(
+                criteriaBuilder.lessThanOrEqualTo(funding.get<LocalDateTime>("deadline"), now),
+                criteriaBuilder.isNotNull(funding.get<LocalDateTime>("earlyClosedAt")),
+                criteriaBuilder.isNotNull(funding.get<LocalDateTime>("resultOpenedAt")),
+            ),
+        )
+
+    fun closedSurpriseForOwner(
+        criteriaBuilder: CriteriaBuilder,
+        funding: Root<Funding>,
+        now: LocalDateTime,
+    ): Predicate =
+        criteriaBuilder.and(
+            criteriaBuilder.equal(funding.get<FundingType>("type"), FundingType.SURPRISE),
+            criteriaBuilder.lessThanOrEqualTo(funding.get<LocalDateTime>("revealAt"), now),
+            funding.get<FundingStatus>("status").`in`(CLOSED_SURPRISE_OWNER_STATUSES),
+        )
+
+    fun archived(
+        criteriaBuilder: CriteriaBuilder,
+        funding: Root<Funding>,
+        now: LocalDateTime,
+    ): Predicate =
+        criteriaBuilder.and(
+            criteriaBuilder.notEqual(funding.get<FundingStatus>("status"), FundingStatus.CANCELLED),
+            criteriaBuilder.or(
+                closedBirthday(criteriaBuilder, funding, now),
+                criteriaBuilder.and(
+                    criteriaBuilder.equal(funding.get<FundingType>("type"), FundingType.SURPRISE),
+                    criteriaBuilder.lessThanOrEqualTo(funding.get<LocalDateTime>("revealAt"), now),
+                ),
+            ),
+        )
+
     val activeBirthdayStatuses: Set<FundingStatus>
         get() = ACTIVE_BIRTHDAY_STATUSES
 
@@ -63,5 +104,11 @@ internal object FundingLifecycleCriteria {
         FundingStatus.CLOSED,
         FundingStatus.GIFT_PREPARING,
         FundingStatus.WAITING_REVEAL,
+    )
+    private val CLOSED_SURPRISE_OWNER_STATUSES = setOf(
+        FundingStatus.WAITING_REVEAL,
+        FundingStatus.REVEALED,
+        FundingStatus.WAITING_GIFT_VERIFICATION,
+        FundingStatus.COMPLETED,
     )
 }
