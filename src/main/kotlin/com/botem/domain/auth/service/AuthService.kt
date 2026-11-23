@@ -2,6 +2,7 @@ package com.botem.domain.auth.service
 
 import com.botem.domain.account.service.PayoutAccountService
 import com.botem.domain.auth.client.KakaoOAuthClient
+import com.botem.domain.friend.service.FriendService
 import com.botem.domain.auth.dto.response.KakaoLoginUriResponse
 import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
@@ -14,6 +15,7 @@ import com.botem.global.exception.BusinessException
 import com.botem.global.jwt.JwtProvider
 import java.security.MessageDigest
 import java.util.HexFormat
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
@@ -26,21 +28,25 @@ class AuthService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val payoutAccountService: PayoutAccountService,
     private val jwtProvider: JwtProvider,
+    private val friendService: FriendService,
     private val transactionTemplate: TransactionTemplate,
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     fun getKakaoLoginUri(redirectUri: String?): KakaoLoginUriResponse =
         KakaoLoginUriResponse(kakaoOAuthClient.getLoginUri(redirectUri))
 
     // 카카오 API 호출 동안 DB 커넥션을 잡지 않도록 회원 조회·가입과 토큰 저장만 트랜잭션으로 묶음
     fun kakaoLogin(code: String, redirectUri: String?): KakaoLoginResult {
-        val userInfo = kakaoOAuthClient.getUserInfo(code, redirectUri)
+        val kakaoProfile = kakaoOAuthClient.login(code, redirectUri)
+        val userInfo = kakaoProfile.userInfo
         val profile = userInfo.kakaoAccount?.profile
         val nickname = profile?.nickname
             ?: throw BusinessException(AuthErrorCode.KAKAO_LOGIN_FAILED, "닉네임 동의가 필요합니다.")
         val email = userInfo.kakaoAccount?.verifiedEmail()
 
-        return transactionTemplate.execute {
+        val (userId, result) = transactionTemplate.execute {
             val existingUser = userRepository.findByKakaoId(userInfo.id)
             if (existingUser?.status == UserStatus.WITHDRAWN) {
                 throw BusinessException(AuthErrorCode.WITHDRAWN_USER)
@@ -61,7 +67,19 @@ class AuthService(
             // 온보딩 마지막 단계인 받을 계좌 등록을 마치지 않았으면 신규 회원으로 보고 온보딩을 다시 진행
             val isNewUser = existingUser == null || !payoutAccountService.hasPayoutAccount(user.id)
 
-            KakaoLoginResult(tokens = issueTokens(user.id), isNewUser = isNewUser)
+            user.id to KakaoLoginResult(tokens = issueTokens(user.id), isNewUser = isNewUser)
+        }
+        connectKakaoFriends(userId, kakaoProfile.friendKakaoIds)
+
+        return result
+    }
+
+    // 친구 연결이 실패해도 로그인은 성공해야 하므로 로그인 트랜잭션과 분리하고 실패는 로그로만 남긴다 (#248)
+    private fun connectKakaoFriends(userId: Long, friendKakaoIds: List<Long>) {
+        try {
+            friendService.connectKakaoFriends(userId, friendKakaoIds)
+        } catch (exception: RuntimeException) {
+            log.warn("Kakao friend connection failed: userId={}", userId, exception)
         }
     }
 

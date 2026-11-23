@@ -1,7 +1,9 @@
 package com.botem.domain.auth.service
 
 import com.botem.domain.account.service.PayoutAccountService
+import com.botem.domain.auth.client.KakaoLoginProfile
 import com.botem.domain.auth.client.KakaoOAuthClient
+import com.botem.domain.friend.service.FriendService
 import com.botem.domain.auth.client.KakaoUserInfoResponse
 import com.botem.domain.auth.entity.RefreshToken
 import com.botem.domain.auth.repository.RefreshTokenRepository
@@ -25,9 +27,11 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.argThat
 import org.mockito.BDDMockito.given
+import org.mockito.BDDMockito.willThrow
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.TransactionStatus
@@ -41,6 +45,7 @@ class AuthServiceKakaoLoginTest {
     private val refreshTokenRepository = mock(RefreshTokenRepository::class.java)
     private val payoutAccountService = mock(PayoutAccountService::class.java)
     private val jwtProvider = mock(JwtProvider::class.java)
+    private val friendService = mock(FriendService::class.java)
     private val authService = AuthService(
         kakaoOAuthClient,
         userRepository,
@@ -48,6 +53,7 @@ class AuthServiceKakaoLoginTest {
         refreshTokenRepository,
         payoutAccountService,
         jwtProvider,
+        friendService,
         TransactionTemplate(NoOpTransactionManager),
     )
 
@@ -55,14 +61,13 @@ class AuthServiceKakaoLoginTest {
 
     @BeforeEach
     fun setUp() {
-        given(kakaoOAuthClient.getUserInfo("code", null)).willReturn(
+        given(kakaoOAuthClient.login("code", null)).willReturn(KakaoLoginProfile(
             KakaoUserInfoResponse(
                 id = KAKAO_ID,
                 kakaoAccount = KakaoUserInfoResponse.KakaoAccount(
                     KakaoUserInfoResponse.Profile(nickname = "보탬", profileImageUrl = null),
                 ),
-            ),
-        )
+            ), FRIEND_KAKAO_IDS))
         given(jwtProvider.createAccessToken(anyLong())).willReturn("access")
         given(jwtProvider.createRefreshToken(anyLong())).willReturn("refresh")
         given(refreshTokenRepository.save(any(RefreshToken::class.java))).willAnswer { it.arguments[0] }
@@ -100,6 +105,28 @@ class AuthServiceKakaoLoginTest {
     }
 
     @Test
+    fun `로그인하면 카카오 친구를 보탬 친구로 연결한다`() {
+        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(user)
+
+        authService.kakaoLogin("code", null)
+
+        verify(friendService).connectKakaoFriends(user.id, FRIEND_KAKAO_IDS)
+    }
+
+    @Test
+    fun `카카오 친구 연결에 실패해도 로그인은 성공한다`() {
+        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(user)
+        given(payoutAccountService.hasPayoutAccount(anyLong())).willReturn(true)
+        willThrow(IllegalStateException("friend sync failed"))
+            .given(friendService).connectKakaoFriends(user.id, FRIEND_KAKAO_IDS)
+
+        val result = authService.kakaoLogin("code", null)
+
+        assertFalse(result.isNewUser)
+        assertEquals("access", result.tokens.accessToken)
+    }
+
+    @Test
     fun `탈퇴한 회원은 다시 로그인할 수 없다`() {
         user.withdraw(LocalDateTime.now())
         given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(user)
@@ -108,13 +135,13 @@ class AuthServiceKakaoLoginTest {
 
         assertEquals(AuthErrorCode.WITHDRAWN_USER, exception.errorCode)
         verify(jwtProvider, never()).createRefreshToken(anyLong())
+        verifyNoInteractions(friendService)
     }
 
     @Test
     fun `카카오 닉네임 제공에 동의하지 않으면 가입하지 않는다`() {
-        given(kakaoOAuthClient.getUserInfo("no-nickname", null)).willReturn(
-            KakaoUserInfoResponse(id = KAKAO_ID, kakaoAccount = KakaoUserInfoResponse.KakaoAccount(profile = null)),
-        )
+        given(kakaoOAuthClient.login("no-nickname", null)).willReturn(KakaoLoginProfile(
+            KakaoUserInfoResponse(id = KAKAO_ID, kakaoAccount = KakaoUserInfoResponse.KakaoAccount(profile = null)), FRIEND_KAKAO_IDS))
 
         val exception = assertThrows(BusinessException::class.java) { authService.kakaoLogin("no-nickname", null) }
 
@@ -160,7 +187,7 @@ class AuthServiceKakaoLoginTest {
     }
 
     private fun givenKakaoEmail(email: String, isEmailValid: Boolean?, isEmailVerified: Boolean?) {
-        given(kakaoOAuthClient.getUserInfo("code", null)).willReturn(
+        given(kakaoOAuthClient.login("code", null)).willReturn(KakaoLoginProfile(
             KakaoUserInfoResponse(
                 id = KAKAO_ID,
                 kakaoAccount = KakaoUserInfoResponse.KakaoAccount(
@@ -169,8 +196,7 @@ class AuthServiceKakaoLoginTest {
                     isEmailValid = isEmailValid,
                     isEmailVerified = isEmailVerified,
                 ),
-            ),
-        )
+            ), FRIEND_KAKAO_IDS))
     }
 
     private object NoOpTransactionManager : PlatformTransactionManager {
@@ -183,5 +209,6 @@ class AuthServiceKakaoLoginTest {
 
     companion object {
         private const val KAKAO_ID = 1L
+        private val FRIEND_KAKAO_IDS = listOf(2L, 3L)
     }
 }
