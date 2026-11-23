@@ -100,6 +100,13 @@ erDiagram
         datetime created_at
         datetime updated_at
     }
+    friend_removals {
+        bigint id PK
+        bigint user_id FK
+        bigint friend_id FK
+        datetime created_at
+        datetime updated_at
+    }
     friendships {
         bigint id PK
         bigint user_id FK
@@ -279,6 +286,8 @@ erDiagram
     recommended_products |o--o{ wishes : "recommended_product_id"
     users ||--o{ contribution_thank_cards : "sender_user_id"
     users |o--o{ contributions : "participant_user_id"
+    users ||--o{ friend_removals : "friend_id"
+    users ||--o{ friend_removals : "user_id"
     users ||--o{ friendships : "friend_id"
     users ||--o{ friendships : "user_id"
     users ||--o{ fundings : "owner_id"
