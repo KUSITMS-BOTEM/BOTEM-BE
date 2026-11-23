@@ -124,6 +124,23 @@ class SurpriseRevealServiceTest {
     }
 
     @Test
+    fun `수신자에게 상품 구매 정보와 선물 선택 상태를 반환한다`() {
+        val funding = funding().also {
+            setField(it, "status", FundingStatus.WAITING_GIFT_VERIFICATION)
+            setField(it, "productChangedAt", NOW.minusMinutes(1))
+        }
+        given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
+        givenDetailData()
+
+        val result = service.getDetail(RECIPIENT_ID, FUNDING_ID)
+
+        assertEquals("https://shop.example.com/product", result.productUrl)
+        assertEquals(100_000L, result.productPrice)
+        assertTrue(result.productChanged)
+        assertTrue(result.giftChosen)
+    }
+
+    @Test
     fun `수신자 또는 주최자 정보가 없으면 상세 조회를 중단한다`() {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding()))
         given(userRepository.findById(RECIPIENT_ID)).willReturn(Optional.empty())

@@ -16,6 +16,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
@@ -53,6 +54,47 @@ class GiftChoiceServiceTest {
         val response = service.choose(OWNER_ID, FUNDING_ID)
 
         assertEquals(VERIFICATION_ID, response.giftVerificationId)
+        verify(giftVerificationRepository, never()).save(any())
+    }
+
+    @Test
+    fun `수신자가 공개된 서프라이즈의 선물을 정하면 인증 대기를 만들고 재요청에도 같은 결과를 반환한다`() {
+        val funding = revealedSurpriseFunding()
+        val verification = GiftVerification(FUNDING_ID).also { setField(it, GiftVerification::class.java, "id", VERIFICATION_ID) }
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(giftVerificationRepository.findByFundingId(FUNDING_ID)).willReturn(null, verification)
+        given(giftVerificationRepository.save(any(GiftVerification::class.java))).willReturn(verification)
+
+        val first = service.choose(RECIPIENT_ID, FUNDING_ID)
+        val retried = service.choose(RECIPIENT_ID, FUNDING_ID)
+
+        assertEquals(FundingStatus.WAITING_GIFT_VERIFICATION, funding.status)
+        assertEquals(VERIFICATION_ID, first.giftVerificationId)
+        assertEquals(VERIFICATION_ID, retried.giftVerificationId)
+        assertEquals("https://shop.example.com/product", first.productUrl)
+        verify(giftVerificationRepository, times(1)).save(any(GiftVerification::class.java))
+    }
+
+    @Test
+    fun `서프라이즈 수령자가 아니면 선물을 정할 수 없다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(revealedSurpriseFunding())
+
+        val exception = assertFailsWith<BusinessException> { service.choose(OWNER_ID, FUNDING_ID) }
+
+        assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_ONLY, exception.errorCode)
+        verify(giftVerificationRepository, never()).save(any())
+    }
+
+    @Test
+    fun `완료된 서프라이즈는 수령자도 선물을 다시 정할 수 없다`() {
+        val funding = revealedSurpriseFunding().also {
+            setField(it, Funding::class.java, "status", FundingStatus.COMPLETED)
+        }
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+
+        val exception = assertFailsWith<BusinessException> { service.choose(RECIPIENT_ID, FUNDING_ID) }
+
+        assertEquals(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE, exception.errorCode)
         verify(giftVerificationRepository, never()).save(any())
     }
 
@@ -103,6 +145,30 @@ class GiftChoiceServiceTest {
             it.openResult(NOW)
         }
 
+    private fun revealedSurpriseFunding(): Funding =
+        Funding(
+            ownerId = OWNER_ID,
+            recipientId = RECIPIENT_ID,
+            type = FundingType.SURPRISE,
+            title = null,
+            targetAmount = 100_000L,
+            deadline = NOW.minusDays(1),
+            revealAt = NOW.minusMinutes(1),
+            story = null,
+            promise = null,
+            product = FundingProductSnapshot(
+                null,
+                "무선 헤드폰",
+                "https://image.example.com/product.jpg",
+                100_000L,
+                "https://shop.example.com/product",
+            ),
+            payoutAccount = FundingPayoutAccountSnapshot(null, Bank.KAKAO_BANK, "encrypted", "지유"),
+        ).also {
+            setField(it, Funding::class.java, "id", FUNDING_ID)
+            setField(it, Funding::class.java, "status", FundingStatus.REVEALED)
+        }
+
     private fun setField(target: Any, type: Class<*>, fieldName: String, value: Any) {
         type.getDeclaredField(fieldName).apply {
             isAccessible = true
@@ -113,6 +179,7 @@ class GiftChoiceServiceTest {
     companion object {
         private const val OWNER_ID = 1L
         private const val OTHER_USER_ID = 2L
+        private const val RECIPIENT_ID = 3L
         private const val FUNDING_ID = 10L
         private const val VERIFICATION_ID = 7L
         private val NOW = LocalDateTime.of(2026, 11, 20, 12, 0)

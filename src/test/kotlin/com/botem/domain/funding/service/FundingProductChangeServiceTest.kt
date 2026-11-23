@@ -149,6 +149,45 @@ class FundingProductChangeServiceTest {
     }
 
     @Test
+    fun `수령자는 공개된 서프라이즈의 상품을 본인 위시로 변경할 수 있다`() {
+        givenActiveUser(RECIPIENT_ID)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(surpriseFunding())
+        given(resourceResolver.resolveWish(RECIPIENT_ID, NEW_WISH_ID)).willReturn(wish())
+        given(historyRepository.save(any(FundingProductChangeHistory::class.java))).willAnswer { it.arguments[0] }
+
+        val response = service.change(RECIPIENT_ID, FUNDING_ID, NEW_WISH_ID)
+
+        assertEquals("새 헤드폰", response.product.name)
+        assertEquals(NOW, response.productChangedAt)
+        verify(resourceResolver).resolveWish(RECIPIENT_ID, NEW_WISH_ID)
+    }
+
+    @Test
+    fun `서프라이즈는 수령자가 아니거나 선물을 확정한 뒤에는 상품을 변경할 수 없다`() {
+        givenActiveUser(OTHER_USER_ID)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(surpriseFunding())
+
+        val recipientOnly = assertFailsWith<BusinessException> {
+            service.change(OTHER_USER_ID, FUNDING_ID, NEW_WISH_ID)
+        }
+
+        assertEquals(FundingErrorCode.SURPRISE_RECIPIENT_ONLY, recipientOnly.errorCode)
+        verify(resourceResolver, never()).resolveWish(OTHER_USER_ID, NEW_WISH_ID)
+
+        givenActiveUser(RECIPIENT_ID)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(
+            surpriseFunding(status = FundingStatus.WAITING_GIFT_VERIFICATION),
+        )
+        given(resourceResolver.resolveWish(RECIPIENT_ID, NEW_WISH_ID)).willReturn(wish())
+
+        val unavailable = assertFailsWith<BusinessException> {
+            service.change(RECIPIENT_ID, FUNDING_ID, NEW_WISH_ID)
+        }
+
+        assertEquals(FundingErrorCode.FUNDING_PRODUCT_CHANGE_NOT_AVAILABLE, unavailable.errorCode)
+    }
+
+    @Test
     fun `존재하지 않거나 탈퇴한 사용자는 상품을 변경할 수 없다`() {
         given(userRepository.findByIdForUpdate(OWNER_ID)).willReturn(null)
         assertEquals(
@@ -168,8 +207,8 @@ class FundingProductChangeServiceTest {
         verify(fundingRepository, never()).findByIdForUpdate(FUNDING_ID)
     }
 
-    private fun givenActiveUser() {
-        given(userRepository.findByIdForUpdate(OWNER_ID)).willReturn(activeUser())
+    private fun givenActiveUser(userId: Long = OWNER_ID) {
+        given(userRepository.findByIdForUpdate(userId)).willReturn(activeUser())
     }
 
     private fun activeUser(status: UserStatus = UserStatus.ACTIVE): User =
@@ -207,6 +246,24 @@ class FundingProductChangeServiceTest {
             setField(it, "status", status)
         }
 
+    private fun surpriseFunding(status: FundingStatus = FundingStatus.REVEALED): Funding =
+        Funding(
+            ownerId = OWNER_ID,
+            recipientId = RECIPIENT_ID,
+            type = FundingType.SURPRISE,
+            title = null,
+            targetAmount = 100_000L,
+            deadline = NOW.minusDays(1),
+            revealAt = NOW.minusMinutes(1),
+            story = null,
+            promise = null,
+            product = FundingProductSnapshot(CURRENT_WISH_ID, "무선 헤드폰", "https://image.example.com/product.jpg", 100_000L, "https://shop.example.com/product"),
+            payoutAccount = FundingPayoutAccountSnapshot(1L, Bank.KAKAO_BANK, "encrypted", "지유"),
+        ).also {
+            setField(it, "id", FUNDING_ID)
+            setField(it, "status", status)
+        }
+
     private fun setField(target: Any, fieldName: String, value: Any?) {
         target.javaClass.getDeclaredField(fieldName).apply {
             isAccessible = true
@@ -217,6 +274,7 @@ class FundingProductChangeServiceTest {
     companion object {
         private const val OWNER_ID = 1L
         private const val OTHER_USER_ID = 2L
+        private const val RECIPIENT_ID = 3L
         private const val FUNDING_ID = 12L
         private const val CURRENT_WISH_ID = 1L
         private const val NEW_WISH_ID = 2L
