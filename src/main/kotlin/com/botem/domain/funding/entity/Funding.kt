@@ -301,6 +301,18 @@ class Funding(
         this.completedAt = completedAt
     }
 
+    fun completeSurpriseGiftChoice(completedAt: LocalDateTime) {
+        if (this.completedAt != null) {
+            return
+        }
+        if (type != FundingType.SURPRISE) {
+            throw BusinessException(FundingErrorCode.SURPRISE_FUNDING_REQUIRED)
+        }
+
+        transitionTo(FundingStatus.COMPLETED, FundingStateTransition.SURPRISE_GIFT_CHOICE)
+        this.completedAt = completedAt
+    }
+
     fun validateGiftVerificationCompletable() {
         if (completedAt != null) {
             return
@@ -387,6 +399,7 @@ class Funding(
             setOf(FundingStatus.WAITING_GIFT_VERIFICATION),
             FundingErrorCode.FUNDING_GIFT_VERIFICATION_NOT_COMPLETABLE,
         ),
+        SURPRISE_GIFT_CHOICE(setOf(FundingStatus.REVEALED), FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE),
         SURPRISE_REVEAL(setOf(FundingStatus.WAITING_REVEAL), FundingErrorCode.SURPRISE_REVEAL_NOT_OPENABLE),
         SURPRISE_GIFT_VERIFICATION_START(
             setOf(FundingStatus.REVEALED),
