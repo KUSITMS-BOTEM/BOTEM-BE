@@ -42,7 +42,7 @@ class FundingEarlyCloseServiceTest {
 
         assertEquals(FundingStatus.CLOSED, response.status)
         assertEquals(NOW, response.earlyClosedAt)
-        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
     }
 
     @Test
@@ -93,7 +93,7 @@ class FundingEarlyCloseServiceTest {
         }
 
         assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
     }
 
     private fun funding(

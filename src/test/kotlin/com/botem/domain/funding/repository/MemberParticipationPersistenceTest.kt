@@ -7,13 +7,14 @@ import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
 import com.botem.global.config.JpaAuditingConfig
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.context.annotation.Import
-import java.time.LocalDateTime
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 // 회원 1인 1회 검사가 취소한 보탬과 연장 전 보탬을 빼고 세는지 실제 DB로 확인한다
 @DataJpaTest
@@ -29,8 +30,8 @@ class MemberParticipationPersistenceTest {
     @Test
     fun `취소하지 않은 회원 보탬만 참여로 세고, 연장 시각 이후 보탬만 따로 셀 수 있다`() {
         val funding = saveFunding()
-        // 생성 시각은 감사(auditing)로 실제 현재 시각이 들어간다
-        val before = LocalDateTime.now().minusMinutes(1)
+        // 생성 시각은 감사(auditing)로 실제 현재 시각이 UTC로 들어간다
+        val before = LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1)
         contributionRepository.saveAndFlush(contribution(funding.id, MEMBER_ID, ContributionStatus.MESSAGE_ONLY))
         contributionRepository.saveAndFlush(
             contribution(funding.id, CANCELLED_MEMBER_ID, ContributionStatus.AWAITING_TRANSFER).also { it.cancel() },
@@ -40,7 +41,7 @@ class MemberParticipationPersistenceTest {
         assertFalse(exists(funding.id, CANCELLED_MEMBER_ID))
         assertFalse(exists(funding.id, OTHER_MEMBER_ID))
         assertTrue(existsAfter(funding.id, MEMBER_ID, before))
-        assertFalse(existsAfter(funding.id, MEMBER_ID, LocalDateTime.now().plusMinutes(1)))
+        assertFalse(existsAfter(funding.id, MEMBER_ID, LocalDateTime.now(ZoneOffset.UTC).plusMinutes(1)))
     }
 
     private fun exists(fundingId: Long, userId: Long): Boolean =

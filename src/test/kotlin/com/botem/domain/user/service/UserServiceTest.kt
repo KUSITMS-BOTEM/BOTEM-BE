@@ -11,10 +11,8 @@ import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.WishProfileProperties
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.MonthDay
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import org.junit.jupiter.api.Test
@@ -261,11 +259,9 @@ class UserServiceTest {
         verifyNoMoreInteractions(userRepository)
     }
 
-    // 저장 시 채워지는 가입 시각을 UTC 2026-11-09 15:30(한국 2026-11-10 00:30)으로 지정
+    // 감사 시각은 UTC로 저장된다. 가입 시각을 UTC 2026-11-09 15:30(한국 2026-11-10 00:30)으로 지정
     private fun User.joined(): User = apply {
-        val createdAt = ZonedDateTime.of(2026, 11, 9, 15, 30, 0, 0, ZoneOffset.UTC)
-            .withZoneSameInstant(ZoneId.systemDefault())
-            .toLocalDateTime()
+        val createdAt = LocalDateTime.of(2026, 11, 9, 15, 30)
         BaseEntity::class.java.getDeclaredField("createdAt").apply {
             isAccessible = true
             set(this@joined, createdAt)

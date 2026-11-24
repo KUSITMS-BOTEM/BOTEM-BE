@@ -111,7 +111,8 @@ class ContributionThankCardServiceTest {
         setBaseField(
             organizerContribution,
             "createdAt",
-            LocalDateTime.ofInstant(Instant.parse("2026-11-19T05:00:00Z"), ZoneId.systemDefault()),
+            // 감사 시각은 UTC로 저장된다 (한국 2026-11-19 14:00)
+            LocalDateTime.of(2026, 11, 19, 5, 0),
         )
         val cancelled = contribution().withId(CONTRIBUTION_ID + 1).also { it.cancel() }
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))

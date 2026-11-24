@@ -169,7 +169,7 @@ class DepositConfirmationServiceTest {
         service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
 
         assertEquals(FundingStatus.CLOSED, funding.status)
-        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
     }
 
     @Test
@@ -182,7 +182,7 @@ class DepositConfirmationServiceTest {
         service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
 
         assertEquals(FundingStatus.FUNDING, funding.status)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
     }
 
     @Test
