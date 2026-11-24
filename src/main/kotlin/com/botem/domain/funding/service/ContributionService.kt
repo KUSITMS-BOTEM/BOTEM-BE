@@ -20,13 +20,14 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.koreaTimeToAudit
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
+import java.time.Clock
+import java.time.LocalDateTime
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
-import java.time.LocalDateTime
 
 @Service
 class ContributionService(
@@ -178,7 +179,8 @@ class ContributionService(
                 fundingId,
                 userId,
                 ContributionStatus.CANCELLED,
-                extendedAt,
+                // createdAt은 UTC, extendedAt은 한국 시간이라 같은 기준으로 맞춰 비교한다
+                extendedAt.koreaTimeToAudit(),
             )
         }
         if (participated) {
