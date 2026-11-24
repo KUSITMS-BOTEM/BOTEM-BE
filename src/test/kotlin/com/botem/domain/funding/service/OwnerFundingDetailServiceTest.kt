@@ -90,7 +90,8 @@ class OwnerFundingDetailServiceTest {
         )
         assertEquals(PROFILE_URL, response.participants[0].profileImageUrl)
         assertNull(response.participants[1].profileImageUrl)
-        assertEquals(NOW.minusDays(1), response.participants[0].participatedAt)
+        // createdAt은 UTC로 저장되므로 응답에서는 한국 시간(+9시간)으로 보인다
+        assertEquals(NOW.minusDays(1).plusHours(9), response.participants[0].participatedAt)
         assertEquals(2, response.participantCount)
         assertEquals(FundingManagementState.IN_PROGRESS, response.managementState)
     }

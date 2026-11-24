@@ -296,7 +296,8 @@ class ContributionServiceTest {
             FUNDING_ID,
             USER_ID,
             ContributionStatus.CANCELLED,
-            extendedAt,
+            // 연장 시각은 한국 시간이고 createdAt은 UTC라 9시간 앞당겨 비교한다
+            extendedAt.minusHours(9),
         )
         assertEquals(USER_ID, captureSavedContribution().participantUserId)
 
@@ -305,7 +306,7 @@ class ContributionServiceTest {
                 FUNDING_ID,
                 USER_ID,
                 ContributionStatus.CANCELLED,
-                extendedAt,
+                extendedAt.minusHours(9),
             ),
         ).willReturn(true)
         assertErrorCode(FundingErrorCode.CONTRIBUTION_ALREADY_PARTICIPATED) {

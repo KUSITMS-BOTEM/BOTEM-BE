@@ -14,12 +14,13 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.auditTimeToKorea
 import com.botem.global.exception.BusinessException
+import java.time.Clock
+import java.time.LocalDateTime
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
-import java.time.Clock
-import java.time.LocalDateTime
 
 // 마감 여부는 저장된 상태가 아니라 deadline과 현재 시각으로 판단하고,
 // 스케줄러 없이 결과에 접근할 때 펀딩을 잠근 채 필요한 상태 전이를 수행한다
@@ -117,7 +118,7 @@ class FundingResultService(
                 name = contribution.participantName,
                 profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
                 status = contribution.status,
-                participatedAt = contribution.createdAt,
+                participatedAt = contribution.createdAt.auditTimeToKorea(),
                 hasMessage = !message?.content.isNullOrBlank(),
                 hasPhoto = message?.photoUrl != null,
                 hasVoice = message?.voiceUrl != null,

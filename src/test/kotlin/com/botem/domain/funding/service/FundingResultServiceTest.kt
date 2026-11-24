@@ -20,6 +20,8 @@ import com.botem.domain.user.entity.User
 import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
@@ -215,7 +217,7 @@ class FundingResultServiceTest {
         val result = service.openResult(USER_ID, FUNDING_ID, excludePendingContributions = false)
 
         assertEquals(firstOpenedAt, result.resultOpenedAt)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     @Test
@@ -229,7 +231,7 @@ class FundingResultServiceTest {
 
         assertEquals(NOW.minusHours(1), result.resultOpenedAt)
         verify(fundingRepository).findByIdForUpdate(FUNDING_ID)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     @Test
@@ -243,7 +245,7 @@ class FundingResultServiceTest {
         val result = service.getResult(USER_ID, FUNDING_ID)
 
         assertEquals(FundingStatus.CLOSED, funding.status)
-        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
         assertEquals(2L, result.messageCount)
         assertEquals(1L, result.pendingContributionCount)
         assertTrue(result.pendingCleanupRequired)
@@ -302,7 +304,8 @@ class FundingResultServiceTest {
         assertEquals("서준", first.name)
         assertEquals("https://image.example.com/profile.jpg", first.profileImageUrl)
         assertEquals(ContributionStatus.CONFIRMED, first.status)
-        assertEquals(NOW.minusDays(3), first.participatedAt)
+        // createdAt은 UTC로 저장되므로 응답에서는 한국 시간(+9시간)으로 보인다
+        assertEquals(NOW.minusDays(3).plusHours(9), first.participatedAt)
         assertTrue(first.hasMessage)
         assertTrue(first.hasPhoto)
         assertFalse(first.hasVoice)
@@ -456,6 +459,9 @@ class FundingResultServiceTest {
                 set(target, value)
             }
     }
+
+    // Kotlin의 null 불가 파라미터에도 쓸 수 있도록, 시각 매처를 등록하고 null 대신 임의 값을 넘긴다
+    private fun anyDateTime(): LocalDateTime = ArgumentMatchers.any(LocalDateTime::class.java) ?: LocalDateTime.MIN
 
     companion object {
         private const val USER_ID = 1L

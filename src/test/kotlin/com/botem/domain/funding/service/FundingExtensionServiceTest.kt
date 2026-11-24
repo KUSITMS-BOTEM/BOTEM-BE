@@ -54,7 +54,7 @@ class FundingExtensionServiceTest {
         assertEquals(NOW, response.extendedAt)
         verify(userRepository).findByIdForUpdate(OWNER_ID)
         verify(fundingRepository).findByIdForUpdate(FUNDING_ID)
-        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
         verify(contributionRepository).sumAmountByFundingIdAndStatus(FUNDING_ID, ContributionStatus.CONFIRMED)
     }
 
@@ -98,7 +98,7 @@ class FundingExtensionServiceTest {
 
         assertEquals(FundingErrorCode.ACTIVE_FUNDING_LIMIT_EXCEEDED, exception.errorCode)
         verify(contributionRepository, never())
-            .convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+            .convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
     }
 
     @Test

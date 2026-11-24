@@ -19,6 +19,8 @@ import com.botem.domain.user.repository.UserRepository
 import com.botem.global.entity.BaseEntity
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.ArgumentMatchers.anyIterable
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
@@ -47,7 +49,7 @@ class DepositConfirmationServiceTest {
     )
 
     @Test
-    fun `확인 대기 목록은 이름과 참여 시각과 금액을 반환한다`() {
+    fun `확인 대기 목록은 UTC 참여 시각을 한국 시간으로 반환한다`() {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding()))
         given(
             contributionRepository.findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
@@ -62,7 +64,7 @@ class DepositConfirmationServiceTest {
         assertEquals(1, response.pendingContributionCount)
         assertEquals(31L, response.contributions.single().contributionId)
         assertEquals("하린", response.contributions.single().participantName)
-        assertEquals(NOW.minusDays(1), response.contributions.single().participatedAt)
+        assertEquals(NOW.minusDays(1).plusHours(9), response.contributions.single().participatedAt)
         assertEquals(10_000L, response.contributions.single().amount)
     }
 
@@ -169,7 +171,7 @@ class DepositConfirmationServiceTest {
         service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
 
         assertEquals(FundingStatus.CLOSED, funding.status)
-        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
     }
 
     @Test
@@ -182,7 +184,7 @@ class DepositConfirmationServiceTest {
         service.confirm(OWNER_ID, FUNDING_ID, CONTRIBUTION_ID)
 
         assertEquals(FundingStatus.FUNDING, funding.status)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     @Test
@@ -424,6 +426,9 @@ class DepositConfirmationServiceTest {
             set(target, value)
         }
     }
+
+    // Kotlin의 null 불가 파라미터에도 쓸 수 있도록, 시각 매처를 등록하고 null 대신 임의 값을 넘긴다
+    private fun anyDateTime(): LocalDateTime = ArgumentMatchers.any(LocalDateTime::class.java) ?: LocalDateTime.MIN
 
     companion object {
         private const val FUNDING_ID = 12L

@@ -19,12 +19,13 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.auditTimeToKorea
 import com.botem.global.exception.BusinessException
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 // 개설자가 은행 앱에서 입금을 확인한 뒤 직접 확정하거나 미입금 처리한다 (FUND-BS-007)
 @Service
@@ -53,7 +54,7 @@ class DepositConfirmationService(
                     contributionId = contribution.id,
                     participantName = contribution.participantName,
                     profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
-                    participatedAt = contribution.createdAt,
+                    participatedAt = contribution.createdAt.auditTimeToKorea(),
                     amount = contribution.amount,
                 )
             },

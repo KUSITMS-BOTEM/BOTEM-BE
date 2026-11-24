@@ -14,12 +14,13 @@ import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
+import com.botem.global.entity.auditTimeToKorea
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 // 로그인 회원이 펀딩 페이지에서 자기 보탬을 확인하고 고친다. 비회원은 GuestContributionService가 맡는다
 @Service
@@ -138,7 +139,7 @@ class MyContributionService(
             voiceUrl = message?.voiceUrl,
             voiceDurationSeconds = message?.voiceDurationSeconds,
             voiceTranscript = message?.voiceTranscript,
-            participatedAt = contribution.createdAt,
+            participatedAt = contribution.createdAt.auditTimeToKorea(),
             payoutAccount = payoutAccount,
         )
 

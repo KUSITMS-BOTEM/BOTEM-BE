@@ -17,12 +17,13 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.entity.UserStatus
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.auditTimeToKorea
 import com.botem.global.exception.BusinessException
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class OwnerFundingDetailService(
@@ -131,7 +132,7 @@ class OwnerFundingDetailService(
                 name = contribution.participantName,
                 profileImageUrl = userId?.let(profileImageUrls::get),
                 status = contribution.status,
-                participatedAt = contribution.createdAt,
+                participatedAt = contribution.createdAt.auditTimeToKorea(),
                 thankCardSent = thankCard != null,
                 thankCardSentAt = thankCard?.sentAt,
             )
