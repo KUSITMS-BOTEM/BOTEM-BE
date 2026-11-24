@@ -24,11 +24,8 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
         FROM GiftVerification verification
         JOIN Funding funding ON funding.id = verification.fundingId
         WHERE verification.status = :status
-          AND (
-            (funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY AND funding.ownerId = :userId)
-            OR
-            (funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE AND funding.recipientId = :userId)
-          )
+          AND funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+          AND funding.ownerId = :userId
         """,
     )
     fun countByRecipientAndStatus(
@@ -57,11 +54,8 @@ interface GiftVerificationRepository : JpaRepository<GiftVerification, Long> {
           ON contribution.fundingId = funding.id
           AND contribution.status <> :excludedContributionStatus
         WHERE verification.status = :status
-          AND (
-            (funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY AND funding.ownerId = :userId)
-            OR
-            (funding.type = com.botem.domain.funding.entity.FundingType.SURPRISE AND funding.recipientId = :userId)
-          )
+          AND funding.type = com.botem.domain.funding.entity.FundingType.BIRTHDAY
+          AND funding.ownerId = :userId
         GROUP BY
             verification.id,
             funding.id,
