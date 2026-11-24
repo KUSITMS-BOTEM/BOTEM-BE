@@ -26,6 +26,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 // 개설자가 은행 앱에서 입금을 확인한 뒤 직접 확정하거나 미입금 처리한다 (FUND-BS-007)
 @Service
@@ -189,7 +190,7 @@ class DepositConfirmationService(
         )
 
     private fun LocalDateTime.toKoreanTime(): LocalDateTime =
-        atZone(ZoneId.systemDefault()).withZoneSameInstant(KOREA_ZONE).toLocalDateTime()
+        atZone(ZoneOffset.UTC).withZoneSameInstant(KOREA_ZONE).toLocalDateTime()
 
     // 확정 금액이 목표에 닿으면 보태기를 자동 마감한다 (FUND-PG-006(2), 10/24 확정)
     private fun progressAfterConfirm(funding: Funding, now: LocalDateTime): FundingProgressResponse {

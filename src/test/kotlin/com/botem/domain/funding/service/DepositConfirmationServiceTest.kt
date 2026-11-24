@@ -29,7 +29,6 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Optional
-import java.util.TimeZone
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -58,13 +57,7 @@ class DepositConfirmationServiceTest {
         ).willReturn(listOf(contribution(id = 31L, status = ContributionStatus.PENDING_CONFIRMATION)))
         given(userRepository.findAllById(anyIterable())).willReturn(emptyList())
 
-        val defaultTimeZone = TimeZone.getDefault()
-        val response = try {
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-            service.getPendingContributions(OWNER_ID, FUNDING_ID)
-        } finally {
-            TimeZone.setDefault(defaultTimeZone)
-        }
+        val response = service.getPendingContributions(OWNER_ID, FUNDING_ID)
 
         assertEquals(1, response.pendingContributionCount)
         assertEquals(31L, response.contributions.single().contributionId)
