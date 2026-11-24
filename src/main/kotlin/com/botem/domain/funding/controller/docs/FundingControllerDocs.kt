@@ -647,10 +647,13 @@ interface FundingControllerDocs {
         summary = "펀딩 선물 선택 저장",
         description = """
             일반 생일 펀딩은 결과를 연 개설자가, 서프라이즈 펀딩은 공개 후 수령자가 '차액으로 구매'·'구매하기'로 쿠팡에 이동하는 순간 호출합니다 (FUND-PG-011/012).
-            지금 펀딩 상품을 선물로 정하고 선물 인증 대기(WAITING_GIFT_VERIFICATION)로 바꿉니다.
+            일반 생일 펀딩은 지금 상품을 선물로 정하고 선물 인증 대기(WAITING_GIFT_VERIFICATION)로 바꿉니다.
+            서프라이즈 펀딩은 선물 인증 없이 선물 선택만 완료하고 COMPLETED로 바꿉니다.
             다른 선물로 사려면 먼저 펀딩 상품 변경 API로 상품을 바꾼 뒤 호출합니다.
-            선물을 정한 뒤에는 상품 변경을 할 수 없고, 일반 펀딩은 기간 연장도 할 수 없습니다. 펀딩은 홈 카드 대신 '인증할 선물' 배너에 표시됩니다.
-            응답의 productUrl로 쿠팡에 이동하고, giftVerificationId로 선물 인증을 완료합니다.
+            선물을 정한 뒤에는 상품 변경을 할 수 없고, 일반 펀딩은 기간 연장도 할 수 없습니다.
+            일반 펀딩은 홈 카드 대신 '인증할 선물' 배너에 표시되며, 응답의 giftVerificationId로 선물 인증을 완료합니다.
+            서프라이즈 펀딩은 홈 인증 배너·목록에 표시되지 않고 giftVerificationId는 null입니다.
+            응답의 productUrl로 쿠팡에 이동합니다.
             이미 선물을 정한 펀딩에 다시 요청하면 상태를 바꾸지 않고 같은 결과를 반환합니다.
             '24시간 안에 구매 후 인증' 문구는 안내 문구이며 서버 기한은 없습니다.
         """,
@@ -659,7 +662,14 @@ interface FundingControllerDocs {
         SwaggerApiResponse(
             responseCode = "200",
             description = "선물 선택 저장 성공 또는 이미 저장한 결과 반환",
-            content = [Content(examples = [ExampleObject(value = GIFT_CHOICE_EXAMPLE)])],
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "일반 펀딩", value = GIFT_CHOICE_EXAMPLE),
+                        ExampleObject(name = "서프라이즈", value = SURPRISE_GIFT_CHOICE_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
@@ -681,7 +691,7 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "일반 펀딩 결과를 열기 전, 서프라이즈 공개 전 또는 인증을 마친 펀딩",
+            description = "일반 펀딩 결과를 열기 전 또는 서프라이즈 공개 전",
             content = [Content(examples = [ExampleObject(value = GIFT_CHOICE_NOT_AVAILABLE_EXAMPLE)])],
         ),
     )
@@ -1419,6 +1429,19 @@ interface FundingControllerDocs {
               "data": {
                 "fundingId": 12,
                 "giftVerificationId": 7,
+                "productName": "다이슨 에어랩",
+                "productImageUrl": "https://image.example.com/product.jpg",
+                "productUrl": "https://www.coupang.com/vp/products/1"
+              },
+              "error": null
+            }
+        """
+        private const val SURPRISE_GIFT_CHOICE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 31,
+                "giftVerificationId": null,
                 "productName": "다이슨 에어랩",
                 "productImageUrl": "https://image.example.com/product.jpg",
                 "productUrl": "https://www.coupang.com/vp/products/1"
