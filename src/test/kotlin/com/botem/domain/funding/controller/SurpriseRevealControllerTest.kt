@@ -35,6 +35,7 @@ class SurpriseRevealControllerTest {
         mockMvc.perform(get("/api/fundings/{fundingId}/surprise", FUNDING_ID).with(authentication()))
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
+            .andExpect(jsonPath("$.data.shareKey").value("abcdef0123456789abcdef0123456789"))
             .andExpect(jsonPath("$.data.recipientName").value("지유"))
             .andExpect(jsonPath("$.data.targetAmount").value(429_000))
             .andExpect(jsonPath("$.data.confirmedPercentage").value(100))
@@ -76,6 +77,7 @@ class SurpriseRevealControllerTest {
     private fun detailResponse(openedAt: LocalDateTime?): SurpriseRevealDetailResponse =
         SurpriseRevealDetailResponse(
             fundingId = FUNDING_ID,
+            shareKey = "abcdef0123456789abcdef0123456789",
             recipientName = "지유",
             organizerName = "민지",
             productName = "무선 헤드폰",

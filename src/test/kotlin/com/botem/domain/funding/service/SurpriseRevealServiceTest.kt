@@ -53,6 +53,7 @@ class SurpriseRevealServiceTest {
 
         val result = service.getDetail(RECIPIENT_ID, FUNDING_ID)
 
+        assertEquals(SHARE_KEY, result.shareKey)
         assertEquals("지유", result.recipientName)
         assertEquals("민지", result.organizerName)
     }
@@ -203,6 +204,7 @@ class SurpriseRevealServiceTest {
         targetAmount = 100_000, deadline = NOW.minusDays(1), revealAt = revealAt, story = null, promise = null,
         product = FundingProductSnapshot(null, "헤드폰", "https://image.example.com/product.jpg", 100_000, "https://shop.example.com/product"),
         payoutAccount = FundingPayoutAccountSnapshot(null, Bank.TOSS_BANK, "encrypted", "민지"),
+        shareKey = SHARE_KEY,
     ).also { setField(it, "id", FUNDING_ID); setField(it, "status", FundingStatus.WAITING_REVEAL) }
 
     private fun user(id: Long, name: String): User = User(kakaoId = id, nickname = name, profileImageUrl = null, name = name)
@@ -216,6 +218,7 @@ class SurpriseRevealServiceTest {
         private const val FUNDING_ID = 1L
         private const val OWNER_ID = 2L
         private const val RECIPIENT_ID = 3L
+        private const val SHARE_KEY = "abcdef0123456789abcdef0123456789"
         private val NOW = LocalDateTime.of(2026, 11, 15, 9, 41)
     }
 }
