@@ -76,6 +76,7 @@ class SurpriseRevealControllerTest {
     private fun detailResponse(openedAt: LocalDateTime?): SurpriseRevealDetailResponse =
         SurpriseRevealDetailResponse(
             fundingId = FUNDING_ID,
+            shareKey = "abcdef0123456789abcdef0123456789",
             recipientName = "지유",
             organizerName = "민지",
             productName = "무선 헤드폰",

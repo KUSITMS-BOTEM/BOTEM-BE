@@ -8,6 +8,7 @@ import java.time.LocalDateTime
 
 data class SurpriseRevealDetailResponse(
     val fundingId: Long,
+    val shareKey: String,
     val recipientName: String,
     val organizerName: String,
     val productName: String,
@@ -40,6 +41,7 @@ data class SurpriseRevealDetailResponse(
         ): SurpriseRevealDetailResponse =
             SurpriseRevealDetailResponse(
                 fundingId = funding.id,
+                shareKey = funding.shareKey,
                 recipientName = recipientName,
                 organizerName = organizerName,
                 productName = funding.product.name,
