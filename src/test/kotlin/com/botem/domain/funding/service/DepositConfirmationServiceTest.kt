@@ -29,6 +29,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Optional
+import java.util.TimeZone
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -47,7 +48,7 @@ class DepositConfirmationServiceTest {
     )
 
     @Test
-    fun `확인 대기 목록은 이름과 참여 시각과 금액을 반환한다`() {
+    fun `확인 대기 목록은 UTC 참여 시각을 한국 시간으로 반환한다`() {
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding()))
         given(
             contributionRepository.findAllByFundingIdAndStatusOrderByCreatedAtAscIdAsc(
@@ -57,12 +58,18 @@ class DepositConfirmationServiceTest {
         ).willReturn(listOf(contribution(id = 31L, status = ContributionStatus.PENDING_CONFIRMATION)))
         given(userRepository.findAllById(anyIterable())).willReturn(emptyList())
 
-        val response = service.getPendingContributions(OWNER_ID, FUNDING_ID)
+        val defaultTimeZone = TimeZone.getDefault()
+        val response = try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            service.getPendingContributions(OWNER_ID, FUNDING_ID)
+        } finally {
+            TimeZone.setDefault(defaultTimeZone)
+        }
 
         assertEquals(1, response.pendingContributionCount)
         assertEquals(31L, response.contributions.single().contributionId)
         assertEquals("하린", response.contributions.single().participantName)
-        assertEquals(NOW.minusDays(1), response.contributions.single().participatedAt)
+        assertEquals(NOW.minusDays(1).plusHours(9), response.contributions.single().participatedAt)
         assertEquals(10_000L, response.contributions.single().amount)
     }
 
