@@ -20,14 +20,14 @@ import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.RollingPaperMessageRepository
 import com.botem.domain.user.exception.UserErrorCode
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.auditTimeToKorea
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.ContributionThankCardProperties
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.LocalDateTime
-import java.time.ZoneId
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class ContributionThankCardService(
@@ -147,10 +147,7 @@ class ContributionThankCardService(
                     profileImageUrl = contribution.participantUserId?.let(profileImageUrlsByUserId::get),
                     organizer = contribution.participantUserId == funding.ownerId,
                     messageTypes = messageTypesOf(messagesByContributionId[contribution.id]),
-                    contributedDate = contribution.createdAt
-                        .atZone(ZoneId.systemDefault())
-                        .withZoneSameInstant(KOREA_ZONE)
-                        .toLocalDate(),
+                    contributedDate = contribution.createdAt.auditTimeToKorea().toLocalDate(),
                     thankCardSent = contribution.id in thankCardContributionIds,
                 )
             },
@@ -198,9 +195,5 @@ class ContributionThankCardService(
             )
         }
         return normalized
-    }
-
-    companion object {
-        private val KOREA_ZONE = ZoneId.of("Asia/Seoul")
     }
 }

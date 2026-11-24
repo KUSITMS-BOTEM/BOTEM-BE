@@ -19,14 +19,13 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.domain.funding.repository.projection.FundingContributionSummary
 import com.botem.domain.user.repository.UserRepository
+import com.botem.global.entity.auditTimeToKorea
 import com.botem.global.exception.BusinessException
-import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
 import java.time.Duration
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 // 개설자가 은행 앱에서 입금을 확인한 뒤 직접 확정하거나 미입금 처리한다 (FUND-BS-007)
 @Service
@@ -55,7 +54,7 @@ class DepositConfirmationService(
                     contributionId = contribution.id,
                     participantName = contribution.participantName,
                     profileImageUrl = contribution.participantUserId?.let(profileImageUrls::get),
-                    participatedAt = contribution.createdAt.toKoreanTime(),
+                    participatedAt = contribution.createdAt.auditTimeToKorea(),
                     amount = contribution.amount,
                 )
             },
@@ -189,9 +188,6 @@ class DepositConfirmationService(
             ContributionStatus.PENDING_CONFIRMATION,
         )
 
-    private fun LocalDateTime.toKoreanTime(): LocalDateTime =
-        atZone(ZoneOffset.UTC).withZoneSameInstant(KOREA_ZONE).toLocalDateTime()
-
     // 확정 금액이 목표에 닿으면 보태기를 자동 마감한다 (FUND-PG-006(2), 10/24 확정)
     private fun progressAfterConfirm(funding: Funding, now: LocalDateTime): FundingProgressResponse {
         val progress = progressOf(funding)
@@ -217,7 +213,6 @@ class DepositConfirmationService(
     }
 
     companion object {
-        private val KOREA_ZONE = ZoneId.of("Asia/Seoul")
         private val UNDO_WINDOW: Duration = Duration.ofSeconds(10)
     }
 }
