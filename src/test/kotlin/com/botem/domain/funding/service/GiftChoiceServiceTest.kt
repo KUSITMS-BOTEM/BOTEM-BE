@@ -16,17 +16,24 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
-import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class GiftChoiceServiceTest {
 
     private val fundingRepository = mock(FundingRepository::class.java)
     private val giftVerificationRepository = mock(GiftVerificationRepository::class.java)
-    private val service = GiftChoiceService(fundingRepository, giftVerificationRepository)
+    private val service = GiftChoiceService(
+        fundingRepository,
+        giftVerificationRepository,
+        Clock.fixed(Instant.parse("2026-11-20T03:00:00Z"), ZoneId.of("Asia/Seoul")),
+    )
 
     @Test
     fun `결과를 연 생일 펀딩의 선물을 정하면 인증 대기를 만들고 구매 링크를 반환한다`() {
@@ -58,21 +65,18 @@ class GiftChoiceServiceTest {
     }
 
     @Test
-    fun `수신자가 공개된 서프라이즈의 선물을 정하면 인증 대기를 만들고 재요청에도 같은 결과를 반환한다`() {
+    fun `수신자가 공개된 서프라이즈의 선물을 정하면 완료하고 재요청에도 같은 결과를 반환한다`() {
         val funding = revealedSurpriseFunding()
-        val verification = GiftVerification(FUNDING_ID).also { setField(it, GiftVerification::class.java, "id", VERIFICATION_ID) }
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
-        given(giftVerificationRepository.findByFundingId(FUNDING_ID)).willReturn(null, verification)
-        given(giftVerificationRepository.save(any(GiftVerification::class.java))).willReturn(verification)
 
         val first = service.choose(RECIPIENT_ID, FUNDING_ID)
         val retried = service.choose(RECIPIENT_ID, FUNDING_ID)
 
-        assertEquals(FundingStatus.WAITING_GIFT_VERIFICATION, funding.status)
-        assertEquals(VERIFICATION_ID, first.giftVerificationId)
-        assertEquals(VERIFICATION_ID, retried.giftVerificationId)
+        assertEquals(FundingStatus.COMPLETED, funding.status)
+        assertNull(first.giftVerificationId)
+        assertNull(retried.giftVerificationId)
         assertEquals("https://shop.example.com/product", first.productUrl)
-        verify(giftVerificationRepository, times(1)).save(any(GiftVerification::class.java))
+        verify(giftVerificationRepository, never()).save(any(GiftVerification::class.java))
     }
 
     @Test
@@ -86,9 +90,9 @@ class GiftChoiceServiceTest {
     }
 
     @Test
-    fun `완료된 서프라이즈는 수령자도 선물을 다시 정할 수 없다`() {
+    fun `공개 전 서프라이즈는 수령자도 선물을 정할 수 없다`() {
         val funding = revealedSurpriseFunding().also {
-            setField(it, Funding::class.java, "status", FundingStatus.COMPLETED)
+            setField(it, Funding::class.java, "status", FundingStatus.WAITING_REVEAL)
         }
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
 

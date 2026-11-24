@@ -339,7 +339,7 @@ class HomeDomainPersistenceTest {
     }
 
     @Test
-    fun `사용자가 인증할 선물을 오래된 마감 순으로 조회하고 취소 참여와 완료 인증을 제외한다`() {
+    fun `사용자가 인증할 생일 펀딩 선물을 오래된 마감 순으로 조회하고 서프라이즈와 취소 참여와 완료 인증을 제외한다`() {
         val recipient = saveUser()
         val organizer = saveUser()
         val participant = saveUser()
@@ -439,15 +439,14 @@ class HomeDomainPersistenceTest {
             ContributionStatus.CANCELLED,
         )
 
-        assertEquals(2L, pendingCount)
+        assertEquals(1L, pendingCount)
         assertEquals(
-            listOf(birthdayVerification.id, surpriseVerification.id),
+            listOf(birthdayVerification.id),
             targets.map { it.giftVerificationId },
         )
         assertEquals(2L, targets[0].participantCount)
         assertEquals("스피커", targets[0].replacementProductName)
         assertEquals("https://shop.example.com/product", targets[0].productUrl)
-        assertEquals(0L, targets[1].participantCount)
     }
 
     @Test

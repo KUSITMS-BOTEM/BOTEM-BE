@@ -22,7 +22,8 @@ interface SurpriseRevealControllerDocs {
             targetAmount는 목표 금액, confirmedPercentage는 확정 금액 기준 달성률(홈 카드·펀딩 상세와 같은 기준, 소수점 버림, 초과 달성 시 100 초과 가능),
             deadline은 보태기 마감 시각입니다.
             productUrl은 현재 상품의 구매 링크이고, productPrice는 상품 스냅샷 가격입니다. 목표 미달 시 프론트엔드는 productPrice - confirmedAmount로 차액을 계산할 수 있습니다.
-            giftChosen은 수령자가 구매할 선물을 확정했는지, productChanged는 기존 상품에서 다른 위시 상품으로 변경했는지 여부입니다.
+            giftChosen은 수령자가 구매할 선물을 확정했는지 여부이며, true이면 서프라이즈는 완료된 상태입니다.
+            productChanged는 기존 상품에서 다른 위시 상품으로 변경했는지 여부입니다.
             이 API는 열람 상태를 변경하지 않습니다.
         """,
     )

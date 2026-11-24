@@ -10,13 +10,15 @@ import com.botem.domain.funding.repository.GiftVerificationRepository
 import com.botem.global.exception.BusinessException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.LocalDateTime
 
-// 생일 펀딩 결과 화면에서 구매(쿠팡 이동)를 누르는 순간 지금 상품을 선물로 정하고 인증 대기를 만든다.
-// 저장한 선택은 홈 '인증할 선물' 배너에서 구매 링크를 다시 보여주는 데 쓴다
+// 생일 펀딩은 구매(쿠팡 이동) 시 선물 인증 대기를 만들고, 서프라이즈는 수령자의 선물 선택으로 완료한다.
 @Service
 class GiftChoiceService(
     private val fundingRepository: FundingRepository,
     private val giftVerificationRepository: GiftVerificationRepository,
+    private val clock: Clock,
 ) {
 
     @Transactional
@@ -24,26 +26,27 @@ class GiftChoiceService(
         val funding = fundingRepository.findByIdForUpdate(fundingId)
             ?.takeIf { it.status != FundingStatus.CANCELLED }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
-        when (funding.type) {
+        val verification = when (funding.type) {
             FundingType.BIRTHDAY -> {
                 if (funding.ownerId != userId) {
                     throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
                 }
                 funding.chooseGift()
+                giftVerificationRepository.findByFundingId(fundingId)
+                    ?: giftVerificationRepository.save(GiftVerification(fundingId))
             }
 
             FundingType.SURPRISE -> {
                 if (funding.recipientId != userId) {
                     throw BusinessException(FundingErrorCode.SURPRISE_RECIPIENT_ONLY)
                 }
-                if (funding.status != FundingStatus.REVEALED && funding.status != FundingStatus.WAITING_GIFT_VERIFICATION) {
+                if (funding.status != FundingStatus.REVEALED && funding.status != FundingStatus.COMPLETED) {
                     throw BusinessException(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE)
                 }
-                funding.beginGiftVerification()
+                funding.completeSurpriseGiftChoice(LocalDateTime.now(clock))
+                null
             }
         }
-        val verification = giftVerificationRepository.findByFundingId(fundingId)
-            ?: giftVerificationRepository.save(GiftVerification(fundingId))
 
         return GiftChoiceResponse.of(funding, verification)
     }

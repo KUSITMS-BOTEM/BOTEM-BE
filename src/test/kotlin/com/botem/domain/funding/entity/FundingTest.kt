@@ -349,6 +349,44 @@ class FundingTest {
     }
 
     @Test
+    fun `공개된 서프라이즈는 선물 선택으로 완료되고 재요청에도 최초 완료 시각을 유지한다`() {
+        val funding = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(funding, "status", FundingStatus.REVEALED)
+
+        funding.completeSurpriseGiftChoice(OPENED_AT)
+        funding.completeSurpriseGiftChoice(OPENED_AT.plusHours(1))
+
+        assertEquals(FundingStatus.COMPLETED, funding.status)
+        assertEquals(OPENED_AT, funding.completedAt)
+    }
+
+    @Test
+    fun `생일 펀딩과 공개 전 서프라이즈는 선물 선택 완료 처리할 수 없다`() {
+        val birthday = funding(deadline = OPENED_AT.minusDays(1))
+        val typeException = assertFailsWith<BusinessException> {
+            birthday.completeSurpriseGiftChoice(OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.SURPRISE_FUNDING_REQUIRED, typeException.errorCode)
+
+        val waitingReveal = funding(
+            type = FundingType.SURPRISE,
+            deadline = OPENED_AT.minusDays(1),
+            revealAt = OPENED_AT.minusMinutes(1),
+        )
+        setField(waitingReveal, "status", FundingStatus.WAITING_REVEAL)
+
+        val statusException = assertFailsWith<BusinessException> {
+            waitingReveal.completeSurpriseGiftChoice(OPENED_AT)
+        }
+        assertEquals(FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE, statusException.errorCode)
+        assertEquals(FundingStatus.WAITING_REVEAL, waitingReveal.status)
+    }
+
+    @Test
     fun `마감된 생일 펀딩을 연장하면 진행 상태와 새 마감 정보를 기록한다`() {
         val funding = funding(deadline = OPENED_AT.minusDays(1))
         setField(funding, "status", FundingStatus.CLOSED)

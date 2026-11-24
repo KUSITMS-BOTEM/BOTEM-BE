@@ -126,7 +126,7 @@ class SurpriseRevealServiceTest {
     @Test
     fun `수신자에게 상품 구매 정보와 선물 선택 상태를 반환한다`() {
         val funding = funding().also {
-            setField(it, "status", FundingStatus.WAITING_GIFT_VERIFICATION)
+            setField(it, "status", FundingStatus.COMPLETED)
             setField(it, "productChangedAt", NOW.minusMinutes(1))
         }
         given(fundingRepository.findById(FUNDING_ID)).willReturn(Optional.of(funding))
