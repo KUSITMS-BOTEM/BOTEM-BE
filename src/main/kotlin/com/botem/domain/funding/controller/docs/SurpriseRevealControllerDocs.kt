@@ -21,6 +21,7 @@ interface SurpriseRevealControllerDocs {
             비로그인 참여자의 participantProfileImageUrl은 null로 반환되므로 기본 이미지는 프론트엔드에서 표시합니다.
             targetAmount는 목표 금액, confirmedPercentage는 확정 금액 기준 달성률(홈 카드·펀딩 상세와 같은 기준, 소수점 버림, 초과 달성 시 100 초과 가능),
             deadline은 보태기 마감 시각입니다.
+            shareKey는 서프라이즈 결과 공유 링크를 구성하는 키입니다.
             productUrl은 현재 상품의 구매 링크이고, productPrice는 상품 스냅샷 가격입니다. 목표 미달 시 프론트엔드는 productPrice - confirmedAmount로 차액을 계산할 수 있습니다.
             giftChosen은 수령자가 구매할 선물을 확정했는지 여부이며, true이면 서프라이즈는 완료된 상태입니다.
             productChanged는 기존 상품에서 다른 위시 상품으로 변경했는지 여부입니다.
@@ -128,6 +129,7 @@ interface SurpriseRevealControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 31,
+                "shareKey": "abcdef0123456789abcdef0123456789",
                 "recipientName": "지유",
                 "organizerName": "민지",
                 "productName": "다이슨 에어랩",
@@ -179,6 +181,7 @@ interface SurpriseRevealControllerDocs {
               "success": true,
               "data": {
                 "fundingId": 31,
+                "shareKey": "abcdef0123456789abcdef0123456789",
                 "recipientName": "지유",
                 "organizerName": "민지",
                 "productName": "다이슨 에어랩",
