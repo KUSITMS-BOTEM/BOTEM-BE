@@ -24,7 +24,7 @@ interface DepositConfirmationControllerDocs {
         description = """
             참여자가 '보냈어요'를 눌러 확인 대기(PENDING_CONFIRMATION)가 된 참여 목록을 참여 시각 순으로 조회합니다.
             개설자 본인만 조회할 수 있습니다.
-            이름·참여 시각·보탠 금액(amount)으로 통장 입금 내역을 대조합니다.
+            이름·한국 시간(Asia/Seoul) 기준 참여 시각(participatedAt)·보탠 금액(amount)으로 통장 입금 내역을 대조합니다.
             메시지만 남긴 참여, 송금 전 참여, '못 받았어요' 처리된 참여는 포함하지 않습니다.
             '못 받았어요' 처리된 참여는 참여자가 다시 '보냈어요'를 누르면 같은 참여로 이 목록에 다시 올라옵니다.
         """,
