@@ -357,6 +357,30 @@ class FundingControllerTest {
     }
 
     @Test
+    fun `서프라이즈 수령자가 선물을 정하면 인증 ID 없이 구매 링크를 받는다`() {
+        given(giftChoiceService.choose(USER_ID, FUNDING_ID)).willReturn(
+            GiftChoiceResponse(
+                fundingId = FUNDING_ID,
+                giftVerificationId = null,
+                productName = "무선 헤드폰",
+                productImageUrl = "https://image.example.com/product.jpg",
+                productUrl = "https://shop.example.com/product",
+            ),
+        )
+
+        mockMvc.perform(
+            post("/api/fundings/{fundingId}/gift-choice", FUNDING_ID)
+                .with(authentication(UsernamePasswordAuthenticationToken(USER_ID, null, emptyList())))
+                .with(csrf()),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.data.giftVerificationId").value(nullValue()))
+            .andExpect(jsonPath("$.data.productUrl").value("https://shop.example.com/product"))
+
+        verify(giftChoiceService).choose(USER_ID, FUNDING_ID)
+    }
+
+    @Test
     fun `로그인한 주최자가 서프라이즈 선물 준비 화면을 조회한다`() {
         given(surpriseGiftPreparationService.getPreparation(USER_ID, FUNDING_ID))
             .willReturn(surpriseGiftPreparationResponse(giftPreparedAt = null))

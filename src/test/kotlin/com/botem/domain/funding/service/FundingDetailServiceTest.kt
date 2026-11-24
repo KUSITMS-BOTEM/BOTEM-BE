@@ -194,6 +194,15 @@ class FundingDetailServiceTest {
 
         givenFunding(funding(deadline = NOW.minusDays(1), status = FundingStatus.COMPLETED))
         assertEquals(FundingDisplayStatus.COMPLETED, service.getDetail(null, FUNDING_ID).displayStatus)
+
+        givenFunding(
+            funding(
+                deadline = NOW.minusDays(1),
+                status = FundingStatus.COMPLETED,
+                type = FundingType.SURPRISE,
+            ),
+        )
+        assertEquals(FundingDisplayStatus.COMPLETED, service.getDetail(null, FUNDING_ID).displayStatus)
     }
 
     @Test
