@@ -11,6 +11,8 @@ import com.botem.domain.funding.repository.ContributionRepository
 import com.botem.domain.funding.repository.FundingRepository
 import com.botem.global.exception.BusinessException
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
@@ -93,7 +95,7 @@ class FundingEarlyCloseServiceTest {
         }
 
         assertEquals(FundingErrorCode.FUNDING_NOT_FOUND, exception.errorCode)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     private fun funding(
@@ -123,6 +125,9 @@ class FundingEarlyCloseServiceTest {
             set(target, value)
         }
     }
+
+    // Kotlin의 null 불가 파라미터에도 쓸 수 있도록, 시각 매처를 등록하고 null 대신 임의 값을 넘긴다
+    private fun anyDateTime(): LocalDateTime = ArgumentMatchers.any(LocalDateTime::class.java) ?: LocalDateTime.MIN
 
     companion object {
         private const val OWNER_ID = 1L

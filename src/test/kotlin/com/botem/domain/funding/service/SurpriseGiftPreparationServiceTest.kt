@@ -31,6 +31,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
@@ -166,7 +168,7 @@ class SurpriseGiftPreparationServiceTest {
         assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
         assertEquals(preparedAt, response.giftPreparedAt)
         assertFalse(response.pendingCleanupRequired)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     @Test
@@ -180,7 +182,7 @@ class SurpriseGiftPreparationServiceTest {
         assertEquals(FundingStatus.WAITING_REVEAL, funding.status)
         assertNull(response.giftPreparedAt)
         assertFalse(response.pendingCleanupRequired)
-        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(FUNDING_ID, NOW.minusHours(9))
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     @Test
@@ -303,6 +305,9 @@ class SurpriseGiftPreparationServiceTest {
         }
         error("$fieldName 필드를 찾을 수 없습니다")
     }
+
+    // Kotlin의 null 불가 파라미터에도 쓸 수 있도록, 시각 매처를 등록하고 null 대신 임의 값을 넘긴다
+    private fun anyDateTime(): LocalDateTime = ArgumentMatchers.any(LocalDateTime::class.java) ?: LocalDateTime.MIN
 
     companion object {
         private const val OWNER_ID = 1L
