@@ -24,6 +24,20 @@ logging:
 sentry:
   context-tags: requestId
 
+# 지표는 서버 안의 수집 에이전트(Grafana Alloy)만 가져간다. 외부 요청은 Nginx가 /actuator를 막는다
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: botem
+    distribution:
+      # 무료 플랜의 지표 개수 한도(1만 개)를 넘지 않도록 백분위 히스토그램 대신 고정 구간만 남긴다
+      slo:
+        http.server.requests: 100ms,300ms,500ms,1s,3s
+
 # 로컬·테스트용 기본값. 운영은 application-prod.yaml에서 환경변수로만 받음
 wish-profile:
   base-url: ${WISH_PROFILE_BASE_URL:https://botem.me}

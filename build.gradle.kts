@@ -37,6 +37,7 @@ dependencies {
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	runtimeOnly("com.mysql:mysql-connector-j")
 	runtimeOnly("org.flywaydb:flyway-mysql")
+	runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
