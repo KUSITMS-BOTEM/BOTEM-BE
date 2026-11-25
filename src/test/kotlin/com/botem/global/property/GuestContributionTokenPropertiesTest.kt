@@ -25,4 +25,19 @@ class GuestContributionTokenPropertiesTest {
         assertTrue(validator.validate(GuestContributionTokenProperties(Duration.ofSeconds(1))).isEmpty())
         assertTrue(validator.validate(GuestContributionTokenProperties(Duration.ofMinutes(10))).isEmpty())
     }
+
+    @Test
+    fun `비회원 접근 토큰 issuer와 audience는 빈 값 또는 공백일 수 없다`() {
+        listOf("", " ", "\t").forEach { blankValue ->
+            val issuerViolations = validator.validate(
+                GuestContributionTokenProperties(Duration.ofMinutes(10), issuer = blankValue),
+            )
+            val audienceViolations = validator.validate(
+                GuestContributionTokenProperties(Duration.ofMinutes(10), audience = blankValue),
+            )
+
+            assertEquals(setOf("issuer"), issuerViolations.map { it.propertyPath.toString() }.toSet())
+            assertEquals(setOf("audience"), audienceViolations.map { it.propertyPath.toString() }.toSet())
+        }
+    }
 }

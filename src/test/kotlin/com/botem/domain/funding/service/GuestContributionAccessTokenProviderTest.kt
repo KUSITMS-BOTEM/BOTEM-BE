@@ -2,6 +2,7 @@ package com.botem.domain.funding.service
 
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.global.exception.BusinessException
+import com.botem.global.jwt.JwtProvider
 import com.botem.global.property.GuestContributionTokenProperties
 import com.botem.global.property.JwtProperties
 import io.jsonwebtoken.Jwts
@@ -66,6 +67,42 @@ class GuestContributionAccessTokenProviderTest {
     }
 
     @Test
+    fun `회원 Access 토큰은 비회원 접근 토큰으로 사용할 수 없다`() {
+        val provider = provider(Clock.systemUTC())
+        val memberAccessToken = JwtProvider(
+            JwtProperties(
+                secret = SECRET,
+                accessTokenExpiration = Duration.ofHours(1),
+                refreshTokenExpiration = Duration.ofDays(7),
+            ),
+        ).createAccessToken(CONTRIBUTION_ID)
+
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            provider.parse(memberAccessToken)
+        }
+    }
+
+    @Test
+    fun `issuer가 다른 비회원 접근 토큰은 거부한다`() {
+        val provider = provider(MutableClock(Instant.parse("2030-01-01T00:00:00Z")))
+        val token = customToken(issuer = "other-service")
+
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            provider.parse(token)
+        }
+    }
+
+    @Test
+    fun `audience가 다른 비회원 접근 토큰은 거부한다`() {
+        val provider = provider(MutableClock(Instant.parse("2030-01-01T00:00:00Z")))
+        val token = customToken(audience = "other-audience")
+
+        assertError(FundingErrorCode.CONTRIBUTION_GUEST_ACCESS_TOKEN_INVALID) {
+            provider.parse(token)
+        }
+    }
+
+    @Test
     fun `필수 식별자가 없는 비회원 접근 토큰은 거부한다`() {
         val clock = MutableClock(Instant.parse("2030-01-01T00:00:00Z"))
         val provider = provider(clock)
@@ -83,7 +120,11 @@ class GuestContributionAccessTokenProviderTest {
                 accessTokenExpiration = Duration.ofHours(1),
                 refreshTokenExpiration = Duration.ofDays(7),
             ),
-            tokenProperties = GuestContributionTokenProperties(Duration.ofMinutes(10)),
+            tokenProperties = GuestContributionTokenProperties(
+                accessTokenExpiration = Duration.ofMinutes(10),
+                issuer = ISSUER,
+                audience = AUDIENCE,
+            ),
             clock = clock,
         )
 
@@ -106,8 +147,18 @@ class GuestContributionAccessTokenProviderTest {
         assertEquals(errorCode, exception.errorCode)
     }
 
-    private fun customToken(type: String, subject: String?, fundingId: Long?): String {
+    private fun customToken(
+        type: String = "guest-contribution-access",
+        subject: String? = CONTRIBUTION_ID.toString(),
+        fundingId: Long? = FUNDING_ID,
+        issuer: String = ISSUER,
+        audience: String = AUDIENCE,
+    ): String {
         val builder = Jwts.builder()
+            .issuer(issuer)
+            .audience()
+            .add(audience)
+            .and()
             .claim("type", type)
             .issuedAt(Date.from(Instant.parse("2030-01-01T00:00:00Z")))
             .expiration(Date.from(Instant.parse("2030-01-01T00:10:00Z")))
@@ -121,6 +172,8 @@ class GuestContributionAccessTokenProviderTest {
     companion object {
         private const val FUNDING_ID = 12L
         private const val CONTRIBUTION_ID = 31L
+        private const val ISSUER = "botem"
+        private const val AUDIENCE = "guest-contribution"
         private const val SECRET = "dGVzdC1zZWNyZXQta2V5LWZvci1ndWVzdC1jb250cmlidXRpb24tMTIzNDU2Nzg5MA=="
         private const val OTHER_SECRET = "b3RoZXItc2VjcmV0LWtleS1mb3ItZ3Vlc3QtY29udHJpYnV0aW9uLTEyMzQ1Njc4OTA="
     }

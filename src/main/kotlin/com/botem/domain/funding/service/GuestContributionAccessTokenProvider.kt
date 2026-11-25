@@ -32,6 +32,10 @@ class GuestContributionAccessTokenProvider(
         val token = Jwts.builder()
             .id(UUID.randomUUID().toString())
             .subject(contributionId.toString())
+            .issuer(tokenProperties.issuer)
+            .audience()
+            .add(tokenProperties.audience)
+            .and()
             .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE)
             .claim(FUNDING_ID_CLAIM, fundingId)
             .issuedAt(Date.from(issuedAt))
@@ -46,6 +50,8 @@ class GuestContributionAccessTokenProvider(
         val claims = try {
             Jwts.parser()
                 .verifyWith(secretKey)
+                .requireIssuer(tokenProperties.issuer)
+                .requireAudience(tokenProperties.audience)
                 .clock { Date.from(Instant.now(clock)) }
                 .build()
                 .parseSignedClaims(token)
