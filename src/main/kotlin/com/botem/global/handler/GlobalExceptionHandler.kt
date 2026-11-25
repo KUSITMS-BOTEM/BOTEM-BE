@@ -4,10 +4,12 @@ import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.response.ApiResponse
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.ErrorResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
@@ -64,12 +66,33 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     fun handleException(exception: Exception): ResponseEntity<ApiResponse<Nothing>> {
+        // 없는 주소·지원하지 않는 메서드처럼 Spring이 상태 코드를 정해 둔 요청 오류는 서버 오류가 아니므로
+        // 그 상태 코드로 응답하고 에러 로그(Sentry)를 남기지 않는다
+        if (exception is ErrorResponse && exception.statusCode.is4xxClientError) {
+            return handleClientError(exception)
+        }
+
         log.error("Unhandled exception occurred", exception)
 
         val errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR
 
         return ResponseEntity
             .status(errorCode.status)
+            .body(ApiResponse.fail(errorCode))
+    }
+
+    private fun handleClientError(exception: ErrorResponse): ResponseEntity<ApiResponse<Nothing>> {
+        val errorCode = when (exception.statusCode.value()) {
+            HttpStatus.NOT_FOUND.value() -> CommonErrorCode.NOT_FOUND
+            HttpStatus.METHOD_NOT_ALLOWED.value() -> CommonErrorCode.METHOD_NOT_ALLOWED
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE.value() -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE
+            else -> CommonErrorCode.INVALID_INPUT_VALUE
+        }
+
+        // 405의 Allow처럼 클라이언트가 참고할 헤더는 그대로 전달한다
+        return ResponseEntity
+            .status(exception.statusCode)
+            .headers(exception.headers)
             .body(ApiResponse.fail(errorCode))
     }
 }

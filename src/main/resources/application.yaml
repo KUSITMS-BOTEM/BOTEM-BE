@@ -23,6 +23,9 @@ logging:
 
 sentry:
   context-tags: requestId
+  # 모니터링 수집(30초마다)과 헬스 체크는 성능 추적에서 뺀다. 넣으면 무료 한도를 수집 요청이 대부분 차지한다
+  ignored-transactions:
+    - ".*/actuator/.*"
 
 # 지표는 서버 안의 수집 에이전트(Grafana Alloy)만 가져간다. 외부 요청은 Nginx가 /actuator를 막는다
 management:

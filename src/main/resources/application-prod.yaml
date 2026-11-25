@@ -61,4 +61,5 @@ auth-cookie:
 sentry:
   dsn: ${SENTRY_DSN}
   environment: ${SENTRY_ENVIRONMENT}
-  traces-sample-rate: 1.0
+  # 모든 요청을 추적하면 무료 한도를 넘기므로 일부만 표본으로 남긴다. 에러는 비율과 관계없이 모두 수집된다
+  traces-sample-rate: 0.2
