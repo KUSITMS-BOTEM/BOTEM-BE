@@ -1,6 +1,7 @@
 package com.botem.global.property
 
 import jakarta.validation.constraints.AssertTrue
+import jakarta.validation.constraints.NotBlank
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.validation.annotation.Validated
 import java.time.Duration
@@ -9,7 +10,9 @@ import java.time.Duration
 @ConfigurationProperties(prefix = "guest-contribution-token")
 data class GuestContributionTokenProperties(
     val accessTokenExpiration: Duration,
+    @field:NotBlank(message = "비회원 보탬 접근 토큰 issuer는 비어 있을 수 없습니다")
     val issuer: String = DEFAULT_ISSUER,
+    @field:NotBlank(message = "비회원 보탬 접근 토큰 audience는 비어 있을 수 없습니다")
     val audience: String = DEFAULT_AUDIENCE,
 ) {
     @get:AssertTrue(message = "비회원 보탬 접근 토큰 만료 시간은 1초 이상이어야 합니다")
