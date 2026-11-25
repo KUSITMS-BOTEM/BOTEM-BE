@@ -5,9 +5,12 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 // 수집 에이전트는 토큰 없이 지표를 가져간다. 외부 접근은 Nginx와 127.0.0.1 바인딩으로 막는다
@@ -33,8 +36,19 @@ class PrometheusEndpointTest {
     }
 
     @Test
-    fun `노출하지 않은 actuator 엔드포인트는 열지 않는다`() {
-        mockMvc.perform(get("/actuator/env")).andExpect(status().is4xxClientError)
-        mockMvc.perform(get("/actuator/beans")).andExpect(status().is4xxClientError)
+    fun `actuator는 health와 prometheus만 노출한다`() {
+        // 비로그인이면 보안 설정이 먼저 401로 막아 노출 여부를 알 수 없으므로, 인증된 요청으로 노출 목록을 확인한다
+        mockMvc.perform(get("/actuator").with(authentication(UsernamePasswordAuthenticationToken(1L, null, emptyList()))))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$._links.health").exists())
+            .andExpect(jsonPath("$._links.prometheus").exists())
+            .andExpect(jsonPath("$._links.env").doesNotExist())
+            .andExpect(jsonPath("$._links.beans").doesNotExist())
+            .andExpect(jsonPath("$._links.metrics").doesNotExist())
+    }
+
+    @Test
+    fun `노출하지 않은 actuator 엔드포인트는 비로그인 요청을 인증 단계에서 막는다`() {
+        mockMvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized)
     }
 }
