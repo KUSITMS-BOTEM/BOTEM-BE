@@ -14,12 +14,12 @@ prometheus.scrape "botem" {
 }
 
 // 서버 지표: CPU·메모리·스왑·디스크·네트워크
+// 이 수집기는 job="integrations/unix" 라벨을 붙인다 (알림·대시보드는 이 값을 쓴다)
 prometheus.exporter.unix "host" {
   set_collectors = ["cpu", "loadavg", "meminfo", "filesystem", "diskstats", "netdev", "uname"]
 }
 
 prometheus.scrape "host" {
-  job_name        = "host"
   targets         = prometheus.exporter.unix.host.targets
   scrape_interval = "60s"
   forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
@@ -32,6 +32,69 @@ prometheus.remote_write "grafana_cloud" {
     basic_auth {
       username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USER")
       password = sys.env("GRAFANA_CLOUD_API_TOKEN")
+    }
+  }
+}
+
+// 앱 로그: Blue/Green 컨테이너의 표준 출력을 Grafana Cloud Loki로 보낸다
+// alloy 사용자가 도커 소켓을 읽으려면 docker 그룹에 속해야 한다 (deploy/README.md '로그 수집')
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+
+  filter {
+    name   = "name"
+    values = ["botem-blue", "botem-green"]
+  }
+}
+
+discovery.relabel "botem_logs" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/botem-(.*)"
+    target_label  = "color"
+  }
+}
+
+loki.source.docker "botem" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.botem_logs.output
+  labels     = {job = "botem", service_name = "botem"}
+  forward_to = [loki.process.botem.receiver]
+}
+
+loki.process "botem" {
+  // 예외 스택 트레이스 줄을 앞의 로그 한 줄에 붙인다 (Spring 로그는 날짜로 시작)
+  stage.multiline {
+    firstline     = "^\\d{4}-\\d{2}-\\d{2}"
+    max_wait_time = "3s"
+  }
+
+  // 로그 패턴 "%5p [%X{requestId:-}]"에서 레벨과 요청 ID를 꺼낸다
+  stage.regex {
+    expression = "^\\S+\\s+(?P<level>[A-Z]+) \\[(?P<request_id>[^\\]]*)\\]"
+  }
+
+  // 레벨은 검색 라벨로, 요청 ID는 값 종류가 많아 라벨 대신 구조화 메타데이터로 둔다
+  stage.labels {
+    values = {level = ""}
+  }
+
+  stage.structured_metadata {
+    values = {request_id = ""}
+  }
+
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+      password = sys.env("GRAFANA_CLOUD_LOKI_TOKEN")
     }
   }
 }

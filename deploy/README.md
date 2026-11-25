@@ -138,15 +138,49 @@ Grafana Cloud에서 아래 공개 대시보드를 가져온 뒤 필요한 패널
 
 ### 알림 규칙
 
-연락처(Contact point)로 Discord 웹훅을 등록하고 아래 규칙을 만듭니다. Blue/Green 중 대기 중인 쪽은 항상 `up=0`이므로 수집 중단은 두 대상 중 최댓값으로 판단합니다.
+Grafana Cloud의 `BOTEM` 폴더에 아래 규칙(평가 그룹 `botem`, 1분 간격)이 등록돼 있고, 알림 경로의 기본 연락처는 Discord(`botem-discord`)입니다. 규칙은 '쿼리 값'과 '조건'으로 나뉘어 있습니다. Blue/Green 중 대기 중인 쪽은 항상 `up=0`이므로 앱 수집 중단은 두 대상 중 최댓값으로 판단합니다. 서버 지표의 `job` 라벨은 Alloy의 서버 수집기가 붙이는 `integrations/unix`입니다.
 
-| 알림 | PromQL | 지속 |
-|---|---|---|
-| 디스크 85% 초과 | `1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} > 0.85` | 5분 |
-| 5xx 비율 5% 초과 | `sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count[5m])) > 0.05` | 5분 |
-| 응답 p95 1초 초과 | `histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket[5m]))) > 1` | 10분 |
-| 앱 수집 중단 | `max(up{job="botem"}) < 1` | 3분 |
-| 서버 수집 중단 | `absent(up{job="host"})` | 3분 |
-| DB 커넥션 대기 | `max(hikaricp_connections_pending) > 0` | 2분 |
+| 알림 | 쿼리 값 | 조건 | 지속 | 데이터 없음 |
+|---|---|---|---|---|
+| 디스크 사용률 85% 초과 | `1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}` | > 0.85 | 5분 | 정상 |
+| API 5xx 비율 5% 초과 | `(sum(rate(http_server_requests_seconds_count{application="botem",status=~"5.."}[5m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{application="botem"}[5m]))` | > 0.05 | 5분 | 정상 |
+| API 응답 p95 1초 초과 | `histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application="botem"}[5m])))` | > 1 | 10분 | 정상 |
+| 앱 수집 중단 | `max(up{job="botem"})` | < 1 | 3분 | 알림 |
+| 서버 수집 중단 | `max(up{job="integrations/unix"})` | < 1 | 3분 | 알림 |
+| DB 커넥션 대기 발생 | `max(hikaricp_connections_pending{application="botem"})` | > 0 | 2분 | 정상 |
 
 응답 시간은 지표 수를 줄이기 위해 `0.1·0.3·0.5·1·3초` 구간만 수집하므로(`management.metrics.distribution.slo`) p95는 구간 단위의 근삿값입니다.
+
+### 로그 수집
+
+앱 로그는 컨테이너 표준 출력으로만 남아 배포 때 이전 컨테이너와 함께 지워지므로, Alloy가 Blue/Green 컨테이너 로그를 Grafana Cloud Loki(무료: 50GB, 14일 보관)로 보냅니다. 서버에는 `deploy.sh`의 `--log-opt`로 컨테이너당 최근 30MB만 남깁니다.
+
+- 예외 스택 트레이스는 앞의 로그 한 줄에 묶어서 보냅니다.
+- 라벨: `job="botem"`, `color`(blue/green), `level`(INFO·WARN·ERROR)
+- 요청 ID는 값 종류가 많아 라벨이 아닌 구조화 메타데이터 `request_id`로 보냅니다.
+
+설치 (Alloy 설치 후 1회):
+
+1. Grafana Cloud에서 **Loki 쓰기 주소, 사용자 번호, `logs:write` 권한 토큰**을 발급받습니다 (Connections → Hosted logs).
+2. 바뀐 `config.alloy`를 올리고 EC2에서 실행합니다.
+
+```bash
+sudo mv ~/config.alloy /etc/alloy/config.alloy
+sudo usermod -aG docker alloy   # 도커 소켓에서 컨테이너 로그를 읽기 위한 권한
+sudo tee -a /etc/default/alloy > /dev/null <<'ENV'
+GRAFANA_CLOUD_LOKI_URL=<Loki 쓰기 주소 (…/loki/api/v1/push)>
+GRAFANA_CLOUD_LOKI_USER=<사용자 번호>
+GRAFANA_CLOUD_LOKI_TOKEN=<토큰>
+ENV
+sudo systemctl restart alloy
+sudo journalctl -u alloy -n 30 --no-pager | grep -iE "error|warn" | grep -v udev
+```
+
+검색 (Grafana Cloud → Explore → 데이터 소스 `grafanacloud-…-logs`):
+
+```logql
+{job="botem"} | request_id="<프론트가 전달한 X-Request-Id>"
+{job="botem", level="ERROR"}
+{job="botem"} |= "Kakao"
+```
+
