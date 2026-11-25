@@ -50,6 +50,8 @@ contribution-thank-card:
 
 guest-contribution-token:
   access-token-expiration: ${GUEST_CONTRIBUTION_ACCESS_TOKEN_EXPIRATION:10m}
+  issuer: ${GUEST_CONTRIBUTION_TOKEN_ISSUER:botem}
+  audience: ${GUEST_CONTRIBUTION_TOKEN_AUDIENCE:guest-contribution}
 
 payout-account:
   encryption:
