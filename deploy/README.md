@@ -87,3 +87,66 @@ sudo certbot --nginx -d api.botem.site -d api.botem.me --expand
 ```bash
 bash ~/botem/deploy.sh <ECR 이미지>:<이전 커밋 SHA>
 ```
+
+## 모니터링
+
+EC2에는 수집 에이전트(Grafana Alloy)만 두고, 지표는 Grafana Cloud(무료 플랜: 지표 1만 개, 14일 보관)로 보냅니다. t3.micro는 메모리·디스크 여유가 작고, 감시 대상과 같은 서버에 모니터링을 두면 서버 장애 때 알림도 함께 끊기기 때문입니다.
+
+```
+Spring Boot(8081/8082) /actuator/prometheus ─┐
+서버 CPU·메모리·스왑·디스크 ─────────────────┤ Alloy ── remote write ──> Grafana Cloud (저장·대시보드·Discord 알림)
+```
+
+`/actuator/prometheus`는 인증 없이 열려 있지만 컨테이너 포트가 `127.0.0.1`에만 바인딩되고 Nginx가 `/actuator`를 외부에서 404로 막으므로 서버 안에서만 접근할 수 있습니다. 운영 Nginx 설정을 바꾼 뒤에는 `curl -i https://api.botem.me/actuator/prometheus`가 404인지 확인합니다.
+
+### Alloy 설치 (1회)
+
+1. Grafana Cloud에서 스택을 만들고 **Prometheus 원격 쓰기 주소, 사용자 번호, `metrics:write` 권한 토큰**을 발급받습니다.
+2. 수집 설정을 서버로 올립니다.
+
+```bash
+scp -i <키.pem> deploy/monitoring/config.alloy <EC2 사용자>@<EC2 주소>:~/
+```
+
+3. EC2에서 설치하고 접속 정보를 환경 변수로 넣습니다.
+
+```bash
+sudo mkdir -p /etc/apt/keyrings
+wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+sudo apt-get update && sudo apt-get install -y alloy
+
+sudo mv ~/config.alloy /etc/alloy/config.alloy
+sudo tee -a /etc/default/alloy > /dev/null <<'ENV'
+GRAFANA_CLOUD_PROMETHEUS_URL=<원격 쓰기 주소>
+GRAFANA_CLOUD_PROMETHEUS_USER=<사용자 번호>
+GRAFANA_CLOUD_API_TOKEN=<토큰>
+ENV
+sudo chmod 600 /etc/default/alloy
+sudo systemctl enable --now alloy
+sudo systemctl status alloy --no-pager
+```
+
+수집 설정을 바꾸면 `/etc/alloy/config.alloy`를 교체하고 `sudo systemctl reload alloy`를 실행합니다.
+
+### 대시보드
+
+Grafana Cloud에서 아래 공개 대시보드를 가져온 뒤 필요한 패널만 남깁니다.
+
+- Spring Boot·JVM: 대시보드 ID `19004` (HTTP 요청, HikariCP, JVM 메모리·GC)
+- 서버: 대시보드 ID `1860` (Node Exporter Full)
+
+### 알림 규칙
+
+연락처(Contact point)로 Discord 웹훅을 등록하고 아래 규칙을 만듭니다. Blue/Green 중 대기 중인 쪽은 항상 `up=0`이므로 수집 중단은 두 대상 중 최댓값으로 판단합니다.
+
+| 알림 | PromQL | 지속 |
+|---|---|---|
+| 디스크 85% 초과 | `1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} > 0.85` | 5분 |
+| 5xx 비율 5% 초과 | `sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count[5m])) > 0.05` | 5분 |
+| 응답 p95 1초 초과 | `histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket[5m]))) > 1` | 10분 |
+| 앱 수집 중단 | `max(up{job="botem"}) < 1` | 3분 |
+| 서버 수집 중단 | `absent(up{job="host"})` | 3분 |
+| DB 커넥션 대기 | `max(hikaricp_connections_pending) > 0` | 2분 |
+
+응답 시간은 지표 수를 줄이기 위해 `0.1·0.3·0.5·1·3초` 구간만 수집하므로(`management.metrics.distribution.slo`) p95는 구간 단위의 근삿값입니다.
