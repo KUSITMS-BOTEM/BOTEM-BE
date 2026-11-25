@@ -41,6 +41,8 @@ class SecurityConfig(
             .authorizeHttpRequests {
                 it.requestMatchers(*AUTH_URIS).permitAll()
                 it.requestMatchers("/actuator/health").permitAll()
+                // 컨테이너 포트는 127.0.0.1에만 열리고 Nginx가 /actuator를 외부에서 막으므로, 서버 안의 수집 에이전트만 접근한다
+                it.requestMatchers("/actuator/prometheus").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/fundings/share/{shareKey}").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/thank-cards/*").permitAll()
                 it.requestMatchers(HttpMethod.GET, "/api/wish-profiles/*").permitAll()

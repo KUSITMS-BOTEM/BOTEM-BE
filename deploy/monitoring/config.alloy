@@ -1,0 +1,37 @@
+// Grafana Alloy 수집 설정. EC2의 /etc/alloy/config.alloy에 둔다 (설치 방법: deploy/README.md '모니터링')
+// 접속 정보는 /etc/default/alloy 환경 변수로만 주입하고 저장소에 커밋하지 않는다
+
+// Spring Boot: Blue/Green 중 실행 중인 쪽만 응답하고, 대기 중인 쪽은 up=0으로 기록된다
+prometheus.scrape "botem" {
+  job_name        = "botem"
+  targets         = [
+    {"__address__" = "127.0.0.1:8081", "color" = "blue"},
+    {"__address__" = "127.0.0.1:8082", "color" = "green"},
+  ]
+  metrics_path    = "/actuator/prometheus"
+  scrape_interval = "30s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// 서버 지표: CPU·메모리·스왑·디스크·네트워크
+prometheus.exporter.unix "host" {
+  set_collectors = ["cpu", "loadavg", "meminfo", "filesystem", "diskstats", "netdev", "uname"]
+}
+
+prometheus.scrape "host" {
+  job_name        = "host"
+  targets         = prometheus.exporter.unix.host.targets
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROMETHEUS_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USER")
+      password = sys.env("GRAFANA_CLOUD_API_TOKEN")
+    }
+  }
+}
