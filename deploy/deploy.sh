@@ -29,7 +29,9 @@ aws ecr get-login-password --region "$REGION" | docker login --username AWS --pa
 docker pull "$IMAGE"
 
 docker rm -f "$NEXT" >/dev/null 2>&1 || true
+# 컨테이너 로그는 Alloy가 Grafana Cloud(Loki)로 보내므로, 서버에는 최근 30MB만 남겨 디스크가 차지 않게 한다
 docker run -d --name "$NEXT" --restart unless-stopped --env-file "$ENV_FILE" \
+    --log-opt max-size=10m --log-opt max-file=3 \
     -p "127.0.0.1:$NEXT_PORT:8080" "$IMAGE"
 
 healthy=false
