@@ -71,6 +71,18 @@ class FundingTest {
     }
 
     @Test
+    fun `추천 금액은 생략할 수 있고 목표 금액보다 커도 되지만 1원 이상 1천만 원 이하여야 한다`() {
+        // 1만·3만·5만 원 고정 선택지라 목표 금액보다 큰 추천 금액도 받는다
+        assertEquals(50_000L, createBirthday(targetAmount = 30_000L, recommendedAmount = 50_000L).recommendedAmount)
+        assertNull(createBirthday().recommendedAmount)
+
+        listOf(0L, 10_000_001L).forEach { amount ->
+            val exception = assertFailsWith<BusinessException> { createBirthday(recommendedAmount = amount) }
+            assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        }
+    }
+
+    @Test
     fun `일반 펀딩 마감일은 내일부터 선택할 수 있다`() {
         val exception = assertFailsWith<BusinessException> {
             createBirthday(deadline = OPENED_AT.plusHours(1))
@@ -739,6 +751,7 @@ class FundingTest {
         deadline: LocalDateTime = OPENED_AT.plusDays(1),
         story: String = "새 헤드폰이 필요해요",
         promise: String? = null,
+        recommendedAmount: Long? = null,
     ): Funding =
         Funding.createBirthday(
             ownerId = 1L,
@@ -746,6 +759,7 @@ class FundingTest {
             deadline = deadline,
             story = story,
             promise = promise,
+            recommendedAmount = recommendedAmount,
             product = product(),
             payoutAccount = payoutAccount(),
             now = OPENED_AT,

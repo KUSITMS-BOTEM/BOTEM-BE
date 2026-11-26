@@ -142,6 +142,7 @@ class FundingCreationServiceTest {
         assertEquals(SURPRISE_PAYOUT_ACCOUNT, saved.value.payoutAccount)
         assertEquals(LocalDateTime.of(2026, 12, 12, 23, 59, 59, 999_999_000), saved.value.deadline)
         assertEquals(LocalDateTime.of(2026, 12, 15, 0, 0), saved.value.revealAt)
+        assertEquals(25_000L, saved.value.recommendedAmount)
         assertEquals(saved.value.deadline, response.deadline)
         assertEquals(saved.value.revealAt, response.revealAt)
         assertFalse(saved.value.showOnRecipientProfile)
@@ -267,6 +268,7 @@ class FundingCreationServiceTest {
             deadline = deadline,
             revealAt = revealAt,
             showOnRecipientProfile = false,
+            recommendedAmount = 25_000L,
         )
 
     private fun request(): CreateBirthdayFundingRequest =

@@ -164,6 +164,7 @@ erDiagram
         datetime surprise_opened_at "nullable"
         datetime early_closed_at "nullable"
         datetime product_changed_at "nullable"
+        bigint recommended_amount "nullable"
     }
     gift_verifications {
         bigint id PK

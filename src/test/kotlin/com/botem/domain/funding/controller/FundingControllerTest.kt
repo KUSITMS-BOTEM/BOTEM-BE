@@ -116,6 +116,7 @@ class FundingControllerTest {
             .andExpect(jsonPath("$.data.targetAmount").value(100_000))
             .andExpect(jsonPath("$.data.revealAt").isEmpty)
             .andExpect(jsonPath("$.data.remainingAmount").value(60_000))
+            .andExpect(jsonPath("$.data.recommendedAmount").value(25_000))
             .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
             .andExpect(jsonPath("$.data.participants[0].contributedDate").value("2026-11-12"))
     }
@@ -130,6 +131,7 @@ class FundingControllerTest {
             deadline = LocalDate.of(2026, 11, 30),
             story = "새 헤드폰이 필요해요",
             promise = null,
+            recommendedAmount = 25_000L,
         )
         given(fundingCreationService.createBirthdayFunding(USER_ID, request)).willReturn(
             CreateFundingResponse(
@@ -156,7 +158,8 @@ class FundingControllerTest {
                       "accountNumber": "100159014821",
                       "targetAmount": 100000,
                       "deadline": "2026-11-30",
-                      "story": "새 헤드폰이 필요해요"
+                      "story": "새 헤드폰이 필요해요",
+                      "recommendedAmount": 25000
                     }
                     """.trimIndent(),
                 ),
@@ -226,6 +229,8 @@ class FundingControllerTest {
             """{ "recipientId": 0, "wishId": 2, "bank": "TOSS_BANK", "accountNumber": "100159014821", "targetAmount": 10000001, "deadline": "2026-12-12", "revealAt": "2026-12-15" }""",
             """{ "recipientId": 5, "wishId": 2, "accountNumber": "100159014821", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15" }""",
             """{ "recipientId": 5, "wishId": 2, "bank": "TOSS_BANK", "accountNumber": " ", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15" }""",
+            """{ "recipientId": 5, "wishId": 2, "bank": "TOSS_BANK", "accountNumber": "100159014821", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15", "recommendedAmount": 0 }""",
+            """{ "recipientId": 5, "wishId": 2, "bank": "TOSS_BANK", "accountNumber": "100159014821", "targetAmount": 39000, "deadline": "2026-12-12", "revealAt": "2026-12-15", "recommendedAmount": 10000001 }""",
         ).forEach { requestBody ->
             mockMvc.perform(
                 post("/api/fundings/surprise")
@@ -440,6 +445,7 @@ class FundingControllerTest {
                 productChanged = false,
                 productChangedAt = null,
                 targetAmount = 100_000L,
+                recommendedAmount = 25_000L,
                 deadline = LocalDateTime.of(2026, 11, 30, 23, 59, 59),
                 revealAt = null,
                 recipientWithdrawn = false,
@@ -471,6 +477,7 @@ class FundingControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.celebrantName").value("지유"))
             .andExpect(jsonPath("$.data.managementState").value("NO_PARTICIPANTS"))
+            .andExpect(jsonPath("$.data.recommendedAmount").value(25_000))
             .andExpect(jsonPath("$.data.pendingContributionCount").value(1))
             .andExpect(jsonPath("$.data.actions.canCloseEarly").value(true))
             .andExpect(jsonPath("$.data.product.sellerName").value("BOTEM 브랜드샵"))
@@ -604,6 +611,7 @@ class FundingControllerTest {
             celebrantName = "지유",
             celebrantProfileImageUrl = null,
             targetAmount = 100_000L,
+            recommendedAmount = 25_000L,
             product = FundingDetailProductResponse(
                 name = "무선 헤드폰",
                 imageUrl = "https://image.example.com/product.jpg",

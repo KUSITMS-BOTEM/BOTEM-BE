@@ -57,6 +57,10 @@ class Funding(
     @Column(nullable = false, updatable = false)
     val notifyRecipientFriends: Boolean = false,
 
+    // 참여자 금액 입력칸에 미리 채우는 1인 추천 금액(참고용). 정하지 않았거나 친구에게 보여주지 않으면 null
+    @Column(updatable = false)
+    val recommendedAmount: Long? = null,
+
     // 공유 링크용 키. 순차 ID로 다른 펀딩을 훑어볼 수 없도록 참여자 API는 이 키로만 펀딩을 찾는다
     @Column(nullable = false, updatable = false, unique = true, length = SHARE_KEY_LENGTH)
     val shareKey: String = generateShareKey(),
@@ -433,6 +437,7 @@ class Funding(
             deadline: LocalDateTime,
             story: String,
             promise: String?,
+            recommendedAmount: Long? = null,
             product: FundingProductSnapshot,
             payoutAccount: FundingPayoutAccountSnapshot,
             now: LocalDateTime,
@@ -443,6 +448,7 @@ class Funding(
             validateLength(normalizedStory, MAX_STORY_LENGTH, "펀딩 사연")
             normalizedPromise?.let { validateLength(it, MAX_PROMISE_LENGTH, "공약") }
             validateTargetAmount(targetAmount)
+            validateRecommendedAmount(recommendedAmount)
             validateDeadline(deadline, now)
 
             return Funding(
@@ -457,6 +463,7 @@ class Funding(
                 promise = normalizedPromise,
                 product = product,
                 payoutAccount = payoutAccount,
+                recommendedAmount = recommendedAmount,
             )
         }
 
@@ -468,11 +475,13 @@ class Funding(
             revealAt: LocalDateTime,
             showOnRecipientProfile: Boolean,
             notifyRecipientFriends: Boolean,
+            recommendedAmount: Long? = null,
             product: FundingProductSnapshot,
             payoutAccount: FundingPayoutAccountSnapshot,
             now: LocalDateTime,
         ): Funding {
             validateTargetAmount(targetAmount)
+            validateRecommendedAmount(recommendedAmount)
             validateDeadline(deadline, now)
             if (!revealAt.isAfter(deadline)) {
                 throw BusinessException(
@@ -495,6 +504,7 @@ class Funding(
                 payoutAccount = payoutAccount,
                 showOnRecipientProfile = showOnRecipientProfile,
                 notifyRecipientFriends = notifyRecipientFriends,
+                recommendedAmount = recommendedAmount,
             )
         }
 
@@ -524,6 +534,16 @@ class Funding(
                 throw BusinessException(
                     CommonErrorCode.INVALID_INPUT_VALUE,
                     "목표 금액은 1원 이상 1,000만 원 이하여야 합니다.",
+                )
+            }
+        }
+
+        // 1만·3만·5만 원처럼 고정 선택지라 목표 금액보다 커도 허용한다. 남은 금액이 더 적으면 프론트가 남은 금액으로 채운다
+        private fun validateRecommendedAmount(recommendedAmount: Long?) {
+            if (recommendedAmount != null && recommendedAmount !in 1..MAX_TARGET_AMOUNT) {
+                throw BusinessException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "추천 금액은 1원 이상 1,000만 원 이하여야 합니다.",
                 )
             }
         }
