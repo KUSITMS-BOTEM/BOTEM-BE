@@ -30,4 +30,9 @@ data class CreateBirthdayFundingRequest(
 
     @field:Size(max = 300)
     val promise: String? = null,
+
+    // 친구들이 참고할 1인 추천 금액. 정하지 않거나 친구에게 보여주지 않으면 생략(null)
+    @field:Positive
+    @field:Max(10_000_000)
+    val recommendedAmount: Long? = null,
 )
