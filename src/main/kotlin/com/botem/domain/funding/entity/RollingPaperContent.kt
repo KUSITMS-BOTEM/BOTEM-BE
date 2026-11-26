@@ -33,6 +33,7 @@ class RollingPaperContent private constructor(
             voiceUrl: String?,
             voiceDurationSeconds: Int?,
             voiceTranscript: String?,
+            voiceDurationValidationPolicy: VoiceDurationValidationPolicy = VoiceDurationValidationPolicy.DEFAULT,
         ): RollingPaperContent {
             val normalizedMessage = message.normalizeOptional(MAX_MESSAGE_LENGTH, "축하 메시지는 460자 이하여야 합니다.")
             val normalizedPaperTemplateCode = paperTemplateCode.normalizeRequired(
@@ -58,7 +59,10 @@ class RollingPaperContent private constructor(
             ) {
                 throw invalidInput("축하 메시지, 스티커, 사진 또는 음성 중 하나는 필수입니다.")
             }
-            if ((normalizedVoiceUrl == null) != (voiceDurationSeconds == null) || voiceDurationSeconds?.let { it <= 0 } == true) {
+            if ((normalizedVoiceUrl == null) != (voiceDurationSeconds == null)) {
+                throw invalidInput(voiceDurationValidationPolicy.missingPairDetail)
+            }
+            if (voiceDurationSeconds?.let { it <= 0 } == true) {
                 throw invalidInput("음성 URL과 0초보다 긴 재생 시간을 함께 입력해야 합니다.")
             }
             if (normalizedVoiceTranscript != null && normalizedVoiceUrl == null) {
@@ -95,5 +99,12 @@ class RollingPaperContent private constructor(
             normalizeOptional(maxLength, detail) ?: throw invalidInput(detail)
 
         private fun invalidInput(detail: String) = BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, detail)
+
+        enum class VoiceDurationValidationPolicy(
+            val missingPairDetail: String,
+        ) {
+            DEFAULT("음성 URL과 재생 시간은 함께 입력해야 합니다."),
+            GUEST_CONTRIBUTION_UPDATE("음성 URL과 0초보다 긴 재생 시간을 함께 입력해야 합니다."),
+        }
     }
 }

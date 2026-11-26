@@ -46,7 +46,9 @@ class RollingPaperContentTest {
     fun `내용과 편지지 음성 자막의 관계를 검증한다`() {
         assertInvalidInput { content(message = " ") }
         assertInvalidInput { content(paperTemplateCode = " ") }
-        assertInvalidInput { content(voiceUrl = "https://example.com/voice.mp3") }
+        assertInvalidInput("음성 URL과 재생 시간은 함께 입력해야 합니다.") {
+            content(voiceUrl = "https://example.com/voice.mp3")
+        }
         assertInvalidInput { content(voiceDurationSeconds = 12) }
         assertInvalidInput { content(voiceUrl = "https://example.com/voice.mp3", voiceDurationSeconds = 0) }
         assertInvalidInput { content(voiceTranscript = "음성 없는 자막") }
@@ -94,8 +96,9 @@ class RollingPaperContentTest {
             voiceTranscript = voiceTranscript,
         )
 
-    private fun assertInvalidInput(block: () -> Unit) {
+    private fun assertInvalidInput(expectedDetail: String? = null, block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        expectedDetail?.let { assertEquals(it, exception.detail) }
     }
 }

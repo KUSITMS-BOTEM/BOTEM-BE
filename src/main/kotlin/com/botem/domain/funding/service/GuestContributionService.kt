@@ -72,6 +72,8 @@ class GuestContributionService(
             voiceUrl = request.voiceUrl,
             voiceDurationSeconds = request.voiceDurationSeconds,
             voiceTranscript = request.voiceTranscript,
+            voiceDurationValidationPolicy =
+                RollingPaperContent.Companion.VoiceDurationValidationPolicy.GUEST_CONTRIBUTION_UPDATE,
         )
         // S3 확인은 느릴 수 있어 펀딩 잠금 전에 끝낸다. 토큰은 먼저 확인해 인증 없이 S3를 호출하지 않는다
         validateUploadedAttachments(fundingId, rollingPaperContent)
