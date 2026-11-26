@@ -34,6 +34,8 @@ interface FundingControllerDocs {
             받을 계좌는 bank(지원 은행 코드)와 accountNumber로 받으며, 대표계좌를 사용하는 경우에도 같은 방식으로 보냅니다.
             계좌번호는 숫자, 공백, 하이픈만 허용하고 숫자 8~20자리여야 합니다. 입력한 계좌는 내 계좌 목록에 등록되지 않습니다.
             마감일은 선택한 날짜의 마지막 시각으로 저장됩니다.
+            recommendedAmount는 참여자 금액 입력칸에 미리 채우는 1인 추천 금액(참고용)으로 1원 이상 1,000만 원 이하입니다. 목표 금액보다 커도 됩니다.
+            정하지 않거나 친구들에게 보여주지 않으면 생략(null)하며, 개설 후에는 바꿀 수 없습니다.
             진행 중인 일반 펀딩과 공개 대기 중인 서프라이즈를 합쳐 최대 5개까지 개설할 수 있습니다.
             shareUrl은 공유 링크(`/share/{shareKey}`)이고, shareKey는 참여자용 API(`/api/fundings/share/{shareKey}/...`) 경로에 씁니다.
         """,
@@ -104,6 +106,8 @@ interface FundingControllerDocs {
             공개일은 반드시 마감일 다음 날짜 이후여야 하며, 서버에서도 이를 검증합니다.
             showOnRecipientProfile(위시 프로필에 몰래 알리기)과 notifyRecipientFriends(보탬 친구에게도 알리기)는 생략하면 true이며,
             받는 사람 계정에는 노출하지 않습니다. 이번 API는 옵션만 저장하고 알림은 보내지 않습니다.
+            recommendedAmount는 참여자 금액 입력칸에 미리 채우는 1인 추천 금액(참고용)으로 1원 이상 1,000만 원 이하입니다. 목표 금액보다 커도 됩니다.
+            정하지 않거나 친구들에게 보여주지 않으면 생략(null)하며, 개설 후에는 바꿀 수 없습니다.
             받는 사람 한 명당 공개 전 서프라이즈는 하나만 열 수 있고(공개 시각이 지나면 새로 열 수 있음), 진행 중인 펀딩은 일반 펀딩과 합쳐 최대 5개입니다.
             서프라이즈는 개설 후 취소할 수 없습니다. shareUrl은 비밀 초대에 쓰는 펀딩 링크이고, shareKey는 참여자용 API 경로에 쓰는 공유 키입니다.
             응답의 deadline·revealAt은 요청 날짜를 저장 시각으로 정규화한 값이며, 개설 완료 화면에 그대로 보여줍니다.
@@ -190,6 +194,7 @@ interface FundingControllerDocs {
             공유 링크로 펀딩 정보와 진행 상태를 조회합니다. 로그인하지 않아도 조회할 수 있습니다.
             펀딩은 공유 링크의 공유 키(32자리)로 찾으며, 순차 펀딩 ID로는 조회할 수 없습니다. 없거나 형식이 틀린 키는 FUNDING_002입니다.
             확정 달성률(입금 확인 완료)과 확인 대기 달성률, 목표 금액(targetAmount)을 반환합니다. 참여자별 금액은 반환하지 않습니다.
+            recommendedAmount는 개설자가 정한 1인 추천 금액으로 금액 입력칸에 미리 채웁니다. 참여자는 자유롭게 바꿀 수 있고, 정하지 않은 펀딩은 null입니다.
             remainingAmount는 지금 보탤 수 있는 최대 금액(목표 금액 - 확정 금액, 0 이상)으로, 보태기 시 CONTRIBUTION_AMOUNT_EXCEEDS_REMAINING 검증과 같은 기준입니다.
             확인 대기 금액은 빼지 않습니다. 조회 후 다른 참여가 확정돼 남은 금액이 바뀌면 보태기 오류로 알 수 있습니다.
             남은 금액이 줄었으면 CONTRIBUTION_AMOUNT_EXCEEDS_REMAINING의 detail에 최신 남은 금액이 담기고,
@@ -260,6 +265,7 @@ interface FundingControllerDocs {
             messageCount는 도착한 롤링페이퍼 메시지 개수이며 메시지 내용은 마감 전까지 반환하지 않습니다.
             remainingDays는 마감일까지 남은 일수(마감일 당일 0)이며 마감 후에는 null입니다.
             revealAt은 서프라이즈 펀딩의 공개 시각이며 생일 펀딩은 null입니다.
+            recommendedAmount는 개설 시 정한 1인 추천 금액('한 명당 ○원씩 추천 중')이며, 정하지 않았으면 null입니다.
             recipientWithdrawn은 서프라이즈 받는 사람이 탈퇴했으면 true입니다('받는 사람이 보탬을 떠났어요'). 탈퇴해도 서프라이즈는 그대로 진행하며, 생일 펀딩은 false입니다.
             giftPreparedAt은 서프라이즈 주최자가 선물 준비를 완료한 시각이며, 준비 전이거나 생일 펀딩은 null입니다.
             managementState는 NO_PARTICIPANTS(참여자 0명), IN_PROGRESS(진행 중), TARGET_REACHED(확정 금액 100% 도달),
@@ -823,7 +829,8 @@ interface FundingControllerDocs {
               "deadline": "2026-12-12",
               "revealAt": "2026-12-15",
               "showOnRecipientProfile": true,
-              "notifyRecipientFriends": true
+              "notifyRecipientFriends": true,
+              "recommendedAmount": 10000
             }
         """
         private const val CREATE_SURPRISE_FUNDING_RESPONSE_EXAMPLE = """
@@ -893,7 +900,8 @@ interface FundingControllerDocs {
               "targetAmount": 350000,
               "deadline": "2026-11-30",
               "story": "올해 생일에는 오래 사용한 이어폰을 바꾸고 싶어요.",
-              "promise": "선물을 받으면 인증 사진을 올릴게요."
+              "promise": "선물을 받으면 인증 사진을 올릴게요.",
+              "recommendedAmount": 30000
             }
         """
         private const val CREATE_FUNDING_RESPONSE_EXAMPLE = """
@@ -999,6 +1007,7 @@ interface FundingControllerDocs {
                 "celebrantName": "지유",
                 "celebrantProfileImageUrl": "https://image.example.com/profile/jiyu.jpg",
                 "targetAmount": 300000,
+                "recommendedAmount": 30000,
                 "product": {
                   "name": "에어팟 프로 3",
                   "imageUrl": "https://image.example.com/product.jpg",
@@ -1063,6 +1072,7 @@ interface FundingControllerDocs {
                 "productChanged": false,
                 "productChangedAt": null,
                 "targetAmount": 459000,
+                "recommendedAmount": 50000,
                 "deadline": "2026-11-30T23:59:59.999999",
                 "revealAt": null,
                 "recipientWithdrawn": false,
