@@ -215,7 +215,7 @@ class GuestContributionServiceTest {
                 UpdateGuestContributionRequest("민지", null, "BLUE_DOT_GRID"),
             )
         }
-        assertInvalidInput {
+        assertInvalidInputDetail("음성 URL과 0초보다 긴 재생 시간을 함께 입력해야 합니다.") {
             service.update(
                 FUNDING_ID,
                 ACCESS_TOKEN,
@@ -552,6 +552,12 @@ class GuestContributionServiceTest {
     private fun assertInvalidInput(block: () -> Unit) {
         val exception = assertFailsWith<BusinessException>(block = block)
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+    }
+
+    private fun assertInvalidInputDetail(detail: String, block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        assertEquals(detail, exception.detail)
     }
 
     companion object {

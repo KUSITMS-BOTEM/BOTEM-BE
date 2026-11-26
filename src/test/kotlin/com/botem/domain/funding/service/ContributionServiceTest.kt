@@ -209,7 +209,7 @@ class ContributionServiceTest {
     fun `음성 URL과 재생 시간은 함께 입력해야 한다`() {
         givenFunding(confirmedAmount = 0L)
 
-        assertInvalidInput {
+        assertInvalidInputDetail("음성 URL과 재생 시간은 함께 입력해야 합니다.") {
             service.contribute(null, FUNDING_ID, request(voiceUrl = VOICE_URL))
         }
         assertInvalidInput {
@@ -804,6 +804,12 @@ class ContributionServiceTest {
 
     private fun assertInvalidInput(block: () -> Unit) {
         assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, assertFailsWith<BusinessException>(block = block).errorCode)
+    }
+
+    private fun assertInvalidInputDetail(detail: String, block: () -> Unit) {
+        val exception = assertFailsWith<BusinessException>(block = block)
+        assertEquals(CommonErrorCode.INVALID_INPUT_VALUE, exception.errorCode)
+        assertEquals(detail, exception.detail)
     }
 
     private fun assertErrorCode(errorCode: FundingErrorCode, block: () -> Unit) {
