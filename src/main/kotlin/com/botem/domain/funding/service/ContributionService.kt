@@ -13,6 +13,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.RollingPaperAttachmentType
+import com.botem.domain.funding.entity.RollingPaperContent
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
@@ -217,59 +218,35 @@ class ContributionService(
         voiceTranscript: String?,
         guestPassword: String?,
     ): ParticipantInput {
-        val normalizedMessage = message.normalizeOptional()
-        val normalizedPaperTemplateCode = paperTemplateCode.normalizeOptional()
-            ?: throw invalidInput("편지지를 선택해야 합니다.")
-        val normalizedDecorationCode = decorationCode.normalizeOptional()
-        val normalizedPhotoUrl = photoUrl.normalizeOptional()
-        val normalizedVoiceUrl = voiceUrl.normalizeOptional()
-        if (
-            normalizedMessage == null &&
-            normalizedDecorationCode == null &&
-            normalizedPhotoUrl == null &&
-            normalizedVoiceUrl == null
-        ) {
-            throw invalidInput("축하 메시지, 스티커, 사진 또는 음성 중 하나는 필수입니다.")
-        }
-        if ((normalizedVoiceUrl == null) != (voiceDurationSeconds == null)) {
-            throw invalidInput("음성 URL과 재생 시간은 함께 입력해야 합니다.")
-        }
-        val normalizedVoiceTranscript = voiceTranscript.normalizeOptional()
-        if (normalizedVoiceTranscript != null && normalizedVoiceUrl == null) {
-            throw invalidInput("음성 자막은 음성과 함께 입력해야 합니다.")
-        }
-        if (
-            normalizedVoiceTranscript != null &&
-            !RollingPaperMessage.hasValidVoiceTranscriptLength(normalizedVoiceTranscript)
-        ) {
-            throw invalidInput("음성 자막은 ${RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH}자 이하여야 합니다.")
-        }
+        val rollingPaperContent = RollingPaperContent.from(
+            message = message,
+            paperTemplateCode = paperTemplateCode,
+            decorationCode = decorationCode,
+            photoUrl = photoUrl,
+            voiceUrl = voiceUrl,
+            voiceDurationSeconds = voiceDurationSeconds,
+            voiceTranscript = voiceTranscript,
+        )
         if (userId == null && participantName.normalizeOptional() == null) {
             throw invalidInput("참여자 이름은 필수입니다.")
         }
 
         return ParticipantInput(
             participantName = participantName.normalizeOptional(),
-            message = normalizedMessage,
-            paperTemplateCode = normalizedPaperTemplateCode,
-            decorationCode = normalizedDecorationCode,
-            photoUrl = normalizedPhotoUrl,
-            voiceUrl = normalizedVoiceUrl,
-            voiceDurationSeconds = voiceDurationSeconds,
-            voiceTranscript = normalizedVoiceTranscript,
+            rollingPaperContent = rollingPaperContent,
             guestPasswordHash = if (userId == null) hashGuestPassword(guestPassword) else null,
         )
     }
 
     private fun validateUploadedAttachments(fundingId: Long, input: ParticipantInput) {
-        input.photoUrl?.let { photoUrl ->
+        input.rollingPaperContent.photoUrl?.let { photoUrl ->
             rollingPaperAttachmentService.validateUploadedAttachment(
                 fundingId = fundingId,
                 attachmentType = RollingPaperAttachmentType.PHOTO,
                 fileUrl = photoUrl,
             )
         }
-        input.voiceUrl?.let { voiceUrl ->
+        input.rollingPaperContent.voiceUrl?.let { voiceUrl ->
             rollingPaperAttachmentService.validateUploadedAttachment(
                 fundingId = fundingId,
                 attachmentType = RollingPaperAttachmentType.VOICE,
@@ -292,6 +269,7 @@ class ContributionService(
         status: ContributionStatus,
         input: ParticipantInput,
     ): Contribution {
+        val rollingPaperContent = input.rollingPaperContent
         val contribution = contributionRepository.save(
             Contribution(
                 fundingId = fundingId,
@@ -306,13 +284,13 @@ class ContributionService(
         rollingPaperMessageRepository.save(
             RollingPaperMessage(
                 contributionId = contribution.id,
-                content = input.message,
-                paperTemplateCode = input.paperTemplateCode,
-                decorationCode = input.decorationCode,
-                photoUrl = input.photoUrl,
-                voiceUrl = input.voiceUrl,
-                voiceDurationSeconds = input.voiceDurationSeconds,
-                voiceTranscript = input.voiceTranscript,
+                content = rollingPaperContent.message,
+                paperTemplateCode = rollingPaperContent.paperTemplateCode,
+                decorationCode = rollingPaperContent.decorationCode,
+                photoUrl = rollingPaperContent.photoUrl,
+                voiceUrl = rollingPaperContent.voiceUrl,
+                voiceDurationSeconds = rollingPaperContent.voiceDurationSeconds,
+                voiceTranscript = rollingPaperContent.voiceTranscript,
             ),
         )
 
@@ -386,13 +364,7 @@ class ContributionService(
 
     private class ParticipantInput(
         val participantName: String?,
-        val message: String?,
-        val paperTemplateCode: String,
-        val decorationCode: String?,
-        val photoUrl: String?,
-        val voiceUrl: String?,
-        val voiceDurationSeconds: Int?,
-        val voiceTranscript: String?,
+        val rollingPaperContent: RollingPaperContent,
         val guestPasswordHash: String?,
     )
 

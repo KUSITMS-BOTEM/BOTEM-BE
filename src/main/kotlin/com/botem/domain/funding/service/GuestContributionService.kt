@@ -9,6 +9,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingStatus
 import com.botem.domain.funding.entity.RollingPaperAttachmentType
+import com.botem.domain.funding.entity.RollingPaperContent
 import com.botem.domain.funding.entity.RollingPaperMessage
 import com.botem.domain.funding.exception.FundingErrorCode
 import com.botem.domain.funding.repository.ContributionRepository
@@ -63,23 +64,17 @@ class GuestContributionService(
     ): UpdatedGuestContributionResponse {
         val principal = authenticateToken(fundingId, accessToken)
         val participantName = normalizeParticipantName(request.participantName)
-        val message = normalizeOptional(request.message, MAX_MESSAGE_LENGTH, "축하 메시지는 460자 이하여야 합니다.")
-        val paperTemplateCode = normalizeRequired(
-            request.paperTemplateCode,
-            "편지지를 선택해야 합니다.",
-            MAX_PAPER_TEMPLATE_CODE_LENGTH,
+        val rollingPaperContent = RollingPaperContent.from(
+            message = request.message,
+            paperTemplateCode = request.paperTemplateCode,
+            decorationCode = request.decorationCode,
+            photoUrl = request.photoUrl,
+            voiceUrl = request.voiceUrl,
+            voiceDurationSeconds = request.voiceDurationSeconds,
+            voiceTranscript = request.voiceTranscript,
         )
-        val decorationCode = normalizeOptional(
-            request.decorationCode,
-            MAX_DECORATION_CODE_LENGTH,
-            "스티커 코드는 50자 이하여야 합니다.",
-        )
-        val photoUrl = normalizeOptional(request.photoUrl, MAX_URL_LENGTH, "사진 URL은 2048자 이하여야 합니다.")
-        val voiceUrl = normalizeOptional(request.voiceUrl, MAX_URL_LENGTH, "음성 URL은 2048자 이하여야 합니다.")
-        val voiceTranscript = request.voiceTranscript?.trim()?.takeIf(String::isNotEmpty)
-        validateContent(message, decorationCode, photoUrl, voiceUrl, request.voiceDurationSeconds, voiceTranscript)
         // S3 확인은 느릴 수 있어 펀딩 잠금 전에 끝낸다. 토큰은 먼저 확인해 인증 없이 S3를 호출하지 않는다
-        validateUploadedAttachments(fundingId, photoUrl, voiceUrl)
+        validateUploadedAttachments(fundingId, rollingPaperContent)
         val authenticated = lock(fundingId, principal)
         val contribution = authenticated.contribution
         validateEditable(authenticated.funding)
@@ -92,23 +87,23 @@ class GuestContributionService(
             ?: rollingPaperMessageRepository.save(
                 RollingPaperMessage(
                     contributionId = contribution.id,
-                    content = message,
-                    paperTemplateCode = paperTemplateCode,
-                    decorationCode = decorationCode,
-                    photoUrl = photoUrl,
-                    voiceUrl = voiceUrl,
-                    voiceDurationSeconds = request.voiceDurationSeconds,
-                    voiceTranscript = voiceTranscript,
+                    content = rollingPaperContent.message,
+                    paperTemplateCode = rollingPaperContent.paperTemplateCode,
+                    decorationCode = rollingPaperContent.decorationCode,
+                    photoUrl = rollingPaperContent.photoUrl,
+                    voiceUrl = rollingPaperContent.voiceUrl,
+                    voiceDurationSeconds = rollingPaperContent.voiceDurationSeconds,
+                    voiceTranscript = rollingPaperContent.voiceTranscript,
                 ),
             )
         rollingPaperMessage.updateContent(
-            content = message,
-            paperTemplateCode = paperTemplateCode,
-            decorationCode = decorationCode,
-            photoUrl = photoUrl,
-            voiceUrl = voiceUrl,
-            voiceDurationSeconds = request.voiceDurationSeconds,
-            voiceTranscript = voiceTranscript,
+            content = rollingPaperContent.message,
+            paperTemplateCode = rollingPaperContent.paperTemplateCode,
+            decorationCode = rollingPaperContent.decorationCode,
+            photoUrl = rollingPaperContent.photoUrl,
+            voiceUrl = rollingPaperContent.voiceUrl,
+            voiceDurationSeconds = rollingPaperContent.voiceDurationSeconds,
+            voiceTranscript = rollingPaperContent.voiceTranscript,
         )
 
         return UpdatedGuestContributionResponse.of(contribution, rollingPaperMessage)
@@ -203,56 +198,11 @@ class GuestContributionService(
         }
     }
 
-    private fun normalizeRequired(value: String, detail: String, maxLength: Int): String {
-        val normalized = value.trim { it.isWhitespace() || Character.isSpaceChar(it) }
-        if (normalized.isEmpty() || normalized.length > maxLength) {
-            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, detail)
-        }
-        return normalized
-    }
-
-    private fun normalizeOptional(value: String?, maxLength: Int, detail: String): String? {
-        val normalized = value?.trim { it.isWhitespace() || Character.isSpaceChar(it) }
-            ?.takeIf(String::isNotEmpty)
-        if (normalized != null && normalized.length > maxLength) {
-            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, detail)
-        }
-        return normalized
-    }
-
-    private fun validateContent(
-        message: String?,
-        decorationCode: String?,
-        photoUrl: String?,
-        voiceUrl: String?,
-        voiceDurationSeconds: Int?,
-        voiceTranscript: String?,
-    ) {
-        if (message == null && decorationCode == null && photoUrl == null && voiceUrl == null) {
-            throw BusinessException(
-                CommonErrorCode.INVALID_INPUT_VALUE,
-                "축하 메시지, 스티커, 사진 또는 음성 중 하나는 필수입니다.",
-            )
-        }
-        if ((voiceUrl == null) != (voiceDurationSeconds == null) || voiceDurationSeconds?.let { it <= 0 } == true) {
-            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "음성 URL과 0초보다 긴 재생 시간을 함께 입력해야 합니다.")
-        }
-        if (voiceTranscript != null && voiceUrl == null) {
-            throw BusinessException(CommonErrorCode.INVALID_INPUT_VALUE, "음성 자막은 음성과 함께 입력해야 합니다.")
-        }
-        if (voiceTranscript != null && !RollingPaperMessage.hasValidVoiceTranscriptLength(voiceTranscript)) {
-            throw BusinessException(
-                CommonErrorCode.INVALID_INPUT_VALUE,
-                "음성 자막은 ${RollingPaperMessage.MAX_VOICE_TRANSCRIPT_LENGTH}자 이하여야 합니다.",
-            )
-        }
-    }
-
-    private fun validateUploadedAttachments(fundingId: Long, photoUrl: String?, voiceUrl: String?) {
-        photoUrl?.let {
+    private fun validateUploadedAttachments(fundingId: Long, rollingPaperContent: RollingPaperContent) {
+        rollingPaperContent.photoUrl?.let {
             rollingPaperAttachmentService.validateUploadedAttachment(fundingId, RollingPaperAttachmentType.PHOTO, it)
         }
-        voiceUrl?.let {
+        rollingPaperContent.voiceUrl?.let {
             rollingPaperAttachmentService.validateUploadedAttachment(fundingId, RollingPaperAttachmentType.VOICE, it)
         }
     }
@@ -264,10 +214,6 @@ class GuestContributionService(
 
     companion object {
         private const val MAX_PARTICIPANT_NAME_LENGTH = 50
-        private const val MAX_MESSAGE_LENGTH = 460
-        private const val MAX_PAPER_TEMPLATE_CODE_LENGTH = 50
-        private const val MAX_DECORATION_CODE_LENGTH = 50
-        private const val MAX_URL_LENGTH = 2048
         private val GUEST_PASSWORD_REGEX = Regex("\\d{4}")
         private val EDITABLE_FUNDING_STATUSES = setOf(FundingStatus.FUNDING, FundingStatus.CLOSED)
         private val CANCELLABLE_STATUSES = setOf(
