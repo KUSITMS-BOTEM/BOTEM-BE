@@ -16,6 +16,8 @@ data class FundingDetailResponse(
     val celebrantName: String,
     val celebrantProfileImageUrl: String?,
     val targetAmount: Long,
+    // 금액 입력칸에 미리 채울 1인 추천 금액. 없으면 null
+    val recommendedAmount: Long?,
     val product: FundingDetailProductResponse,
     val productChanged: Boolean,
     val productChangedAt: LocalDateTime?,

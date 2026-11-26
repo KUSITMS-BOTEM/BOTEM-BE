@@ -62,6 +62,7 @@ class FundingDetailService(
             celebrantName = celebrant?.let { it.name ?: it.nickname }.orEmpty(),
             celebrantProfileImageUrl = celebrant?.profileImageUrl,
             targetAmount = funding.targetAmount,
+            recommendedAmount = funding.recommendedAmount,
             product = FundingDetailProductResponse.from(funding.product),
             productChanged = funding.productChangedAt != null,
             productChangedAt = funding.productChangedAt,

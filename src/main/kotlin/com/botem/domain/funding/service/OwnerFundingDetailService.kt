@@ -75,6 +75,7 @@ class OwnerFundingDetailService(
             productChanged = funding.productChangedAt != null,
             productChangedAt = funding.productChangedAt,
             targetAmount = funding.targetAmount,
+            recommendedAmount = funding.recommendedAmount,
             deadline = funding.deadline,
             revealAt = funding.revealAt,
             recipientWithdrawn = funding.recipientId != null && celebrant?.status == UserStatus.WITHDRAWN,
