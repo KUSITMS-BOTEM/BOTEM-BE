@@ -33,3 +33,7 @@ Thumbs.db
 # Local profile
 src/main/resources/application-local.yaml
 docker-compose.yml
+
+# 부하 테스트 시드에서 뽑는 ID (loadtest/fixtures.sql)
+loadtest/k6/fixtures.json
+loadtest/k6/*-summary.md
