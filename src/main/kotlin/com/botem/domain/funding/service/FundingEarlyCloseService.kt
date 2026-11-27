@@ -20,7 +20,7 @@ class FundingEarlyCloseService(
     private val clock: Clock,
 ) {
 
-    // 마감일 전에는 조기 마감, 마감일이 지났으면 참여자 0명 펀딩 종료로 처리한다 ('펀딩 마감하기' 버튼 하나로 두 경우를 받는다)
+    // 마감일 전에는 조기 마감, 마감일 경과 또는 조기 마감 뒤 참여자 0명 펀딩은 종료로 처리한다 ('펀딩 마감하기' 버튼 하나로 두 경우를 받는다)
     @Transactional
     fun close(
         userId: Long,
@@ -37,14 +37,16 @@ class FundingEarlyCloseService(
             throw BusinessException(FundingErrorCode.FUNDING_OWNER_ONLY)
         }
 
-        if (funding.earlyClosedAt == null && !funding.deadline.isAfter(now)) {
-            if (funding.status != FundingStatus.CANCELLED &&
-                contributionRepository.existsByFundingIdAndStatusNot(funding.id, ContributionStatus.CANCELLED)
+        if (funding.canEndWithoutParticipants(now)) {
+            if (funding.status == FundingStatus.CANCELLED ||
+                !contributionRepository.existsByFundingIdAndStatusNot(funding.id, ContributionStatus.CANCELLED)
             ) {
+                funding.endWithoutParticipants(now)
+                return FundingEarlyCloseResponse.from(funding)
+            }
+            if (funding.earlyClosedAt == null) {
                 throw BusinessException(FundingErrorCode.FUNDING_END_NOT_AVAILABLE)
             }
-            funding.endWithoutParticipants(now)
-            return FundingEarlyCloseResponse.from(funding)
         }
 
         val alreadyClosedEarly = funding.earlyClosedAt != null

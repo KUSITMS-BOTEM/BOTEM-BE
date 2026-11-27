@@ -17,8 +17,8 @@ import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
-import org.mockito.Mockito.verifyNoInteractions
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -62,14 +62,17 @@ class FundingEarlyCloseServiceTest {
     }
 
     @Test
-    fun `조기 마감 재요청은 송금 전 보탬 정리를 반복하지 않는다`() {
+    fun `조기 마감 후 참여자가 있으면 재요청에도 기존 조기 마감 결과를 반환한다`() {
         val funding = funding().also { it.closeEarly(NOW.minusMinutes(1)) }
         given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.existsByFundingIdAndStatusNot(FUNDING_ID, ContributionStatus.CANCELLED)).willReturn(true)
 
         val response = service.close(OWNER_ID, FUNDING_ID)
 
+        assertEquals(FundingStatus.CLOSED, response.status)
         assertEquals(NOW.minusMinutes(1), response.earlyClosedAt)
-        verifyNoInteractions(contributionRepository)
+        verify(contributionRepository).existsByFundingIdAndStatusNot(FUNDING_ID, ContributionStatus.CANCELLED)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
     @Test
@@ -113,6 +116,23 @@ class FundingEarlyCloseServiceTest {
         assertEquals(FundingStatus.CANCELLED, first.status)
         assertNull(first.earlyClosedAt)
         assertEquals(first, second)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
+    }
+
+    @Test
+    fun `조기 마감된 참여자 0명 생일 펀딩은 마감일 전에도 취소 상태로 종료하고 재요청에도 같은 결과를 준다`() {
+        val earlyClosedAt = NOW.minusMinutes(1)
+        val funding = funding().also { it.closeEarly(earlyClosedAt) }
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.existsByFundingIdAndStatusNot(FUNDING_ID, ContributionStatus.CANCELLED)).willReturn(false)
+
+        val first = service.close(OWNER_ID, FUNDING_ID)
+        val second = service.close(OWNER_ID, FUNDING_ID)
+
+        assertEquals(FundingStatus.CANCELLED, first.status)
+        assertEquals(earlyClosedAt, first.earlyClosedAt)
+        assertEquals(first, second)
+        verify(contributionRepository, times(1)).existsByFundingIdAndStatusNot(FUNDING_ID, ContributionStatus.CANCELLED)
         verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 

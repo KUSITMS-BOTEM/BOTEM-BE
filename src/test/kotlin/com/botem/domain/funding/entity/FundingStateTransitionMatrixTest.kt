@@ -74,13 +74,25 @@ class FundingStateTransitionMatrixTest {
     }
 
     @Test
-    fun `마감일 전이거나 조기 마감·결과 열기·서프라이즈 펀딩은 참여자 0명 종료를 거부한다`() {
+    fun `조기 마감된 참여자 0명 생일 펀딩은 마감일 전에도 종료할 수 있다`() {
+        val earlyClosedAt = NOW.minusMinutes(1)
+        val funding = birthday(deadline = NOW.plusDays(1)).also { it.closeEarly(earlyClosedAt) }
+
+        funding.endWithoutParticipants(NOW)
+        funding.endWithoutParticipants(NOW.plusMinutes(1))
+
+        assertEquals(FundingStatus.CANCELLED, funding.status)
+        assertEquals(earlyClosedAt, funding.earlyClosedAt)
+        assertEquals(true, funding.isEndedWithoutParticipants(NOW))
+    }
+
+    @Test
+    fun `마감일 전이거나 결과 열기·서프라이즈 펀딩은 참여자 0명 종료를 거부한다`() {
         val notEnded = birthday(deadline = NOW.plusDays(1))
-        val earlyClosed = birthday(deadline = NOW.plusDays(1)).also { it.closeEarly(NOW.minusDays(1)) }
         val resultOpened = birthday(deadline = NOW.minusDays(1)).also { it.openResult(NOW.minusMinutes(1)) }
         val surprise = surprise(deadline = NOW.minusDays(1), revealAt = NOW.plusDays(1))
 
-        listOf(notEnded, earlyClosed, resultOpened, surprise).forEach { funding ->
+        listOf(notEnded, resultOpened, surprise).forEach { funding ->
             val statusBefore = funding.status
             val exception = assertThrows<BusinessException> { funding.endWithoutParticipants(NOW) }
 
