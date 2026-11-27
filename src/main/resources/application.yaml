@@ -11,7 +11,7 @@ spring:
   # 서비스 트랜잭션 안에서 DTO로 바꿔 반환하므로 컨트롤러·직렬화 단계의 지연 로딩이 없다
   jpa:
     open-in-view: false
-  # 서버를 여러 대로 늘려도 요청 횟수 제한과 캐시를 함께 쓰도록 Redis에 둔다 (#282).
+  # 서버를 여러 대로 늘려도 요청 횟수 제한과 회원 상태 캐시를 함께 쓰도록 Redis에 둔다 (#282).
   # Redis가 느리거나 죽어도 요청이 묶이지 않게 짧게 기다리고, 실패하면 제한은 통과·캐시는 DB 조회로 대신한다
   data:
     redis:
@@ -19,10 +19,6 @@ spring:
       port: ${REDIS_PORT:6379}
       connect-timeout: 200ms
       timeout: 200ms
-  cache:
-    type: redis
-    redis:
-      time-to-live: 5m
   # 금액 같은 정수 필드에 소수를 보내면 잘라서 받지 않고 400으로 거절한다
   jackson:
     deserialization:

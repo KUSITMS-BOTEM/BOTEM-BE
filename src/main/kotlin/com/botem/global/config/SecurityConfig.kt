@@ -1,6 +1,6 @@
 package com.botem.global.config
 
-import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserStatusCache
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtAuthenticationFilter
 import com.botem.global.jwt.JwtProvider
@@ -26,7 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val jwtProvider: JwtProvider,
     private val jwtAuthenticationEntryPoint: JwtAuthenticationEntryPoint,
-    private val userRepository: UserRepository,
+    private val userStatusCache: UserStatusCache,
     private val adminProperties: AdminProperties,
 ) {
 
@@ -54,7 +54,7 @@ class SecurityConfig(
             }
             .exceptionHandling { it.authenticationEntryPoint(jwtAuthenticationEntryPoint) }
             .addFilterBefore(
-                JwtAuthenticationFilter(jwtProvider, userRepository),
+                JwtAuthenticationFilter(jwtProvider, userStatusCache::getStatus),
                 UsernamePasswordAuthenticationFilter::class.java,
             )
             .addFilterAfter(AdminApiKeyFilter(adminProperties.apiKey), JwtAuthenticationFilter::class.java)

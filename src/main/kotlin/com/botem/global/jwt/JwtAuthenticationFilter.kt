@@ -1,7 +1,6 @@
 package com.botem.global.jwt
 
 import com.botem.domain.user.entity.UserStatus
-import com.botem.domain.user.repository.UserRepository
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
 import jakarta.servlet.FilterChain
@@ -14,7 +13,8 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 class JwtAuthenticationFilter(
     private val jwtProvider: JwtProvider,
-    private val userRepository: UserRepository,
+    // 운영은 Redis 캐시를 거친 조회(UserStatusCache)를 넘긴다
+    private val statusOf: (Long) -> UserStatus?,
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -39,7 +39,7 @@ class JwtAuthenticationFilter(
     }
 
     private fun validateActiveUser(userId: Long, request: HttpServletRequest) {
-        when (userRepository.findStatusById(userId)) {
+        when (statusOf(userId)) {
             UserStatus.ACTIVE -> Unit
             UserStatus.WITHDRAWN -> {
                 if (!isWithdrawalRequest(request)) {

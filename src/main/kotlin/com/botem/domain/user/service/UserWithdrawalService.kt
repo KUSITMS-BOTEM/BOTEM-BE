@@ -18,6 +18,7 @@ class UserWithdrawalService(
     private val payoutAccountService: PayoutAccountService,
     private val activeFundingChecker: ActiveFundingChecker,
     private val eventPublisher: ApplicationEventPublisher,
+    private val userStatusCache: UserStatusCache,
 ) {
 
     @Transactional
@@ -35,6 +36,7 @@ class UserWithdrawalService(
 
         refreshTokenService.deleteAllOf(userId)
         payoutAccountService.deleteAllOf(userId)
+        userStatusCache.blockCaching(userId)
         user.withdraw(LocalDateTime.now())
         eventPublisher.publishEvent(UserWithdrawnEvent(userId))
     }
