@@ -26,9 +26,11 @@ class FundingEarlyCloseService(
         userId: Long,
         fundingId: Long,
     ): FundingEarlyCloseResponse {
+        val lockedFunding = fundingRepository.findByIdForUpdate(fundingId)
+        // 잠금 대기 중에 마감일이 지날 수 있으므로 마감 판정 시각은 잠금을 얻은 뒤에 읽는다
         val now = LocalDateTime.now(clock)
         // 참여자 0명으로 종료한 펀딩만 다시 요청해도 같은 결과를 돌려주고, 그 밖의 취소된 펀딩은 없는 펀딩으로 본다
-        val funding = fundingRepository.findByIdForUpdate(fundingId)
+        val funding = lockedFunding
             ?.takeIf { it.status != FundingStatus.CANCELLED || it.isEndedWithoutParticipants(now) }
             ?: throw BusinessException(FundingErrorCode.FUNDING_NOT_FOUND)
         if (funding.ownerId != userId) {
