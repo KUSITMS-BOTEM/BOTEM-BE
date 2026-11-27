@@ -35,6 +35,20 @@ class AdminApiKeySecurityTest {
     }
 
     @Test
+    fun `운영자 키 없이 테스트 로그인 API를 호출하면 401로 응답한다`() {
+        mockMvc.perform(createTestLoginRequest())
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.error.code").value("AUTH_001"))
+    }
+
+    @Test
+    fun `운영자 키가 있으면 테스트 로그인 API의 활성 회원 검증까지 요청이 전달된다`() {
+        mockMvc.perform(createTestLoginRequest().header(HEADER, ADMIN_KEY))
+            .andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error.code").value("USER_001"))
+    }
+
+    @Test
     fun `로그인한 회원이라도 운영자 키가 없으면 401로 응답한다`() {
         mockMvc.perform(createRequest().with(authentication(UsernamePasswordAuthenticationToken(1L, null, emptyList()))))
             .andExpect(status().isUnauthorized)
@@ -96,6 +110,11 @@ class AdminApiKeySecurityTest {
         post("/api/admin/payout-account-encryption/rotate")
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{ "afterAccountId": 0, "batchSize": $batchSize }""")
+
+    private fun createTestLoginRequest(): MockHttpServletRequestBuilder =
+        post("/api/admin/test-login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{ "email": "missing@botem.com" }""")
 
     companion object {
         private const val HEADER = "X-Admin-Key"
