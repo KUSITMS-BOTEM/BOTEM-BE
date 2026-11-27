@@ -28,9 +28,20 @@ REGION="$(echo "$REGISTRY" | cut -d. -f4)"
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
 docker pull "$IMAGE"
 
+# 요청 횟수 제한·캐시용 Redis (#282). 앱 컨테이너와 같은 내부 네트워크에만 열고 호스트 포트는 열지 않는다.
+# 캐시·카운터만 담아 디스크에 저장하지 않고, 메모리가 차면 오래 안 쓴 키부터 지운다. 배포마다 다시 만들지 않는다
+docker network inspect botem >/dev/null 2>&1 || docker network create botem >/dev/null
+if [ -z "$(docker ps -q -f name=^botem-redis$)" ]; then
+    docker rm -f botem-redis >/dev/null 2>&1 || true
+    docker run -d --name botem-redis --network botem --restart unless-stopped \
+        --log-opt max-size=10m --log-opt max-file=3 \
+        redis:7.4-alpine redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+fi
+
 docker rm -f "$NEXT" >/dev/null 2>&1 || true
 # 컨테이너 로그는 Alloy가 Grafana Cloud(Loki)로 보내므로, 서버에는 최근 30MB만 남겨 디스크가 차지 않게 한다
 docker run -d --name "$NEXT" --restart unless-stopped --env-file "$ENV_FILE" \
+    --network botem -e REDIS_HOST=botem-redis \
     --log-opt max-size=10m --log-opt max-file=3 \
     -p "127.0.0.1:$NEXT_PORT:8080" "$IMAGE"
 
