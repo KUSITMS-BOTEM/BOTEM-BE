@@ -10,6 +10,7 @@ import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.service.GuestContributionAccessTokenProvider
 import com.botem.domain.funding.service.GuestContributionService
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserStatusCache
 import com.botem.global.config.SecurityConfig
 import com.botem.global.jwt.JwtAuthenticationEntryPoint
 import com.botem.global.jwt.JwtProvider
@@ -56,6 +57,9 @@ class GuestContributionControllerTest {
 
     @MockitoBean
     private lateinit var userRepository: UserRepository
+
+    @MockitoBean
+    private lateinit var userStatusCache: UserStatusCache
 
     @BeforeEach
 

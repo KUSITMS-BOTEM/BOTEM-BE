@@ -2,15 +2,14 @@ package com.botem.global.ratelimit
 
 import com.botem.domain.user.entity.User
 import com.botem.domain.user.entity.UserStatus
-import com.botem.domain.user.repository.USER_STATUS_CACHE
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserStatusCache
 import com.botem.domain.user.service.UserWithdrawalService
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
-import org.springframework.cache.CacheManager
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -20,8 +19,6 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import software.amazon.awssdk.services.s3.S3Client
 import java.time.Duration
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 // 실제 Redis에서 요청 횟수 제한 카운터와 사용자 상태 캐시가 동작하는지 확인한다.
@@ -29,7 +26,7 @@ import kotlin.test.assertTrue
 @Tag("redis")
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
-@TestPropertySource(properties = ["spring.cache.type=redis"])
+@TestPropertySource(properties = ["user-status-cache.enabled=true"])
 class RedisIntegrationTest {
 
     @Autowired
@@ -45,7 +42,7 @@ class RedisIntegrationTest {
     private lateinit var userWithdrawalService: UserWithdrawalService
 
     @Autowired
-    private lateinit var cacheManager: CacheManager
+    private lateinit var userStatusCache: UserStatusCache
 
     // 탈퇴 후 프로필 이미지 삭제가 실제 AWS를 부르지 않게 한다
     @MockitoBean
@@ -61,18 +58,26 @@ class RedisIntegrationTest {
     }
 
     @Test
-    fun `활성 회원 상태는 캐시하고 탈퇴가 커밋되면 캐시를 지운다`() {
+    fun `활성 회원 상태는 캐시하고 탈퇴하면 캐시 금지 표시로 덮어쓴다`() {
         val user = userRepository.save(User(kakaoId = 9_001L, nickname = "캐시 확인", profileImageUrl = null))
-        val cache = assertNotNull(cacheManager.getCache(USER_STATUS_CACHE))
 
-        assertEquals(UserStatus.ACTIVE, userRepository.findStatusById(user.id))
-        assertEquals(UserStatus.ACTIVE, cache.get(user.id)?.get())
+        assertEquals(UserStatus.ACTIVE, userStatusCache.getStatus(user.id))
+        assertEquals("ACTIVE", redisTemplate.opsForValue().get("user-status:${user.id}"))
 
         userWithdrawalService.withdraw(user.id)
 
-        assertNull(cache.get(user.id))
-        assertEquals(UserStatus.WITHDRAWN, userRepository.findStatusById(user.id))
-        assertNull(cache.get(user.id))
+        assertEquals("BLOCKED", redisTemplate.opsForValue().get("user-status:${user.id}"))
+        assertEquals(UserStatus.WITHDRAWN, userStatusCache.getStatus(user.id))
+    }
+
+    @Test
+    fun `탈퇴 전에 읽은 활성 값은 캐시 금지 표시를 덮어쓰지 못한다`() {
+        val user = userRepository.save(User(kakaoId = 9_002L, nickname = "경쟁 확인", profileImageUrl = null))
+        // 탈퇴가 표시를 먼저 남긴 뒤, 탈퇴 전에 DB를 읽은 요청이 활성 값을 저장하려는 상황
+        userStatusCache.blockCaching(user.id)
+
+        assertEquals(UserStatus.ACTIVE, userStatusCache.getStatus(user.id))
+        assertEquals("BLOCKED", redisTemplate.opsForValue().get("user-status:${user.id}"))
     }
 
     companion object {

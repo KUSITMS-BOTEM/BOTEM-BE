@@ -23,7 +23,7 @@ class JwtAuthenticationFilterTest {
     private val jwtProvider = mock(JwtProvider::class.java)
     private val userRepository = mock(UserRepository::class.java)
     private val filterChain = mock(FilterChain::class.java)
-    private val filter = JwtAuthenticationFilter(jwtProvider, userRepository)
+    private val filter = JwtAuthenticationFilter(jwtProvider, userRepository::findStatusById)
 
     @AfterEach
     fun tearDown() {
