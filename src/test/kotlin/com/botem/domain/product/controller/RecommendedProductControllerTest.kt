@@ -53,6 +53,7 @@ class RecommendedProductControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.data.name").value("에어팟 프로 3"))
             .andExpect(jsonPath("$.data.sellerName").value("Apple 공식 브랜드관"))
+            .andExpect(jsonPath("$.data.productUrl").value("https://link.coupang.com/a/example"))
             .andExpect(jsonPath("$.data.wishId").value(WISH_ID))
             .andExpect(jsonPath("$.data.fundingId").value(FUNDING_ID))
     }
@@ -64,6 +65,7 @@ class RecommendedProductControllerTest {
             imageUrl = "https://example.com/airpods.jpg",
             price = 350_000,
             sellerName = "Apple 공식 브랜드관",
+            productUrl = "https://link.coupang.com/a/example",
             category = ProductCategory.EARPHONE_HEADPHONE,
             status = RecommendedProductStatus.ON_SALE,
             wishId = WISH_ID,

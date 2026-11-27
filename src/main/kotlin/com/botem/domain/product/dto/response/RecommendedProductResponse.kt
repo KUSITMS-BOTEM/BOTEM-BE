@@ -10,6 +10,7 @@ data class RecommendedProductResponse(
     val imageUrl: String,
     val price: Long,
     val sellerName: String,
+    val productUrl: String,
     val category: ProductCategory,
     val status: RecommendedProductStatus,
     // 내 위시에 담은 상품이면 그 위시 ID
@@ -29,6 +30,7 @@ data class RecommendedProductResponse(
                 imageUrl = product.imageUrl,
                 price = product.price,
                 sellerName = product.sellerName,
+                productUrl = product.productUrl,
                 category = product.category,
                 status = product.status,
                 wishId = wishId,
