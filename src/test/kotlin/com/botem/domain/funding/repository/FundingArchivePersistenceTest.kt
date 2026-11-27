@@ -62,10 +62,32 @@ class FundingArchivePersistenceTest {
         saveContribution(cancelledParticipation.id, me.id, ContributionStatus.AWAITING_TRANSFER, cancelled = true)
         saveFunding(ownerId = other.id, deadline = NOW.plusDays(1))
 
-        val archived = fundingRepository.findArchivedFundingsByUserId(me.id, NOW)
+        val participatedFundingIds = contributionRepository.findParticipatedFundingIds(me.id).toSet()
+        val archived = fundingRepository.findArchivedFundingsByUserId(me.id, participatedFundingIds, NOW)
 
+        assertEquals(setOf(participated.id), participatedFundingIds)
         assertEquals(listOf(unrevealedPreparation.id, opened.id, participated.id, received.id), archived.map(Funding::id))
-        assertEquals(setOf(participated.id), contributionRepository.findParticipatedFundingIds(archived.map(Funding::id), me.id).toSet())
+    }
+
+    @Test
+    fun `참여 이력이 없어도 개설·수신 펀딩을 조회하고 개설하며 참여한 펀딩은 한 번만 반환한다`() {
+        val me = saveUser("나")
+        val other = saveUser("친구")
+        val openedAndParticipated = saveFunding(ownerId = me.id, deadline = NOW.minusDays(1))
+        saveContribution(openedAndParticipated.id, me.id, ContributionStatus.MESSAGE_ONLY)
+        val newcomer = saveUser("처음")
+        val newcomerOpened = saveFunding(ownerId = newcomer.id, deadline = NOW.minusDays(2))
+        saveFunding(ownerId = other.id, deadline = NOW.minusDays(3))
+
+        val archived = fundingRepository.findArchivedFundingsByUserId(
+            me.id,
+            contributionRepository.findParticipatedFundingIds(me.id),
+            NOW,
+        )
+        val newcomerArchived = fundingRepository.findArchivedFundingsByUserId(newcomer.id, emptySet(), NOW)
+
+        assertEquals(listOf(openedAndParticipated.id), archived.map(Funding::id))
+        assertEquals(listOf(newcomerOpened.id), newcomerArchived.map(Funding::id))
     }
 
     @Test

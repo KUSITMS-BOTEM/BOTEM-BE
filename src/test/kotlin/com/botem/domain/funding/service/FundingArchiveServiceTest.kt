@@ -51,8 +51,8 @@ class FundingArchiveServiceTest {
             revealAt = LocalDateTime.of(2026, 9, 14, 0, 0),
         )
         val participated = funding(id = 3L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2025, 12, 31, 23, 59)).also { it.openResult(NOW) }
-        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(opened, received, participated))
-        given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L, 3L), ME_ID)).willReturn(listOf(3L))
+        given(contributionRepository.findParticipatedFundingIds(ME_ID)).willReturn(listOf(3L))
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, setOf(3L), NOW)).willReturn(listOf(opened, received, participated))
         val archiveSummary = summary(fundingId = 3L, voiceUrl = "https://audio.example.com/voice.m4a")
         given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(1L, 3L)))
             .willReturn(listOf(archiveSummary))
@@ -86,8 +86,8 @@ class FundingArchiveServiceTest {
     fun `선택한 탭의 카드만 반환하고 메시지가 없으면 대표 메시지는 null이다`() {
         val opened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59)).also { it.openResult(NOW) }
         val participated = funding(id = 2L, ownerId = OPENER_ID, deadline = LocalDateTime.of(2026, 9, 13, 23, 59)).also { it.openResult(NOW) }
-        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(opened, participated))
-        given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L), ME_ID)).willReturn(listOf(2L))
+        given(contributionRepository.findParticipatedFundingIds(ME_ID)).willReturn(listOf(2L))
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, setOf(2L), NOW)).willReturn(listOf(opened, participated))
         given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(1L, 2L))).willReturn(emptyList())
         given(userRepository.findAllById(listOf(ME_ID, OPENER_ID))).willReturn(listOf(user(ME_ID, "지유"), user(OPENER_ID, "서준")))
 
@@ -102,13 +102,14 @@ class FundingArchiveServiceTest {
 
     @Test
     fun `지난 펀딩이 없으면 추가 조회 없이 빈 아카이브를 반환한다`() {
-        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(emptyList())
+        given(contributionRepository.findParticipatedFundingIds(ME_ID)).willReturn(emptyList())
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, emptySet(), NOW)).willReturn(emptyList())
 
         val response = service.getArchive(ME_ID, FundingArchiveTab.ALL)
 
         assertEquals(0, response.tabCounts.all)
         assertEquals(emptyList(), response.years)
-        verifyNoInteractions(contributionRepository, rollingPaperMessageRepository, userRepository)
+        verifyNoInteractions(rollingPaperMessageRepository, userRepository)
     }
 
     @Test
@@ -121,8 +122,8 @@ class FundingArchiveServiceTest {
             deadline = LocalDateTime.of(2026, 10, 13, 23, 59),
             revealAt = LocalDateTime.of(2026, 10, 14, 0, 0),
         )
-        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(received))
-        given(contributionRepository.findParticipatedFundingIds(listOf(1L), ME_ID)).willReturn(emptyList())
+        given(contributionRepository.findParticipatedFundingIds(ME_ID)).willReturn(emptyList())
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, emptySet(), NOW)).willReturn(listOf(received))
         given(userRepository.findAllById(listOf(OPENER_ID, ME_ID))).willReturn(
             listOf(User(kakaoId = OPENER_ID, nickname = "서준 닉네임", profileImageUrl = null, name = null).also { setField(it, "id", OPENER_ID) }),
         )
@@ -138,8 +139,8 @@ class FundingArchiveServiceTest {
         val unopened = funding(id = 1L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 10, 13, 23, 59))
         val opened = funding(id = 2L, ownerId = ME_ID, deadline = LocalDateTime.of(2026, 9, 13, 23, 59)).also { it.openResult(NOW) }
         val archiveSummary = summary(fundingId = 2L)
-        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, NOW)).willReturn(listOf(unopened, opened))
-        given(contributionRepository.findParticipatedFundingIds(listOf(1L, 2L), ME_ID)).willReturn(emptyList())
+        given(contributionRepository.findParticipatedFundingIds(ME_ID)).willReturn(emptyList())
+        given(fundingRepository.findArchivedFundingsByUserId(ME_ID, emptySet(), NOW)).willReturn(listOf(unopened, opened))
         given(rollingPaperMessageRepository.findArchiveSummariesByFundingIds(setOf(2L))).willReturn(listOf(archiveSummary))
         given(userRepository.findAllById(listOf(ME_ID))).willReturn(listOf(user(ME_ID, "지유")))
 
