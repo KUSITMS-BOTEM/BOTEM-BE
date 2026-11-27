@@ -9,7 +9,20 @@ SELECT JSON_OBJECT(
     'friendWishes', (SELECT JSON_ARRAYAGG(JSON_ARRAY(f.user_id, f.friend_id, (SELECT MIN(id) FROM wishes WHERE user_id = f.friend_id))) FROM (
         SELECT user_id, MIN(friend_id) AS friend_id FROM friendships WHERE user_id <= 1000 GROUP BY user_id) f),
     -- 펀딩 개설용: 진행 중 펀딩이 없는 회원 5001~10000의 위시 전부 [회원, 위시]
-    'creatableWishes', (SELECT JSON_ARRAYAGG(JSON_ARRAY(user_id, id)) FROM wishes WHERE user_id > 5000),
+    -- 회원당 진행 중 펀딩은 5개까지라, 서버의 진행 중 판정과 같은 조건으로 남은 자리만큼만 위시를 고른다
+    'creatableWishes', (SELECT JSON_ARRAYAGG(JSON_ARRAY(user_id, id)) FROM (
+        SELECT w.user_id, w.id,
+               ROW_NUMBER() OVER (PARTITION BY w.user_id ORDER BY w.id) AS wish_rank,
+               5 - COALESCE(active.funding_count, 0) AS open_slots
+        FROM wishes w
+        LEFT JOIN (
+            SELECT owner_id, COUNT(*) AS funding_count FROM fundings
+            WHERE (funding_type = 'BIRTHDAY' AND status IN ('FUNDING', 'CLOSED') AND deadline > NOW())
+               OR (funding_type = 'SURPRISE' AND status IN ('FUNDING', 'CLOSED', 'GIFT_PREPARING', 'WAITING_REVEAL')
+                   AND reveal_at > NOW())
+            GROUP BY owner_id
+        ) active ON active.owner_id = w.user_id
+    ) slots WHERE wish_rank <= open_slots),
     -- 입금 확인용: 진행 중 펀딩의 확인 대기 보탬 [펀딩, 보탬] (개설자 = 펀딩 ID)
     'pendingContributions', (SELECT JSON_ARRAYAGG(JSON_ARRAY(funding_id, id)) FROM contributions
         WHERE funding_id <= 5000 AND status = 'PENDING_CONFIRMATION'),

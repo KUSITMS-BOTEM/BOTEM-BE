@@ -17,17 +17,32 @@ const fixtures = {
 };
 const VUS = Number(__ENV.VUS || 20);
 const DURATION = __ENV.DURATION || '15s';
+// 처리량 계산과 구간 일정에 초 단위 값이 필요해 '15s'처럼 초 단위만 받는다
+if (!/^\d+s$/.test(DURATION)) {
+    throw new Error(`DURATION은 초 단위로 지정하세요 (예: 15s). 입력값: ${DURATION}`);
+}
+const DURATION_SECONDS = Number(DURATION.slice(0, -1));
+// 구간이 끝난 뒤 남은 요청이 다음 API 측정과 겹치지 않도록, 마무리 대기 시간까지 지난 뒤 다음 구간을 시작한다
+const GRACEFUL_STOP_SECONDS = 5;
 const GAP_SECONDS = 2;
+
+// 개설용 위시와 확인 대기 보탬은 한 번 쓰면 상태가 바뀐다. 다 쓰면 같은 항목을 다시 쓰지 않고 측정을 멈춘다
+function takeOnce(list, label) {
+    const index = exec.scenario.iterationInTest;
+    if (index >= list.length) {
+        exec.test.abort(`${label} 목록을 모두 사용했습니다. 시드와 fixtures.json을 다시 만든 뒤 실행하세요.`);
+    }
+    return list[index];
+}
 
 const pick = (list) => list[randomInt(0, list.length - 1)];
 
-// 진행 중 펀딩은 회원당 5개까지라, 같은 회원의 위시를 연달아 쓰지 않도록 회원을 번갈아 가며 줄 세운다
+// 회원별 남은 개설 자리만큼 뽑은 위시(fixtures.sql)를, 같은 회원이 연달아 나오지 않도록 회원을 번갈아 가며 줄 세운다
 const creatableWishes = shared('creatableWishes', (list) => {
     const seen = {};
     return list
         .map(([userId, wishId]) => ({ userId, wishId, rank: (seen[userId] = (seen[userId] || 0) + 1) }))
-        .sort((a, b) => a.rank - b.rank || a.userId - b.userId)
-        .filter((wish) => wish.rank <= 4);
+        .sort((a, b) => a.rank - b.rank || a.userId - b.userId);
 });
 const authed = (userId, name) => ({
     headers: { Authorization: `Bearer ${accessTokenOf(userId)}`, 'Content-Type': 'application/json' },
@@ -114,7 +129,7 @@ const endpoints = {
     },
     // 쓰기: 진행 중 펀딩이 없는 회원의 위시로 개설한다. 반복마다 다른 위시를 써서 같은 위시로 두 번 열지 않는다
     'POST /api/fundings': () => {
-        const { userId, wishId } = creatableWishes[exec.scenario.iterationInTest % creatableWishes.length];
+        const { userId, wishId } = takeOnce(creatableWishes, '개설용 위시');
         const deadline = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
         return http.post(`${BASE_URL}/api/fundings`, JSON.stringify({
             wishId, bank: 'KAKAO_BANK', accountNumber: '3333012345678', targetAmount: 300000, deadline,
@@ -133,21 +148,21 @@ const endpoints = {
     },
     // 쓰기: 개설자의 입금 확인. 확인 대기 보탬을 하나씩 확정한다
     'POST /api/fundings/{fundingId}/contributions/{contributionId}/confirm': () => {
-        const [fundingId, contributionId] = fixtures.pendingContributions[exec.scenario.iterationInTest % fixtures.pendingContributions.length];
+        const [fundingId, contributionId] = takeOnce(fixtures.pendingContributions, '확인 대기 보탬');
         return http.post(`${BASE_URL}/api/fundings/${fundingId}/contributions/${contributionId}/confirm`, null,
             authed(fundingId, 'POST /api/fundings/{fundingId}/contributions/{contributionId}/confirm'));
     },
 };
 
 const names = Object.keys(endpoints);
-const durationSeconds = parseInt(DURATION, 10);
 
 export const options = {
     scenarios: Object.fromEntries(names.map((name, index) => [`s${String(index).padStart(2, '0')}`, {
         executor: 'constant-vus',
         vus: VUS,
         duration: DURATION,
-        startTime: `${index * (durationSeconds + GAP_SECONDS)}s`,
+        gracefulStop: `${GRACEFUL_STOP_SECONDS}s`,
+        startTime: `${index * (DURATION_SECONDS + GRACEFUL_STOP_SECONDS + GAP_SECONDS)}s`,
         exec: 'run',
         env: { ENDPOINT: name },
         tags: { endpoint: name },
@@ -171,7 +186,7 @@ export function handleSummary(data) {
         const duration = data.metrics[`http_req_duration{endpoint:${name}}`]?.values || {};
         const failed = data.metrics[`http_req_failed{endpoint:${name}}`]?.values || {};
         const count = (failed.passes || 0) + (failed.fails || 0);
-        return `| ${name} | ${(count / durationSeconds).toFixed(0)} | ${(duration.avg || 0).toFixed(1)} | ${(duration['p(95)'] || 0).toFixed(1)} | ${(duration['p(99)'] || 0).toFixed(1)} | ${((failed.rate || 0) * 100).toFixed(2)}% |`;
+        return `| ${name} | ${(count / DURATION_SECONDS).toFixed(0)} | ${(duration.avg || 0).toFixed(1)} | ${(duration['p(95)'] || 0).toFixed(1)} | ${(duration['p(99)'] || 0).toFixed(1)} | ${((failed.rate || 0) * 100).toFixed(2)}% |`;
     });
     const table = ['| API | req/s | 평균(ms) | p95(ms) | p99(ms) | 실패율 |', '|---|---|---|---|---|---|', ...rows].join('\n');
     return { stdout: `\n${table}\n`, [__ENV.SUMMARY_FILE || 'api-baseline-summary.md']: table };

@@ -61,7 +61,8 @@ export const options = {
         http_req_failed: [{ threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '20s' }],
         ...Object.fromEntries(RATES.flatMap((rate) => [
             [`http_req_duration{rate:${rate}}`, ['p(95)<300']],
-            [`http_req_failed{rate:${rate}}`, ['rate<0.01']],
+            // 앞 단계의 성공 요청이 현재 단계의 장애를 가리지 않도록 단계별 실패율로도 멈춘다
+            [`http_req_failed{rate:${rate}}`, ['rate<0.01', { threshold: 'rate<0.05', abortOnFail: true, delayAbortEval: '10s' }]],
             [`http_reqs{rate:${rate}}`, ['count>0']],
         ])),
     },
@@ -70,7 +71,8 @@ export const options = {
 
 export default function () {
     const n = exec.scenario.iterationInTest;
-    const [name, path, authenticated] = requests[n % requests.length](n);
+    // 요청 종류마다 호출 횟수로 키를 돌려야 종류 수와 키 수가 맞물려도 모든 키를 고르게 조회한다
+    const [name, path, authenticated] = requests[n % requests.length](Math.floor(n / requests.length));
     const headers = authenticated ? { Authorization: `Bearer ${ACCESS_TOKEN}` } : {};
     const res = http.get(`${BASE_URL}${path}`, { headers, tags: { name, rate: currentRate() } });
     check(res, { 'status 200': (r) => r.status === 200 });

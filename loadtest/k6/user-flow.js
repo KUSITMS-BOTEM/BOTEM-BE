@@ -78,12 +78,19 @@ function homeUser() {
 }
 
 function owner() {
-    const [fundingId, contributionId] = pendingContributions[exec.scenario.iterationInTest % pendingContributions.length];
+    // 이미 확정한 보탬을 다시 확정하면 변경 없이 200이라 측정이 섞인다. 반복 번호(VU 전체에서 겹치지 않음)로 한 번씩만 쓰고,
+    // 다 쓰면 조회만 하고 입금 확인은 건너뛴다
+    const index = exec.scenario.iterationInTest;
+    const [fundingId, contributionId] = pendingContributions[index % pendingContributions.length];
+    const confirmable = index < pendingContributions.length;
     check(http.get(`${BASE_URL}/api/fundings/${fundingId}/management`, params(fundingId, 'GET /api/fundings/{fundingId}/management')),
         { 'management 200': (r) => r.status === 200 });
     sleep(1);
     check(http.get(`${BASE_URL}/api/fundings/${fundingId}/contributions/pending`, params(fundingId, 'GET /api/fundings/{fundingId}/contributions/pending')),
         { 'pending 200': (r) => r.status === 200 });
+    if (!confirmable) {
+        return;
+    }
     sleep(1);
     // 같은 보탬을 두 번 확정하면 409라 실패로 세지 않는다
     const res = http.post(`${BASE_URL}/api/fundings/${fundingId}/contributions/${contributionId}/confirm`, null,
