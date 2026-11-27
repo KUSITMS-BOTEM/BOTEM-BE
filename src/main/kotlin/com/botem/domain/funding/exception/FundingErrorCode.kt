@@ -248,4 +248,9 @@ enum class FundingErrorCode(
         "FUNDING_060",
         "펀딩 개설자, 받는 사람 또는 참여자만 롤링페이퍼를 볼 수 있습니다.",
     ),
+    FUNDING_END_NOT_AVAILABLE(
+        HttpStatus.CONFLICT,
+        "FUNDING_061",
+        "마감일이 지났고 참여자가 없는 생일 펀딩만 결과를 열기 전에 마감할 수 있습니다.",
+    ),
 }

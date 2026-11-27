@@ -61,6 +61,34 @@ class FundingStateTransitionMatrixTest {
         assertEquals(FundingStatus.GIFT_PREPARING, funding.status)
     }
 
+    @ParameterizedTest(name = "{0} 상태의 마감된 생일 펀딩은 참여자 0명으로 종료할 수 있다")
+    @MethodSource("resultOpenableStatuses")
+    fun `참여자 0명 종료는 결과를 열기 전 FUNDING과 CLOSED에서 취소로 전이하고 재요청은 그대로 둔다`(status: FundingStatus) {
+        val funding = birthday(deadline = NOW.minusDays(1)).also { setStatus(it, status) }
+
+        funding.endWithoutParticipants(NOW)
+        funding.endWithoutParticipants(NOW.plusMinutes(1))
+
+        assertEquals(FundingStatus.CANCELLED, funding.status)
+        assertEquals(true, funding.isEndedWithoutParticipants(NOW))
+    }
+
+    @Test
+    fun `마감일 전이거나 조기 마감·결과 열기·서프라이즈 펀딩은 참여자 0명 종료를 거부한다`() {
+        val notEnded = birthday(deadline = NOW.plusDays(1))
+        val earlyClosed = birthday(deadline = NOW.plusDays(1)).also { it.closeEarly(NOW.minusDays(1)) }
+        val resultOpened = birthday(deadline = NOW.minusDays(1)).also { it.openResult(NOW.minusMinutes(1)) }
+        val surprise = surprise(deadline = NOW.minusDays(1), revealAt = NOW.plusDays(1))
+
+        listOf(notEnded, earlyClosed, resultOpened, surprise).forEach { funding ->
+            val statusBefore = funding.status
+            val exception = assertThrows<BusinessException> { funding.endWithoutParticipants(NOW) }
+
+            assertEquals(FundingErrorCode.FUNDING_END_NOT_AVAILABLE, exception.errorCode)
+            assertEquals(statusBefore, funding.status)
+        }
+    }
+
     @ParameterizedTest(name = "{0} 상태의 서프라이즈는 선물 준비를 완료할 수 있다")
     @MethodSource("surpriseGiftPreparableStatuses")
     fun `서프라이즈 선물 준비는 정의된 이전 상태에서만 공개 대기로 전이한다`(status: FundingStatus) {

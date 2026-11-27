@@ -131,6 +131,11 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         status: ContributionStatus,
     ): Boolean
 
+    fun existsByFundingIdAndStatusNot(
+        fundingId: Long,
+        status: ContributionStatus,
+    ): Boolean
+
     @Query(
         """
         SELECT new com.botem.domain.funding.repository.projection.FundingContributionSummary(

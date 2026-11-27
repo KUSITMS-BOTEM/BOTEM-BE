@@ -161,6 +161,23 @@ class Funding(
         earlyClosedAt = closedAt
     }
 
+    // 마감일이 지나도록 아무도 보태지 않은 생일 펀딩을 개설자가 끝낸다 (FUND-PG-009 '펀딩 마감하기').
+    // 남길 보탬·메시지가 없어 취소로 정리하며, 홈·보관함에서 빠지고 같은 위시로 다시 펀딩을 열 수 있다.
+    // 참여자가 없는지는 호출하는 쪽이 펀딩 행을 잠근 뒤 확인한다
+    fun endWithoutParticipants(endedAt: LocalDateTime) {
+        if (isEndedWithoutParticipants(endedAt)) {
+            return
+        }
+        if (type != FundingType.BIRTHDAY || earlyClosedAt != null || deadline.isAfter(endedAt) || resultOpenedAt != null) {
+            throw BusinessException(FundingErrorCode.FUNDING_END_NOT_AVAILABLE)
+        }
+        transitionTo(FundingStatus.CANCELLED, FundingStateTransition.END_WITHOUT_PARTICIPANTS)
+    }
+
+    // 지금은 참여자 0명 종료만 펀딩을 취소 상태로 만든다
+    fun isEndedWithoutParticipants(now: LocalDateTime): Boolean =
+        status == FundingStatus.CANCELLED && type == FundingType.BIRTHDAY && !deadline.isAfter(now)
+
     // 목표 미달이어도 실패 없이 확정 금액만큼 준비한다. 이미 준비를 완료했으면 그대로 둔다
     fun prepareSurpriseGift(preparedAt: LocalDateTime) {
         if (isSurpriseGiftPrepared()) {
@@ -398,6 +415,7 @@ class Funding(
             FundingErrorCode.FUNDING_EXTENSION_NOT_AVAILABLE,
         ),
         RESULT_OPEN(setOf(FundingStatus.FUNDING, FundingStatus.CLOSED), FundingErrorCode.FUNDING_RESULT_NOT_OPENABLE),
+        END_WITHOUT_PARTICIPANTS(setOf(FundingStatus.FUNDING, FundingStatus.CLOSED), FundingErrorCode.FUNDING_END_NOT_AVAILABLE),
         GIFT_CHOICE(setOf(FundingStatus.GIFT_PREPARING), FundingErrorCode.GIFT_CHOICE_NOT_AVAILABLE),
         GIFT_VERIFICATION_COMPLETION(
             setOf(FundingStatus.WAITING_GIFT_VERIFICATION),

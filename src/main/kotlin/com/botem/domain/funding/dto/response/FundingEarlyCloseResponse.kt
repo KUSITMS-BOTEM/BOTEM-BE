@@ -11,7 +11,8 @@ data class FundingEarlyCloseResponse(
     val status: FundingStatus,
     val deadline: LocalDateTime,
     val revealAt: LocalDateTime?,
-    val earlyClosedAt: LocalDateTime,
+    // 마감일이 지나 참여자 0명으로 종료한 펀딩(CANCELLED)은 조기 마감이 아니라 null
+    val earlyClosedAt: LocalDateTime?,
 ) {
     companion object {
         fun from(funding: Funding): FundingEarlyCloseResponse =
@@ -21,7 +22,7 @@ data class FundingEarlyCloseResponse(
                 status = funding.status,
                 deadline = funding.deadline,
                 revealAt = funding.revealAt,
-                earlyClosedAt = checkNotNull(funding.earlyClosedAt),
+                earlyClosedAt = funding.earlyClosedAt,
             )
     }
 }

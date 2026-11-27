@@ -1,6 +1,7 @@
 package com.botem.domain.funding.service
 
 import com.botem.domain.account.entity.Bank
+import com.botem.domain.funding.entity.ContributionStatus
 import com.botem.domain.funding.entity.Funding
 import com.botem.domain.funding.entity.FundingPayoutAccountSnapshot
 import com.botem.domain.funding.entity.FundingProductSnapshot
@@ -24,6 +25,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class FundingEarlyCloseServiceTest {
 
@@ -31,6 +33,7 @@ class FundingEarlyCloseServiceTest {
     private val contributionRepository = mock(ContributionRepository::class.java)
     private val service = FundingEarlyCloseService(
         fundingRepository = fundingRepository,
+        contributionRepository = contributionRepository,
         fundingContributionCloser = FundingContributionCloser(contributionRepository),
         clock = Clock.fixed(Instant.parse("2026-11-18T03:00:00Z"), ZoneId.of("Asia/Seoul")),
     )
@@ -98,9 +101,48 @@ class FundingEarlyCloseServiceTest {
         verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
     }
 
+    @Test
+    fun `마감일이 지났고 참여자가 없는 생일 펀딩은 취소 상태로 종료하고 재요청에도 같은 결과를 준다`() {
+        val funding = funding(deadline = NOW.minusDays(1), status = FundingStatus.CLOSED)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.existsByFundingIdAndStatusNot(FUNDING_ID, ContributionStatus.CANCELLED)).willReturn(false)
+
+        val first = service.close(OWNER_ID, FUNDING_ID)
+        val second = service.close(OWNER_ID, FUNDING_ID)
+
+        assertEquals(FundingStatus.CANCELLED, first.status)
+        assertNull(first.earlyClosedAt)
+        assertEquals(first, second)
+        verify(contributionRepository, never()).convertAwaitingTransfersToMessageOnly(anyLong(), anyDateTime())
+    }
+
+    @Test
+    fun `마감일이 지난 펀딩에 참여자가 있으면 종료를 거부한다`() {
+        val funding = funding(deadline = NOW.minusDays(1), status = FundingStatus.CLOSED)
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(funding)
+        given(contributionRepository.existsByFundingIdAndStatusNot(FUNDING_ID, ContributionStatus.CANCELLED)).willReturn(true)
+
+        val exception = assertFailsWith<BusinessException> { service.close(OWNER_ID, FUNDING_ID) }
+
+        assertEquals(FundingErrorCode.FUNDING_END_NOT_AVAILABLE, exception.errorCode)
+        assertEquals(FundingStatus.CLOSED, funding.status)
+    }
+
+    @Test
+    fun `참여자 0명으로 종료한 펀딩도 개설자가 아니면 거부한다`() {
+        given(fundingRepository.findByIdForUpdate(FUNDING_ID)).willReturn(
+            funding(deadline = NOW.minusDays(1), status = FundingStatus.CANCELLED),
+        )
+
+        val exception = assertFailsWith<BusinessException> { service.close(OTHER_USER_ID, FUNDING_ID) }
+
+        assertEquals(FundingErrorCode.FUNDING_OWNER_ONLY, exception.errorCode)
+    }
+
     private fun funding(
         type: FundingType = FundingType.BIRTHDAY,
         status: FundingStatus = FundingStatus.FUNDING,
+        deadline: LocalDateTime = NOW.plusDays(3),
     ): Funding =
         Funding(
             ownerId = OWNER_ID,
@@ -108,7 +150,7 @@ class FundingEarlyCloseServiceTest {
             type = type,
             title = "생일 선물 펀딩",
             targetAmount = 100_000L,
-            deadline = NOW.plusDays(3),
+            deadline = deadline,
             revealAt = if (type == FundingType.SURPRISE) REVEAL_AT else null,
             story = "새 헤드폰이 필요해요",
             promise = null,
