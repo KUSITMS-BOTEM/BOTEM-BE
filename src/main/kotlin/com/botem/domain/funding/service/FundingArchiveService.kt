@@ -35,7 +35,8 @@ class FundingArchiveService(
     @Transactional(readOnly = true)
     fun getArchive(userId: Long, tab: FundingArchiveTab): FundingArchiveResponse {
         val now = LocalDateTime.now(clock)
-        val fundings = fundingRepository.findArchivedFundingsByUserId(userId, now)
+        val participatedFundingIds = contributionRepository.findParticipatedFundingIds(userId).toSet()
+        val fundings = fundingRepository.findArchivedFundingsByUserId(userId, participatedFundingIds, now)
         if (fundings.isEmpty()) {
             return FundingArchiveResponse(
                 tabCounts = FundingArchiveTabCounts(all = 0, received = 0, participated = 0),
@@ -43,8 +44,6 @@ class FundingArchiveService(
             )
         }
 
-        val fundingIds = fundings.map(Funding::id)
-        val participatedFundingIds = contributionRepository.findParticipatedFundingIds(fundingIds, userId).toSet()
         val rollingPaperViewableFundingIds = fundings.filter { it.isRollingPaperViewable(now) }.map(Funding::id).toSet()
         val summariesByFundingId = if (rollingPaperViewableFundingIds.isEmpty()) {
             emptyMap()

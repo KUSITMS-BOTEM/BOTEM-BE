@@ -166,19 +166,16 @@ interface ContributionRepository : JpaRepository<Contribution, Long> {
         @Param("fundingIds") fundingIds: Collection<Long>,
     ): List<FundingContributionSummary>
 
+    // 참여자 인덱스(idx_contributions_participant_user)로 사용자가 보탠 펀딩만 좁힌다
     @Query(
         """
         SELECT DISTINCT contribution.fundingId
         FROM Contribution contribution
-        WHERE contribution.fundingId IN :fundingIds
-          AND contribution.participantUserId = :userId
+        WHERE contribution.participantUserId = :userId
           AND contribution.status <> com.botem.domain.funding.entity.ContributionStatus.CANCELLED
         """,
     )
-    fun findParticipatedFundingIds(
-        @Param("fundingIds") fundingIds: Collection<Long>,
-        @Param("userId") userId: Long,
-    ): List<Long>
+    fun findParticipatedFundingIds(@Param("userId") userId: Long): List<Long>
 
     @Query(
         value = """
