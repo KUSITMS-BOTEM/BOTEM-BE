@@ -299,21 +299,33 @@ interface FundingControllerDocs {
     ): ApiResponse<OwnerFundingDetailResponse>
 
     @Operation(
-        summary = "펀딩 조기 마감",
+        summary = "펀딩 마감 (조기 마감 · 참여자 0명 종료)",
         description = """
-            진행 중인 펀딩을 개설자가 조기 마감합니다. 이미 조기 마감한 펀딩에 다시 요청하면 조기 마감을 다시 수행하지 않으며,
+            마감일 전에는 진행 중인 펀딩을 개설자가 조기 마감합니다. 이미 조기 마감한 펀딩에 다시 요청하면 조기 마감을 다시 수행하지 않으며,
             최초 조기 마감 시각과 현재 펀딩 상태를 반환합니다.
             송금하지 않은 보탬은 금액을 제외하고 메시지만 유지하며, 이후 추가 금액 보태기는 차단됩니다.
             일반 생일 펀딩은 기존 마감일까지 메시지만 추가로 받을 수 있습니다.
             서프라이즈 펀딩은 메시지 참여도 종료하고 GIFT_PREPARING 상태가 되며 기존 공개 시각은 유지합니다.
             이후 선물 준비 완료 API를 호출해야 WAITING_REVEAL 상태가 됩니다.
+
+            마감일이 지났고 참여자(취소 제외 보탬)가 0명인 생일 펀딩은 결과를 열기 전에 종료할 수 있습니다 (FUND-PG-009 '펀딩 마감하기').
+            종료한 펀딩은 CANCELLED 상태가 되어 홈 펀딩 카드, 보관함, 친구 프로필에서 빠지고 같은 위시로 다시 펀딩을 열 수 있습니다.
+            이때 earlyClosedAt은 null이며, 관리 상세 등 다른 펀딩 API는 취소된 펀딩으로 보고 FUNDING_002를 반환합니다(기간 연장 불가).
+            이미 종료한 펀딩에 다시 요청하면 같은 결과를 반환합니다.
         """,
     )
     @ApiResponses(
         SwaggerApiResponse(
             responseCode = "200",
-            description = "조기 마감 성공 또는 기존 조기 마감 결과 반환",
-            content = [Content(examples = [ExampleObject(value = EARLY_CLOSE_RESPONSE_EXAMPLE)])],
+            description = "마감 성공 또는 기존 마감 결과 반환",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "EARLY_CLOSE", summary = "마감일 전 조기 마감", value = EARLY_CLOSE_RESPONSE_EXAMPLE),
+                        ExampleObject(name = "END_WITHOUT_PARTICIPANTS", summary = "마감일 후 참여자 0명 종료", value = END_WITHOUT_PARTICIPANTS_RESPONSE_EXAMPLE),
+                    ],
+                ),
+            ],
         ),
         SwaggerApiResponse(responseCode = "401", description = "인증 실패"),
         SwaggerApiResponse(
@@ -328,8 +340,19 @@ interface FundingControllerDocs {
         ),
         SwaggerApiResponse(
             responseCode = "409",
-            description = "조기 마감할 수 없는 상태",
-            content = [Content(examples = [ExampleObject(value = FUNDING_EARLY_CLOSE_NOT_AVAILABLE_EXAMPLE)])],
+            description = "마감할 수 없는 상태",
+            content = [
+                Content(
+                    examples = [
+                        ExampleObject(name = "FUNDING_042", summary = "조기 마감할 수 없는 상태", value = FUNDING_EARLY_CLOSE_NOT_AVAILABLE_EXAMPLE),
+                        ExampleObject(
+                            name = "FUNDING_061",
+                            summary = "마감일 후 참여자가 있거나 서프라이즈·결과를 연 펀딩",
+                            value = FUNDING_END_NOT_AVAILABLE_EXAMPLE,
+                        ),
+                    ],
+                ),
+            ],
         ),
     )
     fun closeFundingEarly(
@@ -1143,6 +1166,20 @@ interface FundingControllerDocs {
               "error": null
             }
         """
+        private const val END_WITHOUT_PARTICIPANTS_RESPONSE_EXAMPLE = """
+            {
+              "success": true,
+              "data": {
+                "fundingId": 12,
+                "type": "BIRTHDAY",
+                "status": "CANCELLED",
+                "deadline": "2026-11-20T23:59:59.999999",
+                "revealAt": null,
+                "earlyClosedAt": null
+              },
+              "error": null
+            }
+        """
         private const val CHANGE_PRODUCT_REQUEST_EXAMPLE = """
             {
               "wishId": 7
@@ -1429,6 +1466,17 @@ interface FundingControllerDocs {
               "error": {
                 "code": "FUNDING_042",
                 "message": "현재 상태에서는 펀딩을 조기 마감할 수 없습니다.",
+                "detail": null
+              }
+            }
+        """
+        private const val FUNDING_END_NOT_AVAILABLE_EXAMPLE = """
+            {
+              "success": false,
+              "data": null,
+              "error": {
+                "code": "FUNDING_061",
+                "message": "마감일이 지났고 참여자가 없는 생일 펀딩만 결과를 열기 전에 마감할 수 있습니다.",
                 "detail": null
               }
             }
