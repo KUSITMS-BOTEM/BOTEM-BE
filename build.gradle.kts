@@ -22,7 +22,9 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
+	implementation("org.springframework.boot:spring-boot-starter-cache")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-restclient")
 	implementation("org.springframework.boot:spring-boot-starter-security")
@@ -72,7 +74,18 @@ tasks.withType<Test> {
 // CI는 마이그레이션·엔티티·빌드 설정이 바뀐 PR에서만 migrationTest를 돌린다
 tasks.test {
 	useJUnitPlatform {
-		excludeTags("migration", "erd")
+		excludeTags("migration", "erd", "redis")
+	}
+}
+
+// 실제 Redis(Testcontainers)로 요청 횟수 제한과 캐시를 검증한다. Docker가 필요해 일반 테스트와 나눈다
+val redisTest by tasks.registering(Test::class) {
+	description = "Docker의 Redis로 요청 횟수 제한 카운터와 사용자 상태 캐시를 검증합니다."
+	group = "verification"
+	testClassesDirs = sourceSets.test.get().output.classesDirs
+	classpath = sourceSets.test.get().runtimeClasspath
+	useJUnitPlatform {
+		includeTags("redis")
 	}
 }
 
