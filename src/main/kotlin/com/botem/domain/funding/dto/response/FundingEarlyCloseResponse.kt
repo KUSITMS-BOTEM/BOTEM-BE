@@ -11,7 +11,7 @@ data class FundingEarlyCloseResponse(
     val status: FundingStatus,
     val deadline: LocalDateTime,
     val revealAt: LocalDateTime?,
-    // 마감일이 지나 참여자 0명으로 종료한 펀딩(CANCELLED)은 조기 마감이 아니라 null
+    // 조기 마감된 뒤 참여자 0명으로 종료하면, 조기 마감 이력은 유지한다
     val earlyClosedAt: LocalDateTime?,
 ) {
     companion object {
