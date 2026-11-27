@@ -4,6 +4,10 @@ import com.botem.global.logging.RequestIdFilter
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.HttpHeaders
 import org.springframework.test.context.TestPropertySource
@@ -16,7 +20,16 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = ["rate-limit.guest-access-per-minute=2"])
+@Import(RateLimitIntegrationTest.InMemoryCounterConfig::class)
 class RateLimitIntegrationTest {
+
+    // 일반 테스트에는 Redis가 없으므로 메모리 카운터로 필터 순서·응답 형식만 검증한다 (Redis 연동은 RedisIntegrationTest)
+    @TestConfiguration
+    class InMemoryCounterConfig {
+        @Bean
+        @Primary
+        fun inMemoryRateLimitCounter(): RateLimitCounter = InMemoryRateLimitCounter()
+    }
 
     @Autowired
     private lateinit var mockMvc: MockMvc

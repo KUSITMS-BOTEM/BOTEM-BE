@@ -6,6 +6,11 @@ spring:
     password:
   flyway:
     enabled: false
+  # 일반 테스트는 Redis 없이 돈다(로컬에 Redis가 떠 있어도 쓰지 않도록 열리지 않은 포트를 가리킨다).
+  # 요청 제한은 연결 실패로 통과하고 회원 상태는 DB로 조회한다. 실제 Redis 검증은 redisTest 작업(@Tag("redis"))에서 한다
+  data:
+    redis:
+      port: 1
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -32,3 +37,6 @@ rate-limit:
   contribution-per-minute: 10000
   attachment-upload-url-per-minute: 10000
   guest-access-per-minute: 10000
+
+user-status-cache:
+  enabled: false

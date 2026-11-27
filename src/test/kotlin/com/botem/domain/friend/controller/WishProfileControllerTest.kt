@@ -3,6 +3,7 @@ package com.botem.domain.friend.controller
 import com.botem.domain.friend.dto.response.FriendProfileResponse
 import com.botem.domain.friend.service.FriendProfileService
 import com.botem.domain.user.repository.UserRepository
+import com.botem.domain.user.service.UserStatusCache
 import com.botem.global.config.SecurityConfig
 import com.botem.global.exception.AuthErrorCode
 import com.botem.global.exception.BusinessException
@@ -41,6 +42,9 @@ class WishProfileControllerTest {
 
     @MockitoBean
     private lateinit var userRepository: UserRepository
+
+    @MockitoBean
+    private lateinit var userStatusCache: UserStatusCache
 
     @Test
     fun `로그인 없이 위시 프로필을 조회하면 위시는 잠긴 채로 반환한다`() {

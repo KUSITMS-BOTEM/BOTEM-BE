@@ -42,6 +42,7 @@ class UserWithdrawalServiceTest {
         ),
         activeFundingChecker = activeFundingChecker,
         eventPublisher = eventPublisher,
+        userStatusCache = mock(UserStatusCache::class.java),
     )
 
     @Test
