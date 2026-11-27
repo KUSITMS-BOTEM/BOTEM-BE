@@ -15,6 +15,8 @@ interface UserRepository : JpaRepository<User, Long> {
 
     fun findAllByKakaoIdInAndStatus(kakaoIds: Collection<Long>, status: UserStatus): List<User>
 
+    fun findAllByEmailAndStatus(email: String, status: UserStatus): List<User>
+
     fun findByWishProfileKey(wishProfileKey: String): User?
 
     @Query("SELECT u.status FROM User u WHERE u.id = :userId")
