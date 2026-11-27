@@ -19,6 +19,7 @@ class RateLimitFilterTest {
         RateLimitProperties(contributionPerMinute = 2, attachmentUploadUrlPerMinute = 3, guestAccessPerMinute = 1),
         JsonMapper.builder().build(),
         clock,
+        InMemoryRateLimitCounter(),
     )
 
     @Test
@@ -59,6 +60,21 @@ class RateLimitFilterTest {
         repeat(5) {
             assertEquals(200, request("GET", "/api/fundings/share/$SHARE_KEY").status)
             assertEquals(200, request("POST", "/api/fundings/10/contributions/decisions").status)
+        }
+    }
+
+    @Test
+    fun `카운터 저장소(Redis)에 장애가 나면 정상 사용자를 막지 않고 통과시킨다`() {
+        val failingFilter = RateLimitFilter(
+            RateLimitProperties(contributionPerMinute = 1, attachmentUploadUrlPerMinute = 1, guestAccessPerMinute = 1),
+            JsonMapper.builder().build(),
+            clock,
+        ) { _, _ -> throw IllegalStateException("Redis 연결 실패") }
+
+        repeat(3) {
+            val response = MockHttpServletResponse()
+            failingFilter.doFilter(MockHttpServletRequest("POST", CONTRIBUTIONS), response, FilterChain { _, _ -> })
+            assertEquals(200, response.status)
         }
     }
 

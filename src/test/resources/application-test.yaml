@@ -6,6 +6,9 @@ spring:
     password:
   flyway:
     enabled: false
+  # 일반 테스트는 Redis 없이 돈다. 실제 Redis 검증은 redisTest 작업(@Tag("redis"))에서 한다
+  cache:
+    type: none
   jpa:
     hibernate:
       ddl-auto: create-drop
