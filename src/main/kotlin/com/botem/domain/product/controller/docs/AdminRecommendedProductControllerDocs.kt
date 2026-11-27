@@ -69,6 +69,7 @@ interface AdminRecommendedProductControllerDocs {
                 "imageUrl": "https://image.coupangcdn.com/example.jpg",
                 "price": 429000,
                 "sellerName": "쿠팡 Apple 공식 브랜드관",
+                "productUrl": "https://link.coupang.com/a/example",
                 "category": "EARPHONE_HEADPHONE",
                 "status": "ON_SALE",
                 "wishId": null,
