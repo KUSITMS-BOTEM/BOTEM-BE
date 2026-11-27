@@ -38,13 +38,15 @@ class FundingEarlyCloseService(
         }
 
         if (funding.canEndWithoutParticipants(now)) {
-            if (funding.status != FundingStatus.CANCELLED &&
-                contributionRepository.existsByFundingIdAndStatusNot(funding.id, ContributionStatus.CANCELLED)
+            if (funding.status == FundingStatus.CANCELLED ||
+                !contributionRepository.existsByFundingIdAndStatusNot(funding.id, ContributionStatus.CANCELLED)
             ) {
+                funding.endWithoutParticipants(now)
+                return FundingEarlyCloseResponse.from(funding)
+            }
+            if (funding.earlyClosedAt == null) {
                 throw BusinessException(FundingErrorCode.FUNDING_END_NOT_AVAILABLE)
             }
-            funding.endWithoutParticipants(now)
-            return FundingEarlyCloseResponse.from(funding)
         }
 
         val alreadyClosedEarly = funding.earlyClosedAt != null
