@@ -14,5 +14,9 @@ interface FundingLifecycleQueryRepository {
 
     fun findClosedFundingsByOwnerId(ownerId: Long, now: LocalDateTime): List<Funding>
 
-    fun findArchivedFundingsByUserId(userId: Long, now: LocalDateTime): List<Funding>
+    fun findArchivedFundingsByUserId(
+        userId: Long,
+        participatedFundingIds: Collection<Long>,
+        now: LocalDateTime,
+    ): List<Funding>
 }
