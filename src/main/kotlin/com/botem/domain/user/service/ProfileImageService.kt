@@ -1,11 +1,13 @@
 package com.botem.domain.user.service
 
+import com.botem.global.config.PostProcessingAsyncConfig
 import com.botem.domain.user.dto.response.ProfileImageUploadUrlResponse
 import com.botem.global.exception.BusinessException
 import com.botem.global.exception.CommonErrorCode
 import com.botem.global.property.S3Properties
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.scheduling.annotation.Async
 import org.springframework.transaction.event.TransactionalEventListener
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
@@ -66,8 +68,9 @@ class ProfileImageService(
         }
     }
 
-    // 탈퇴가 커밋된 뒤 실행해 롤백 시 이미지가 지워지지 않게 한다. 온보딩에 쓰이지 않은 업로드까지 경로 전체를 지운다
-    // ponytail: 삭제 실패 시 재시도 없이 에러 로그(Sentry)만 남김. 실패가 잦으면 재시도 작업 추가
+    // 탈퇴가 커밋된 뒤 전용 실행기로 넘겨 롤백 시 이미지가 지워지지 않게 하고 응답을 지연시키지 않는다.
+    // 온보딩에 쓰이지 않은 업로드까지 경로 전체를 지운다. 실패·포화 시 재시도 없이 에러 로그(Sentry)만 남긴다.
+    @Async(PostProcessingAsyncConfig.POST_PROCESSING_TASK_EXECUTOR)
     @TransactionalEventListener
     fun deleteAllImages(event: UserWithdrawnEvent) {
         val prefix = "$KEY_PREFIX/${event.userId}/"

@@ -71,6 +71,14 @@ s3:
 admin:
   api-key: ${ADMIN_API_KEY:local-admin-api-key}
 
+post-processing:
+  async:
+    # 외부 정리 작업이 요청 처리 스레드를 점유하지 않도록 별도 실행기를 쓴다. 포화 시 작업을 버리고 로그로 남긴다.
+    core-pool-size: ${POST_PROCESSING_ASYNC_CORE_POOL_SIZE:2}
+    max-pool-size: ${POST_PROCESSING_ASYNC_MAX_POOL_SIZE:4}
+    queue-capacity: ${POST_PROCESSING_ASYNC_QUEUE_CAPACITY:100}
+    await-termination: ${POST_PROCESSING_ASYNC_AWAIT_TERMINATION:10s}
+
 springdoc:
   swagger-ui:
     tags-sorter: alpha
